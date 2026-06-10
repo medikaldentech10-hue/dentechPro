@@ -22,6 +22,10 @@ Open http://localhost:3000.
 
 Copy `.env.example` to `.env.local` and fill Supabase values when auth/data work begins.
 
+Set `DENTECH_WHATSAPP_NUMBER` in `.env.local` to control where request-list
+WhatsApp messages are sent. The MVP placeholder value is `905XXXXXXXXX`; use a
+country-code-prefixed number without `+`.
+
 ## Product Import
 
 Import the initial JOTA MVP catalog with:
@@ -44,6 +48,6 @@ same fields can be overwritten when the import is re-run.
 
 This is an MVP foundation. It includes public, user, sales, and admin route
 groups; B2B request language; JOTA-focused categories; Supabase auth helpers;
-admin approval; and a server-side product catalog service. AI search, order
-logic, payment logic, product import from the full Ikas export, and RLS policies
-are intentionally not implemented yet.
+admin approval; a server-side product catalog service; and draft request-list
+submission to WhatsApp. AI search, final order conversion, payment logic, and
+product import from the full Ikas export are intentionally not implemented yet.

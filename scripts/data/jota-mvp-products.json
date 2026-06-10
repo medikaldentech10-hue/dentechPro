@@ -1,0 +1,188 @@
+{
+  "categories": [
+    {
+      "name": "Frezler",
+      "slug": "frezler",
+      "sort_order": 10
+    },
+    {
+      "name": "JOTA Frezler",
+      "slug": "jota-frezler",
+      "parent_slug": "frezler",
+      "sort_order": 20
+    },
+    {
+      "name": "Elmas Frezler",
+      "slug": "elmas-frezler",
+      "parent_slug": "jota-frezler",
+      "sort_order": 30
+    },
+    {
+      "name": "Karbit Frezler",
+      "slug": "karbit-frezler",
+      "parent_slug": "jota-frezler",
+      "sort_order": 40
+    },
+    {
+      "name": "Aşındırıcı Taşlar",
+      "slug": "asindirici-taslar",
+      "parent_slug": "jota-frezler",
+      "sort_order": 50
+    },
+    {
+      "name": "Ayırıcı Diskler",
+      "slug": "ayirici-diskler",
+      "parent_slug": "jota-frezler",
+      "sort_order": 60
+    },
+    {
+      "name": "Cilalama Frezleri",
+      "slug": "cilalama-frezleri",
+      "parent_slug": "jota-frezler",
+      "sort_order": 70
+    },
+    {
+      "name": "Diğer Ürünler",
+      "slug": "diger-urunler",
+      "parent_slug": "jota-frezler",
+      "sort_order": 80
+    }
+  ],
+  "products": [
+    {
+      "brand": "JOTA",
+      "category_slug": "elmas-frezler",
+      "product_group_code": "jota-859l-uzun-alev-elmas-frez",
+      "product_name": "859L Uzun Alev Elmas Frez",
+      "description": "JOTA elmas frez ailesi için uzun alev formunda katalog ürünü.",
+      "usage_area": "Preparasyon",
+      "material_tags": ["Elmas"],
+      "procedure_tags": ["Preparasyon"],
+      "variants": [
+        {
+          "variant_code": "JOTA-859L-FG-012",
+          "manufacturer_ref": "859L.FG.012",
+          "connection_type": "FG",
+          "diameter": 1.2,
+          "price": 275,
+          "stock_quantity": 24,
+          "stock_status": "in_stock"
+        }
+      ]
+    },
+    {
+      "brand": "JOTA",
+      "category_slug": "elmas-frezler",
+      "product_group_code": "jota-852-chamfer-elmas-frez",
+      "product_name": "852 Chamfer Elmas Frez",
+      "description": "Konik yuvarlak uçlu JOTA elmas frez katalog ürünü.",
+      "usage_area": "Chamfer preparasyon",
+      "material_tags": ["Elmas"],
+      "procedure_tags": ["Chamfer", "Preparasyon"],
+      "variants": [
+        {
+          "variant_code": "JOTA-852-FG-014",
+          "manufacturer_ref": "852.FG.014",
+          "connection_type": "FG",
+          "diameter": 1.4,
+          "price": 285,
+          "stock_quantity": 18,
+          "stock_status": "in_stock"
+        }
+      ]
+    },
+    {
+      "brand": "JOTA",
+      "category_slug": "elmas-frezler",
+      "product_group_code": "jota-z850-zirkonya-elmas-frez",
+      "product_name": "Z850 Zirkonya Elmas Frez",
+      "description": "Zirkonya uygulamaları için JOTA katalog ürünü.",
+      "usage_area": "Zirkonya düzeltme",
+      "material_tags": ["Elmas", "Zirkonya"],
+      "procedure_tags": ["Zirkonya"],
+      "variants": [
+        {
+          "variant_code": "JOTA-Z850-FG-016",
+          "manufacturer_ref": "Z850.FG.016",
+          "connection_type": "FG",
+          "diameter": 1.6,
+          "price": 410,
+          "stock_quantity": 12,
+          "stock_status": "in_stock"
+        }
+      ]
+    },
+    {
+      "brand": "JOTA",
+      "category_slug": "karbit-frezler",
+      "product_group_code": "jota-cq1-karbit-frez",
+      "product_name": "CQ1 Karbit Frez",
+      "description": "JOTA karbit frez ailesi için katalog ürünü.",
+      "usage_area": "Kesim ve düzeltme",
+      "material_tags": ["Karbit"],
+      "procedure_tags": ["Preparasyon"],
+      "variants": [
+        {
+          "variant_code": "JOTA-CQ1-FG-010",
+          "manufacturer_ref": "CQ1.FG.010",
+          "connection_type": "FG",
+          "diameter": 1,
+          "price": 320,
+          "stock_quantity": 16,
+          "stock_status": "in_stock"
+        }
+      ]
+    },
+    {
+      "brand": "JOTA",
+      "category_slug": "cilalama-frezleri",
+      "product_group_code": "jota-9805-polisaj-frezi",
+      "product_name": "9805 Polisaj Frezi",
+      "description": "Kompozit ve restoratif polisaj akışları için JOTA katalog ürünü.",
+      "usage_area": "Kompozit cilalama",
+      "material_tags": ["Polisaj"],
+      "procedure_tags": ["Finisaj", "Polisaj"],
+      "variants": [
+        {
+          "variant_code": "JOTA-9805G-RA",
+          "manufacturer_ref": "9805G.RA",
+          "connection_type": "RA",
+          "grit": "G",
+          "price": 365,
+          "stock_quantity": 20,
+          "stock_status": "in_stock"
+        },
+        {
+          "variant_code": "JOTA-9805M-RA",
+          "manufacturer_ref": "9805M.RA",
+          "connection_type": "RA",
+          "grit": "M",
+          "price": 365,
+          "stock_quantity": 22,
+          "stock_status": "in_stock"
+        }
+      ]
+    },
+    {
+      "brand": "JOTA",
+      "category_slug": "cilalama-frezleri",
+      "product_group_code": "jota-ls9873f-polisaj-frezi",
+      "product_name": "LS9873F Polisaj Frezi",
+      "description": "JOTA polisaj frezleri içinde MVP katalog test ürünü.",
+      "usage_area": "Polisaj",
+      "material_tags": ["Polisaj"],
+      "procedure_tags": ["Finisaj", "Polisaj"],
+      "variants": [
+        {
+          "variant_code": "JOTA-LS9873F-RA",
+          "manufacturer_ref": "LS9873F.RA",
+          "connection_type": "RA",
+          "grit": "F",
+          "price": 390,
+          "stock_quantity": 10,
+          "stock_status": "low_stock"
+        }
+      ]
+    }
+  ]
+}
