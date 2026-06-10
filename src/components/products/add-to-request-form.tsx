@@ -6,18 +6,20 @@ import { Button } from "@/components/ui/button";
 type AddToRequestFormProps = {
   disabled?: boolean;
   disabledReason?: string;
+  submitLabel?: string;
   variantId: string;
 };
 
 export function AddToRequestForm({
   disabled = false,
   disabledReason,
+  submitLabel = "Talep Listesine Ekle",
   variantId,
 }: AddToRequestFormProps) {
   if (disabled) {
     return (
       <Button className="w-full" disabled>
-        {disabledReason ?? "Talep Listesine Ekle"}
+        {disabledReason ?? submitLabel}
       </Button>
     );
   }
@@ -36,7 +38,7 @@ export function AddToRequestForm({
       />
       <Button className="w-full" type="submit">
         <ListPlus data-icon="inline-start" />
-        Talep Listesine Ekle
+        {submitLabel}
       </Button>
     </form>
   );

@@ -39,6 +39,7 @@ export default async function ProductDetailPage({
   const pricedVariant = canSeeCommercialData
     ? (primaryVariant as PricedCatalogVariant)
     : null;
+  const salesMode = isSalesRep(profile);
 
   return (
     <div className="mx-auto grid w-full max-w-[1200px] gap-6 px-4 py-8 md:px-6 lg:grid-cols-[1fr_380px]">
@@ -86,6 +87,9 @@ export default async function ProductDetailPage({
                         ? "Pasif varyant"
                         : "Stok bilgisi için iletişime geçin"
                     }
+                    submitLabel={
+                      salesMode ? "Müşteri Adına Ekle" : "Talep Listesine Ekle"
+                    }
                     variantId={pricedVariant.id}
                   />
                 </div>
@@ -110,7 +114,7 @@ export default async function ProductDetailPage({
         adminMode={isAdmin(profile)}
         priceVisibility={priceVisibility}
         product={product}
-        salesMode={isSalesRep(profile)}
+        salesMode={salesMode}
       />
     </div>
   );

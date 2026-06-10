@@ -158,6 +158,7 @@ function ProductAction({
             : "Stok bilgisi için iletişime geçin"
           : undefined
       }
+      submitLabel={salesMode ? "Müşteri Adına Ekle" : "Talep Listesine Ekle"}
       variantId={variant.id}
     />
   );
