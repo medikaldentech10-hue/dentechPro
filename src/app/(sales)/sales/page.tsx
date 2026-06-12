@@ -1,17 +1,16 @@
-import { MessageCircle, Search } from "lucide-react";
+import Link from "next/link";
+import { MessageCircle, PackageSearch, Search } from "lucide-react";
 
 import { StatCard } from "@/components/dashboard/stat-card";
 import { GlassCard } from "@/components/premium/glass-card";
 import { SurfaceCard } from "@/components/premium/surface-card";
-import { ProductCard } from "@/components/products/product-card";
 import { PageTitle } from "@/components/shared/page-title";
 import { StatusBadge } from "@/components/shared/status-badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
 import {
   recentCustomerMeetings,
   salesActions,
-  sampleProducts,
 } from "@/lib/constants";
 
 export default function SalesPage() {
@@ -41,28 +40,14 @@ export default function SalesPage() {
                   Supabase aşamasında bağlanacak.
                 </p>
               </div>
-              <Button>
+              <Link className={buttonVariants()} href="/sales/request">
                 <MessageCircle data-icon="inline-start" />
-                WhatsApp’a Gönder
-              </Button>
+                Müşteri Adına Sipariş
+              </Link>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               {primaryActions.map((action) => (
-                <button
-                  key={action.title}
-                  className="flex min-h-28 items-start gap-4 rounded-xl border border-border/70 bg-card/64 p-4 text-left shadow-sm backdrop-blur transition hover:border-primary/40 hover:bg-accent/25"
-                  type="button"
-                >
-                  <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-accent text-primary shadow-sm">
-                    <action.icon />
-                  </span>
-                  <span className="flex min-w-0 flex-col gap-1">
-                    <span className="font-semibold">{action.title}</span>
-                    <span className="text-sm leading-6 text-muted-foreground">
-                      {action.description}
-                    </span>
-                  </span>
-                </button>
+                <ActionTile key={action.title} action={action} />
               ))}
             </div>
           </CardContent>
@@ -148,21 +133,68 @@ export default function SalesPage() {
           </CardContent>
         </SurfaceCard>
 
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
-          {sampleProducts.slice(0, 2).map((product) => (
-            <ProductCard
-              key={product.id}
-              product={product}
-              priceVisibility="approved"
-              salesMode
-            />
-          ))}
-        </div>
+        <SurfaceCard>
+          <CardContent className="flex h-full flex-col justify-between gap-5 p-5 md:p-6">
+            <div className="flex flex-col gap-3">
+              <div className="flex size-11 items-center justify-center rounded-xl bg-accent text-primary">
+                <PackageSearch />
+              </div>
+              <div>
+                <h2 className="font-semibold">Hızlı Ürün Ara</h2>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                  Müşteri görüşmesinde JOTA kataloğunu açın, ürünü seçin ve
+                  talep listesine müşteri adına ekleyin.
+                </p>
+              </div>
+            </div>
+            <Link className={buttonVariants({ variant: "outline" })} href="/products">
+              JOTA Kataloğunu Aç
+            </Link>
+          </CardContent>
+        </SurfaceCard>
       </section>
 
       <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border/70 bg-background/92 p-3 shadow-[0_-12px_40px_rgb(15_23_42/0.08)] backdrop-blur-xl lg:hidden">
-        <Button className="w-full">Müşteri Adına Sipariş</Button>
+        <Link className={buttonVariants({ className: "w-full" })} href="/sales/request">
+          Müşteri Adına Sipariş
+        </Link>
       </div>
     </div>
+  );
+}
+
+function ActionTile({
+  action,
+}: {
+  action: (typeof salesActions)[number];
+}) {
+  const content = (
+    <>
+      <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-accent text-primary shadow-sm">
+        <action.icon />
+      </span>
+      <span className="flex min-w-0 flex-col gap-1">
+        <span className="font-semibold">{action.title}</span>
+        <span className="text-sm leading-6 text-muted-foreground">
+          {action.description}
+        </span>
+      </span>
+    </>
+  );
+  const className =
+    "flex min-h-28 items-start gap-4 rounded-xl border border-border/70 bg-card/64 p-4 text-left shadow-sm backdrop-blur transition hover:border-primary/40 hover:bg-accent/25";
+
+  if (action.title === "Müşteri Adına Sipariş") {
+    return (
+      <Link className={className} href="/sales/request">
+        {content}
+      </Link>
+    );
+  }
+
+  return (
+    <button className={className} type="button">
+      {content}
+    </button>
   );
 }

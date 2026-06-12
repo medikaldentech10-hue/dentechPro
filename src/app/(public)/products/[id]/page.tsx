@@ -40,14 +40,14 @@ export default async function ProductDetailPage({
     ? (primaryVariant as PricedCatalogVariant)
     : null;
   const salesMode = isSalesRep(profile);
+  const description = product.description
+    ? stripHtml(product.description).slice(0, 180)
+    : "JOTA ürün kataloğu kaydı. Detaylı bilgi için DENTech Medikal ekibiyle iletişime geçebilirsiniz.";
 
   return (
     <div className="mx-auto grid w-full max-w-[1200px] gap-6 px-4 py-8 md:px-6 lg:grid-cols-[1fr_380px]">
       <div className="flex flex-col gap-6">
-        <PageTitle
-          description={product.description ?? "JOTA ürün kataloğu"}
-          title={product.name}
-        />
+        <PageTitle description={description} title={product.name} />
         <SurfaceCard>
           <CardContent className="flex flex-col gap-5 p-6">
             <StatusBadge
@@ -138,4 +138,8 @@ function formatPrice(price: number | null, currency: string) {
     currency,
     style: "currency",
   }).format(price)} + KDV Hariç`;
+}
+
+function stripHtml(value: string) {
+  return value.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
 }

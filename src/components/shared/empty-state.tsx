@@ -1,14 +1,17 @@
 import { SearchX } from "lucide-react";
+import Link from "next/link";
 
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 
 type EmptyStateProps = {
-  title: string;
-  description: string;
+  actionHref?: string;
   actionLabel?: string;
+  description: string;
+  title: string;
 };
 
 export function EmptyState({
+  actionHref,
   title,
   description,
   actionLabel = "Talep Listesine Git",
@@ -22,8 +25,11 @@ export function EmptyState({
         <h2 className="text-lg font-semibold">{title}</h2>
         <p className="text-sm leading-6 text-muted-foreground">{description}</p>
       </div>
-      <Button variant="outline">{actionLabel}</Button>
+      {actionHref ? (
+        <Link className={buttonVariants({ variant: "outline" })} href={actionHref}>
+          {actionLabel}
+        </Link>
+      ) : null}
     </div>
   );
 }
-

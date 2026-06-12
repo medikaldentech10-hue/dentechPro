@@ -7,7 +7,32 @@ type CategoryRow = Database["public"]["Tables"]["categories"]["Row"];
 type ProductRow = Database["public"]["Tables"]["products"]["Row"];
 type VariantRow = Database["public"]["Tables"]["product_variants"]["Row"];
 
-type AdminProductRow = ProductRow & {
+type VariantSummary = Pick<
+  VariantRow,
+  | "id"
+  | "is_active"
+  | "manufacturer_ref"
+  | "price"
+  | "product_id"
+  | "stock_quantity"
+  | "variant_code"
+>;
+
+type AdminProductRow = Pick<
+  ProductRow,
+  | "brand"
+  | "category_id"
+  | "id"
+  | "is_active"
+  | "product_group_code"
+  | "product_name"
+  | "updated_at"
+> & {
+  category: CategoryRow | null;
+  variants: VariantSummary[];
+};
+
+type AdminProductDetailRow = ProductRow & {
   category: CategoryRow | null;
   variants: VariantRow[];
 };
@@ -16,6 +41,8 @@ export type AdminProductFilters = {
   active?: "active" | "inactive" | "all";
   brand?: string;
   category?: string;
+  page?: number | string;
+  pageSize?: number | string;
   query?: string;
 };
 
@@ -32,6 +59,16 @@ export type AdminProductListItem = {
   totalStock: number;
   updatedAt: string;
   variantCount: number;
+};
+
+export type AdminProductListResult = {
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
+  page: number;
+  pageSize: number;
+  products: AdminProductListItem[];
+  totalCount: number;
+  totalPages: number;
 };
 
 export type AdminProductDetail = AdminProductListItem & {
@@ -59,21 +96,35 @@ export async function getAdminCategories() {
   return data;
 }
 
-export async function getAdminProductList(filters: AdminProductFilters = {}) {
+export async function getAdminProductList(
+  filters: AdminProductFilters = {}
+): Promise<AdminProductListResult> {
   const supabase = getSupabaseAdminClient();
-  const normalizedBrand = filters.brand?.trim();
+  const startedAt = performance.now();
+  const normalizedBrand = filters.brand?.trim() || "JOTA";
   const normalizedCategory = filters.category?.trim();
-  const normalizedQuery = filters.query?.trim().toLowerCase();
+  const normalizedQuery = filters.query?.trim().toLocaleLowerCase("tr-TR");
   const activeFilter = filters.active ?? "active";
+  const pageSize = clampInteger(filters.pageSize, 25, 1, 100);
+  const page = clampInteger(filters.page, 1, 1, 10_000);
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+  const categoryId = normalizedCategory
+    ? await getCategoryIdBySlug(normalizedCategory)
+    : null;
+  const matchingProductIds = normalizedQuery
+    ? await getMatchingVariantProductIds(normalizedQuery)
+    : [];
 
   let query = supabase
     .from("products")
-    .select("*,category:categories(*),variants:product_variants(*)")
-    .order("updated_at", { ascending: false });
-
-  if (normalizedBrand) {
-    query = query.eq("brand", normalizedBrand);
-  }
+    .select(
+      "id,brand,category_id,product_group_code,product_name,is_active,updated_at,category:categories(id,name,slug,sort_order)",
+      { count: "exact" }
+    )
+    .eq("brand", normalizedBrand)
+    .order("updated_at", { ascending: false })
+    .range(from, to);
 
   if (activeFilter === "active") {
     query = query.eq("is_active", true);
@@ -83,37 +134,58 @@ export async function getAdminProductList(filters: AdminProductFilters = {}) {
     query = query.eq("is_active", false);
   }
 
-  const { data, error } = await query;
+  if (categoryId) {
+    query = query.eq("category_id", categoryId);
+  }
+
+  if (normalizedQuery) {
+    const escapedQuery = escapeLikePattern(normalizedQuery);
+    const productSearch = [
+      `product_name.ilike.%${escapedQuery}%`,
+      `product_group_code.ilike.%${escapedQuery}%`,
+      ...matchingProductIds.map((id) => `id.eq.${id}`),
+    ].join(",");
+    query = query.or(productSearch);
+  }
+
+  const { count, data, error } = await query;
 
   if (error) {
     throw new Error(error.message);
   }
 
-  return normalizeRows(data ?? [])
-    .filter((product) => {
-      if (normalizedCategory && product.category?.slug !== normalizedCategory) {
-        return false;
-      }
+  const productRows = normalizeListProductRows(data ?? []);
+  const variantSummaries = productRows.length
+    ? await getVariantSummariesForProducts(productRows.map((row) => row.id))
+    : new Map<string, VariantSummary[]>();
+  const rows = productRows.map((product) => ({
+    ...product,
+    variants: variantSummaries.get(product.id) ?? [],
+  }));
+  const totalCount = count ?? 0;
+  const variantCount = rows.reduce(
+    (sum, product) => sum + product.variants.length,
+    0
+  );
 
-      if (!normalizedQuery) {
-        return true;
-      }
+  logAdminProductQuery("admin.products.list", {
+    durationMs: Math.round(performance.now() - startedAt),
+    page,
+    pageSize,
+    productCount: rows.length,
+    totalCount,
+    variantCount,
+  });
 
-      const haystack = [
-        product.product_name,
-        product.product_group_code,
-        product.brand,
-        product.category?.name,
-        ...product.variants.map((variant) => variant.variant_code),
-        ...product.variants.map((variant) => variant.manufacturer_ref),
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-
-      return haystack.includes(normalizedQuery);
-    })
-    .map(toListItem);
+  return {
+    hasNextPage: to + 1 < totalCount,
+    hasPreviousPage: page > 1,
+    page,
+    pageSize,
+    products: rows.map(toListItem),
+    totalCount,
+    totalPages: Math.max(1, Math.ceil(totalCount / pageSize)),
+  };
 }
 
 export async function getAdminProductDetail(productId: string) {
@@ -132,10 +204,50 @@ export async function getAdminProductDetail(productId: string) {
     return null;
   }
 
-  return toDetail(normalizeRows([data])[0]);
+  return toDetail(normalizeDetailRows([data])[0]);
 }
 
-function normalizeRows(rows: unknown[]): AdminProductRow[] {
+function normalizeListProductRows(rows: unknown[]): Omit<AdminProductRow, "variants">[] {
+  return rows.map((row) => {
+    const product = row as ProductRow & {
+      category: CategoryRow | null;
+    };
+
+    return {
+      brand: product.brand,
+      category: product.category,
+      category_id: product.category_id,
+      id: product.id,
+      is_active: product.is_active,
+      product_group_code: product.product_group_code,
+      product_name: product.product_name,
+      updated_at: product.updated_at,
+    };
+  });
+}
+
+async function getVariantSummariesForProducts(productIds: string[]) {
+  const supabase = getSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("product_variants")
+    .select(
+      "id,is_active,manufacturer_ref,price,product_id,stock_quantity,variant_code"
+    )
+    .in("product_id", productIds);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return (data ?? []).reduce((summaries, variant) => {
+    const current = summaries.get(variant.product_id) ?? [];
+    current.push(variant);
+    summaries.set(variant.product_id, current);
+    return summaries;
+  }, new Map<string, VariantSummary[]>());
+}
+
+function normalizeDetailRows(rows: unknown[]): AdminProductDetailRow[] {
   return rows.map((row) => {
     const product = row as ProductRow & {
       category: CategoryRow | null;
@@ -175,7 +287,7 @@ function toListItem(product: AdminProductRow): AdminProductListItem {
   };
 }
 
-function toDetail(product: AdminProductRow): AdminProductDetail {
+function toDetail(product: AdminProductDetailRow): AdminProductDetail {
   return {
     ...toListItem(product),
     categoryId: product.category_id,
@@ -189,6 +301,39 @@ function toDetail(product: AdminProductRow): AdminProductDetail {
       a.variant_code.localeCompare(b.variant_code)
     ),
   };
+}
+
+async function getCategoryIdBySlug(slug: string) {
+  const supabase = getSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("categories")
+    .select("id")
+    .eq("slug", slug)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data?.id ?? null;
+}
+
+async function getMatchingVariantProductIds(searchQuery: string) {
+  const supabase = getSupabaseAdminClient();
+  const escapedQuery = escapeLikePattern(searchQuery);
+  const { data, error } = await supabase
+    .from("product_variants")
+    .select("product_id")
+    .or(
+      `variant_code.ilike.%${escapedQuery}%,manufacturer_ref.ilike.%${escapedQuery}%`
+    )
+    .limit(500);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return [...new Set((data ?? []).map((row) => row.product_id))];
 }
 
 function formatPriceRange(minPrice: number | null, maxPrice: number | null) {
@@ -206,4 +351,31 @@ function formatPriceRange(minPrice: number | null, maxPrice: number | null) {
   }
 
   return `${formatter.format(minPrice)} - ${formatter.format(maxPrice)}`;
+}
+
+function clampInteger(
+  value: number | string | undefined,
+  fallback: number,
+  min: number,
+  max: number
+) {
+  const parsed = Number(value);
+
+  if (!Number.isInteger(parsed)) {
+    return fallback;
+  }
+
+  return Math.min(max, Math.max(min, parsed));
+}
+
+function escapeLikePattern(value: string) {
+  return value.replace(/[%_,]/g, "");
+}
+
+function logAdminProductQuery(event: string, payload: Record<string, unknown>) {
+  if (process.env.NODE_ENV !== "development") {
+    return;
+  }
+
+  console.info(`[${event}]`, payload);
 }

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
 import { AddToRequestForm } from "@/components/products/add-to-request-form";
+import { ProductImage } from "@/components/products/product-image";
 import { PremiumCard } from "@/components/premium/premium-card";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { Button } from "@/components/ui/button";
@@ -66,24 +67,34 @@ export function ProductCard({
         </CardAction>
       </CardHeader>
       <CardContent className="flex flex-col gap-5">
-        <div className="aspect-[4/3] rounded-xl border border-border/70 bg-[linear-gradient(135deg,rgb(255_255_255/0.88),rgb(20_118_82/0.14))] p-4 dark:bg-[linear-gradient(135deg,rgb(255_255_255/0.06),rgb(20_118_82/0.18))]">
-          <div className="flex h-full flex-col justify-between rounded-lg border border-white/65 bg-white/55 p-4 shadow-sm backdrop-blur dark:border-white/10 dark:bg-white/8">
-            <span className="text-xs font-medium text-muted-foreground">
-              {catalogProduct.brand}
-            </span>
-            <span className="text-3xl font-semibold text-primary">
-              {primaryVariant?.connectionType ?? "FG"}
-            </span>
-            <span className="text-xs text-muted-foreground">
-              {primaryVariant?.code ?? catalogProduct.code}
-            </span>
-          </div>
+        <div className="aspect-[4/3] overflow-hidden rounded-xl border border-border/70 bg-[linear-gradient(135deg,rgb(255_255_255/0.88),rgb(20_118_82/0.14))] dark:bg-[linear-gradient(135deg,rgb(255_255_255/0.06),rgb(20_118_82/0.18))]">
+          <ProductImage
+            alt={catalogProduct.name}
+            fallback={
+              <div className="flex h-full flex-col justify-between rounded-lg border border-white/65 bg-white/55 p-4 shadow-sm backdrop-blur dark:border-white/10 dark:bg-white/8">
+                <span className="text-xs font-medium text-muted-foreground">
+                  {catalogProduct.brand}
+                </span>
+                <span className="text-3xl font-semibold text-primary">
+                  {primaryVariant?.connectionType ?? "FG"}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {primaryVariant?.code ?? catalogProduct.code}
+                </span>
+              </div>
+            }
+            src={catalogProduct.imageUrl ?? primaryVariant?.imageUrl}
+          />
         </div>
         <div className="flex flex-col gap-2">
           <p className="text-sm text-muted-foreground">
             {primaryVariant?.name ?? catalogProduct.code}
           </p>
-          <p className="text-xs text-muted-foreground">{catalogProduct.status}</p>
+          <p className="text-xs text-muted-foreground">
+            {catalogProduct.description
+              ? stripHtml(catalogProduct.description).slice(0, 120)
+              : `${catalogProduct.variantCount} varyantlı JOTA ürün kataloğu kaydı.`}
+          </p>
           <PriceState visibility={priceVisibility} variant={primaryVariant} />
         </div>
         <ProductAction
@@ -221,6 +232,7 @@ function normalizeProduct(
     name: product.name,
     status: product.status,
     usageArea: product.status,
+    variantCount: 1,
     variants: [
       {
         code: product.code,
@@ -239,6 +251,10 @@ function normalizeProduct(
       },
     ],
   };
+}
+
+function stripHtml(value: string) {
+  return value.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
 }
 
 function parseLegacyPrice(value: string) {

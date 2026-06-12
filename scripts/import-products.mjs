@@ -8,7 +8,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const projectRoot = path.join(__dirname, "..");
 const seedPath =
-  process.argv[2] ?? path.join(__dirname, "data", "jota-mvp-products.json");
+  process.argv.slice(2).find((value) => !value.startsWith("--")) ??
+  path.join(__dirname, "data", "jota-mvp-products.json");
 
 await loadLocalEnv(path.join(projectRoot, ".env.local"));
 
@@ -28,167 +29,591 @@ const supabase = createClient(supabaseUrl, serviceRoleKey, {
   },
 });
 
-const seed = JSON.parse(await readFile(seedPath, "utf8"));
 const stats = {
+  createdCategories: 0,
   createdProducts: 0,
-  updatedProducts: 0,
   createdVariants: 0,
+  skippedRows: 0,
+  updatedCategories: 0,
+  updatedProducts: 0,
   updatedVariants: 0,
 };
 
-const categoryIds = new Map();
+const importData = seedPath.toLowerCase().endsWith(".csv")
+  ? await readIkasCsv(seedPath)
+  : await readJsonSeed(seedPath);
 
-for (const category of seed.categories) {
-  const parentId = category.parent_slug
-    ? categoryIds.get(category.parent_slug) ?? null
-    : null;
+await importCategories(importData.categories);
+await importProducts(importData.products, importData.source);
 
-  const { data: existingCategory, error: categoryLookupError } = await supabase
-    .from("categories")
-    .select("id")
-    .eq("slug", category.slug)
-    .maybeSingle();
+console.info("[products.import]", {
+  source: importData.source,
+  file: path.relative(projectRoot, seedPath),
+  ...stats,
+});
 
-  if (categoryLookupError) {
-    throw new Error(categoryLookupError.message);
-  }
-
-  const categoryPayload = {
-    name: category.name,
-    slug: category.slug,
-    parent_id: parentId,
-    status: "active",
-    sort_order: category.sort_order ?? 0,
+async function readJsonSeed(filePath) {
+  const seed = JSON.parse(await readFile(filePath, "utf8"));
+  return {
+    categories: seed.categories ?? [],
+    products: seed.products ?? [],
+    source: "json",
   };
-
-  const { data: savedCategory, error: categorySaveError } = existingCategory
-    ? await supabase
-        .from("categories")
-        .update(categoryPayload)
-        .eq("id", existingCategory.id)
-        .select("id")
-        .single()
-    : await supabase
-        .from("categories")
-        .insert(categoryPayload)
-        .select("id")
-        .single();
-
-  if (categorySaveError) {
-    throw new Error(categorySaveError.message);
-  }
-
-  categoryIds.set(category.slug, savedCategory.id);
 }
 
-for (const product of seed.products) {
-  const categoryId = categoryIds.get(product.category_slug);
+async function readIkasCsv(filePath) {
+  const rows = parseCsv(await readFile(filePath, "utf8"));
+  const categories = new Map();
+  const products = new Map();
 
-  if (!categoryId) {
-    throw new Error(`Missing category for product: ${product.product_group_code}`);
-  }
+  ensureRootCategories(categories);
 
-  const productPayload = {
-    brand: product.brand ?? "JOTA",
-    category_id: categoryId,
-    product_group_code: product.product_group_code,
-    product_name: product.product_name,
-    description: product.description ?? null,
-    usage_area: product.usage_area ?? null,
-    target_user_type: product.target_user_type ?? null,
-    material_tags: product.material_tags ?? null,
-    procedure_tags: product.procedure_tags ?? null,
-    image_url: product.image_url ?? null,
-    is_active: product.is_active ?? true,
-  };
+  for (const row of rows) {
+    const sku = getValue(row, [
+      "sku",
+      "stok kodu",
+      "stok_kodu",
+      "varyant kodu",
+      "variant code",
+      "variant_code",
+      "barkod",
+      "barcode",
+      "varyant id",
+      "variant id",
+    ]);
+    const productName = getValue(row, [
+      "product name",
+      "product_name",
+      "urun adi",
+      "ürün adı",
+      "urun_adi",
+      "isim",
+      "name",
+      "baslik",
+      "başlık",
+    ]);
+    const variantName = getValue(row, [
+      "variant name",
+      "variant_name",
+      "varyant adi",
+      "varyant adı",
+      "secenek",
+      "seçenek",
+    ]);
 
-  const { data: existingProduct, error: productLookupError } = await supabase
-    .from("products")
-    .select("id")
-    .eq("product_group_code", product.product_group_code)
-    .maybeSingle();
+    if (!sku && !productName) {
+      stats.skippedRows += 1;
+      continue;
+    }
 
-  if (productLookupError) {
-    throw new Error(productLookupError.message);
-  }
-
-  const { data: savedProduct, error: productSaveError } = existingProduct
-    ? await supabase
-        .from("products")
-        .update(productPayload)
-        .eq("id", existingProduct.id)
-        .select("id")
-        .single()
-    : await supabase
-        .from("products")
-        .insert(productPayload)
-        .select("id")
-        .single();
-
-  if (productSaveError) {
-    throw new Error(productSaveError.message);
-  }
-
-  if (existingProduct) {
-    stats.updatedProducts += 1;
-  } else {
-    stats.createdProducts += 1;
-  }
-
-  for (const variant of product.variants ?? []) {
-    const variantPayload = {
-      product_id: savedProduct.id,
-      variant_code: variant.variant_code,
-      manufacturer_ref: variant.manufacturer_ref ?? null,
-      ikas_product_id: variant.ikas_product_id ?? null,
-      ikas_url: variant.ikas_url ?? null,
-      connection_type: variant.connection_type ?? null,
-      iso_shank: variant.iso_shank ?? null,
-      diameter: variant.diameter ?? null,
-      length: variant.length ?? null,
-      grit: variant.grit ?? null,
-      color: variant.color ?? null,
-      package_quantity: variant.package_quantity ?? 1,
-      price: variant.price ?? null,
-      currency: variant.currency ?? "TRY",
-      stock_quantity: variant.stock_quantity ?? 0,
-      reserved_quantity: variant.reserved_quantity ?? 0,
-      stock_status: variant.stock_status ?? "in_stock",
-      uts_no: variant.uts_no ?? null,
-      image_url: variant.image_url ?? null,
-      is_active: variant.is_active ?? true,
+    const brand = normalizeBrand(getValue(row, ["brand", "marka"]) || "JOTA");
+    const rawCategory =
+      getValue(row, [
+        "category",
+        "kategori",
+        "kategori adi",
+        "kategori adı",
+        "category name",
+      ]) || "Diğer Ürünler";
+    const categorySlug = normalizeCategory(categories, rawCategory);
+    const productGroupCode =
+      getValue(row, [
+        "product group code",
+        "product_group_code",
+        "urun grup kodu",
+        "ürün grup kodu",
+        "model kodu",
+        "group code",
+        "urun grup id",
+        "product group id",
+      ]) || slugify(productName || sku);
+    const productKey = productGroupCode || slugify(productName || sku);
+    const product = products.get(productKey) ?? {
+      brand,
+      category_slug: categorySlug,
+      description: getValue(row, ["description", "aciklama", "açıklama"]),
+      image_url: getValue(row, [
+        "image",
+        "image url",
+        "image_url",
+        "gorsel",
+        "görsel",
+        "resim",
+      ]),
+      is_active: parseActive(getValue(row, ["active", "aktif", "status", "durum"])),
+      product_group_code: productGroupCode,
+      product_name: productName || variantName || sku,
+      usage_area: getValue(row, ["usage_area", "kullanim alani", "kullanım alanı"]),
+      variants: [],
     };
 
-    const { data: existingVariant, error: variantLookupError } = await supabase
-      .from("product_variants")
-      .select("id")
-      .eq("variant_code", variant.variant_code)
-      .maybeSingle();
+    mergeDefined(product, {
+      brand,
+      category_slug: categorySlug,
+      description: getValue(row, ["description", "aciklama", "açıklama"]),
+      image_url: getValue(row, [
+        "image",
+        "image url",
+        "image_url",
+        "gorsel",
+        "görsel",
+        "resim",
+      ]),
+      is_active: parseActive(getValue(row, ["active", "aktif", "status", "durum"])),
+      product_name: productName,
+      usage_area: getValue(row, ["usage_area", "kullanim alani", "kullanım alanı"]),
+    });
 
-    if (variantLookupError) {
-      throw new Error(variantLookupError.message);
-    }
+    product.variants.push({
+      currency: getValue(row, ["currency", "para birimi"]) || "TRY",
+      image_url: getValue(row, [
+        "variant image",
+        "variant_image",
+        "image",
+        "image url",
+        "image_url",
+      ]),
+      is_active: parseActive(getValue(row, ["active", "aktif", "status", "durum"])),
+      manufacturer_ref: variantName || getValue(row, ["manufacturer_ref", "ref"]),
+      price: parseMoney(getValue(row, ["price", "fiyat", "sale price", "satis fiyati"])),
+      stock_quantity: parseStock(
+        getValue(row, ["stock", "stok", "stok ana depo", "quantity", "adet"])
+      ),
+      stock_status: getStockStatusForOptionalStock(
+        parseStock(
+          getValue(row, ["stock", "stok", "stok ana depo", "quantity", "adet"])
+        )
+      ),
+      variant_code: sku || `${productGroupCode}-${product.variants.length + 1}`,
+    });
 
-    const { error: variantSaveError } = existingVariant
+    products.set(productKey, product);
+  }
+
+  return {
+    categories: [...categories.values()],
+    products: [...products.values()],
+    source: "ikas_csv",
+  };
+}
+
+async function importCategories(categories) {
+  const categoryIds = new Map();
+
+  for (const category of categories) {
+    const parentId = category.parent_slug
+      ? categoryIds.get(category.parent_slug) ?? null
+      : null;
+    const existingCategory = await findCategoryBySlug(category.slug);
+    const categoryPayload = compactPayload({
+      name: category.name,
+      parent_id: parentId,
+      slug: category.slug,
+      sort_order: category.sort_order ?? 0,
+      status: category.status ?? "active",
+    });
+    const { data: savedCategory, error } = existingCategory
       ? await supabase
-          .from("product_variants")
-          .update(variantPayload)
-          .eq("id", existingVariant.id)
-      : await supabase.from("product_variants").insert(variantPayload);
+          .from("categories")
+          .update(categoryPayload)
+          .eq("id", existingCategory.id)
+          .select("id")
+          .single()
+      : await supabase.from("categories").insert(categoryPayload).select("id").single();
 
-    if (variantSaveError) {
-      throw new Error(variantSaveError.message);
+    if (error) {
+      throw new Error(error.message);
     }
 
-    if (existingVariant) {
-      stats.updatedVariants += 1;
+    if (existingCategory) {
+      stats.updatedCategories += 1;
     } else {
-      stats.createdVariants += 1;
+      stats.createdCategories += 1;
+    }
+
+    categoryIds.set(category.slug, savedCategory.id);
+  }
+
+  return categoryIds;
+}
+
+async function importProducts(products, source) {
+  const categoryIds = await getCategoryIds();
+
+  for (const product of products) {
+    const categoryId = categoryIds.get(product.category_slug);
+
+    if (!categoryId) {
+      stats.skippedRows += 1;
+      console.warn(
+        `[products.import] skipped product without category: ${product.product_group_code}`
+      );
+      continue;
+    }
+
+    const productPayload = compactPayload({
+      brand: product.brand ?? "JOTA",
+      category_id: categoryId,
+      description: product.description,
+      image_url: product.image_url,
+      is_active: product.is_active,
+      material_tags: product.material_tags,
+      procedure_tags: product.procedure_tags,
+      product_group_code: product.product_group_code,
+      product_name: product.product_name,
+      target_user_type: product.target_user_type,
+      usage_area: product.usage_area,
+    });
+    const existingProduct = await findProduct(product);
+    const { data: savedProduct, error } = existingProduct
+      ? await supabase
+          .from("products")
+          .update(productPayload)
+          .eq("id", existingProduct.id)
+          .select("id")
+          .single()
+      : await supabase.from("products").insert(productPayload).select("id").single();
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    if (existingProduct) {
+      stats.updatedProducts += 1;
+    } else {
+      stats.createdProducts += 1;
+    }
+
+    for (const variant of product.variants ?? []) {
+      await importVariant({
+        productId: savedProduct.id,
+        source,
+        variant,
+      });
     }
   }
 }
 
-console.info("[products.import]", stats);
+async function importVariant({ productId, source, variant }) {
+  const variantPayload = compactPayload({
+    color: variant.color,
+    connection_type: variant.connection_type,
+    currency: variant.currency ?? "TRY",
+    diameter: variant.diameter,
+    grit: variant.grit,
+    ikas_product_id: variant.ikas_product_id,
+    ikas_url: variant.ikas_url,
+    image_url: variant.image_url,
+    is_active: variant.is_active,
+    iso_shank: variant.iso_shank,
+    length: variant.length,
+    manufacturer_ref: variant.manufacturer_ref,
+    package_quantity: variant.package_quantity ?? 1,
+    price: variant.price,
+    product_id: productId,
+    reserved_quantity: variant.reserved_quantity ?? 0,
+    stock_quantity:
+      source === "ikas_csv" ? variant.stock_quantity : variant.stock_quantity ?? 0,
+    stock_status:
+      source === "ikas_csv"
+        ? variant.stock_status
+        : variant.stock_status ?? getStockStatus(variant.stock_quantity ?? 0),
+    uts_no: variant.uts_no,
+    variant_code: variant.variant_code,
+  });
+  const existingVariant = await findVariant(variant.variant_code);
+  const { error } = existingVariant
+    ? await supabase
+        .from("product_variants")
+        .update(source === "ikas_csv" ? variantPayload : variantPayload)
+        .eq("id", existingVariant.id)
+    : await supabase.from("product_variants").insert(variantPayload);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  if (existingVariant) {
+    stats.updatedVariants += 1;
+  } else {
+    stats.createdVariants += 1;
+  }
+}
+
+async function findCategoryBySlug(slug) {
+  const { data, error } = await supabase
+    .from("categories")
+    .select("id")
+    .eq("slug", slug)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data;
+}
+
+async function findProduct(product) {
+  if (product.product_group_code) {
+    const { data, error } = await supabase
+      .from("products")
+      .select("id")
+      .eq("product_group_code", product.product_group_code)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    if (data) {
+      return data;
+    }
+  }
+
+  const { data, error } = await supabase
+    .from("products")
+    .select("id")
+    .eq("product_name", product.product_name)
+    .eq("brand", product.brand ?? "JOTA")
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data;
+}
+
+async function findVariant(variantCode) {
+  const { data, error } = await supabase
+    .from("product_variants")
+    .select("id")
+    .eq("variant_code", variantCode)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data;
+}
+
+async function getCategoryIds() {
+  const { data, error } = await supabase.from("categories").select("id,slug");
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return new Map((data ?? []).map((category) => [category.slug, category.id]));
+}
+
+function ensureRootCategories(categories) {
+  categories.set("frezler", {
+    name: "Frezler",
+    slug: "frezler",
+    sort_order: 10,
+  });
+  categories.set("jota-frezler", {
+    name: "JOTA Frezler",
+    parent_slug: "frezler",
+    slug: "jota-frezler",
+    sort_order: 20,
+  });
+}
+
+function normalizeCategory(categories, categoryName) {
+  const slug = mapJotaCategorySlug(categoryName);
+
+  if (!categories.has(slug)) {
+    categories.set(slug, {
+      name: categoryName.trim(),
+      parent_slug: "jota-frezler",
+      slug,
+      sort_order: 100 + categories.size,
+    });
+  }
+
+  return slug;
+}
+
+function mapJotaCategorySlug(categoryName) {
+  const normalized = normalizeText(categoryName);
+
+  if (normalized.includes("elmas")) return "elmas-frezler";
+  if (normalized.includes("karbit")) return "karbit-frezler";
+  if (normalized.includes("tas") || normalized.includes("aşındır")) {
+    return "asindirici-taslar";
+  }
+  if (normalized.includes("disk")) return "ayirici-diskler";
+  if (normalized.includes("cila") || normalized.includes("polisaj")) {
+    return "cilalama-frezleri";
+  }
+
+  return slugify(categoryName || "Diger Urunler");
+}
+
+function parseCsv(contents) {
+  const rows = [];
+  let field = "";
+  let row = [];
+  let inQuotes = false;
+
+  for (let index = 0; index < contents.length; index += 1) {
+    const char = contents[index];
+    const next = contents[index + 1];
+
+    if (char === '"' && inQuotes && next === '"') {
+      field += '"';
+      index += 1;
+      continue;
+    }
+
+    if (char === '"') {
+      inQuotes = !inQuotes;
+      continue;
+    }
+
+    if (char === "," && !inQuotes) {
+      row.push(field);
+      field = "";
+      continue;
+    }
+
+    if ((char === "\n" || char === "\r") && !inQuotes) {
+      if (char === "\r" && next === "\n") {
+        index += 1;
+      }
+      row.push(field);
+      rows.push(row);
+      field = "";
+      row = [];
+      continue;
+    }
+
+    field += char;
+  }
+
+  if (field || row.length) {
+    row.push(field);
+    rows.push(row);
+  }
+
+  const [headerRow, ...dataRows] = rows.filter((csvRow) =>
+    csvRow.some((cell) => cell.trim())
+  );
+
+  if (!headerRow) {
+    return [];
+  }
+
+  const headers = headerRow.map(normalizeHeader);
+  return dataRows.map((csvRow) =>
+    Object.fromEntries(
+      headers.map((header, index) => [header, csvRow[index]?.trim() ?? ""])
+    )
+  );
+}
+
+function getValue(row, aliases) {
+  for (const alias of aliases) {
+    const value = row[normalizeHeader(alias)];
+
+    if (value !== undefined && value !== "") {
+      return value;
+    }
+  }
+
+  return null;
+}
+
+function compactPayload(payload) {
+  return Object.fromEntries(
+    Object.entries(payload).filter(
+      ([, value]) => value !== undefined && value !== null && value !== ""
+    )
+  );
+}
+
+function mergeDefined(target, source) {
+  for (const [key, value] of Object.entries(source)) {
+    if (value !== undefined && value !== null && value !== "") {
+      target[key] = value;
+    }
+  }
+}
+
+function parseMoney(value) {
+  if (!value) return undefined;
+  const normalized = value
+    .replace(/[₺$€\s]/g, "")
+    .replace(/\./g, "")
+    .replace(",", ".");
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
+}
+
+function parseStock(value) {
+  if (!value) return undefined;
+  const parsed = Number(String(value).replace(",", "."));
+  return Number.isFinite(parsed) && parsed >= 0 ? Math.floor(parsed) : undefined;
+}
+
+function parseActive(value) {
+  if (!value) return undefined;
+  const normalized = normalizeText(value);
+
+  if (["1", "true", "aktif", "active", "yayinda", "yayında"].includes(normalized)) {
+    return true;
+  }
+
+  if (
+    ["0", "false", "pasif", "inactive", "arsiv", "arşiv", "draft"].includes(
+      normalized
+    )
+  ) {
+    return false;
+  }
+
+  return undefined;
+}
+
+function normalizeBrand(value) {
+  return normalizeText(value) === "jota" ? "JOTA" : String(value).trim();
+}
+
+function getStockStatus(stockQuantity) {
+  if (stockQuantity === 0) return "out_of_stock";
+  if (stockQuantity <= 10) return "low_stock";
+  return "in_stock";
+}
+
+function getStockStatusForOptionalStock(stockQuantity) {
+  return typeof stockQuantity === "number" ? getStockStatus(stockQuantity) : undefined;
+}
+
+function slugify(value) {
+  return normalizeText(value)
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function normalizeHeader(value) {
+  return normalizeText(value).replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+function normalizeText(value) {
+  return String(value ?? "")
+    .trim()
+    .toLocaleLowerCase("tr-TR")
+    .replace(/ğ/g, "g")
+    .replace(/ü/g, "u")
+    .replace(/ş/g, "s")
+    .replace(/ı/g, "i")
+    .replace(/ö/g, "o")
+    .replace(/ç/g, "c");
+}
 
 async function loadLocalEnv(envPath) {
   try {

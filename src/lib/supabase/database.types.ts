@@ -30,9 +30,43 @@ export type Database = {
         Relationships: [];
       };
       customers: {
-        Row: Record<string, unknown>;
-        Insert: Record<string, unknown>;
-        Update: Record<string, unknown>;
+        Row: {
+          id: string;
+          name: string;
+          company_name: string | null;
+          customer_type: "doctor" | "clinic" | "lab" | "vet" | "dealer" | "other";
+          phone: string | null;
+          email: string | null;
+          city: string | null;
+          district: string | null;
+          tax_no: string | null;
+          invoice_address: string | null;
+          assigned_sales_rep_id: string | null;
+          notes: string | null;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          company_name?: string | null;
+          customer_type: "doctor" | "clinic" | "lab" | "vet" | "dealer" | "other";
+          phone?: string | null;
+          email?: string | null;
+          city?: string | null;
+          district?: string | null;
+          tax_no?: string | null;
+          invoice_address?: string | null;
+          assigned_sales_rep_id?: string | null;
+          notes?: string | null;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<
+          Omit<Database["public"]["Tables"]["customers"]["Row"], "id" | "created_at">
+        >;
         Relationships: [];
       };
       categories: {
@@ -166,10 +200,13 @@ export type Database = {
           source: "web" | "sales" | "whatsapp" | "admin";
           status:
             | "draft"
+            | "submitted"
+            | "contacted"
             | "whatsapp_approval_pending"
             | "payment_pending"
             | "payment_received"
             | "preparing"
+            | "confirmed"
             | "shipped"
             | "completed"
             | "cancelled";
@@ -187,10 +224,13 @@ export type Database = {
           source?: "web" | "sales" | "whatsapp" | "admin";
           status?:
             | "draft"
+            | "submitted"
+            | "contacted"
             | "whatsapp_approval_pending"
             | "payment_pending"
             | "payment_received"
             | "preparing"
+            | "confirmed"
             | "shipped"
             | "completed"
             | "cancelled";

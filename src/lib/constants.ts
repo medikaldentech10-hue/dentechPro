@@ -18,7 +18,12 @@ import {
   Wallet,
 } from "lucide-react";
 
-export type { PublicRole, UserRole, UserType, VerificationStatus } from "@/lib/types/auth";
+export type {
+  PublicRole,
+  UserRole,
+  UserType,
+  VerificationStatus,
+} from "@/lib/types/auth";
 
 export type PriceVisibility = "public" | "pending" | "approved";
 
@@ -44,8 +49,8 @@ export const adminNav = [
   { href: "/admin", label: "Admin Panel", icon: ShieldCheck },
   { href: "/admin/users", label: "Kullanıcı Onayları", icon: ClipboardCheck },
   { href: "/admin/products", label: "Ürün Yönetimi", icon: PackageSearch },
-  { href: "/products", label: "Ürünler", icon: PackageSearch },
-  { href: "/dashboard", label: "Kullanıcı Görünümü", icon: Users },
+  { href: "/admin/requests", label: "Talepler", icon: ShoppingBag },
+  { href: "/admin/customers", label: "Müşteriler", icon: Users },
 ];
 
 export const mainCategories = [

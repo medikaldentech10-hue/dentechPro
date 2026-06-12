@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "import:ikas": "node scripts/import-products.mjs scripts/data/ikas-urunler.csv",
     "import:products": "node scripts/import-products.mjs",
     "start": "next start",
     "lint": "eslint"

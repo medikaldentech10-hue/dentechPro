@@ -1,12 +1,11 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { Edit } from "lucide-react";
 
 import { SurfaceCard } from "@/components/premium/surface-card";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageTitle } from "@/components/shared/page-title";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
@@ -21,6 +20,7 @@ type AdminProductsPageProps = {
     active?: "active" | "inactive" | "all";
     brand?: string;
     category?: string;
+    page?: string;
     q?: string;
   }>;
 };
@@ -33,12 +33,15 @@ export default async function AdminProductsPage({
     active: params.active ?? "active",
     brand: params.brand || "JOTA",
     category: params.category,
+    page: params.page,
+    pageSize: 25,
     query: params.q,
   };
-  const [categories, products] = await Promise.all([
+  const [categories, productResult] = await Promise.all([
     getAdminCategories(),
     getAdminProductList(filters),
   ]);
+  const products = productResult.products;
 
   return (
     <div className="flex flex-col gap-6">
@@ -55,6 +58,7 @@ export default async function AdminProductsPage({
               name="q"
               placeholder="Ürün adı, SKU veya varyant kodu"
             />
+            <input name="page" type="hidden" value="1" />
             <select
               className="h-10 rounded-lg border border-input bg-background px-3 text-sm"
               defaultValue={filters.brand}
@@ -90,6 +94,18 @@ export default async function AdminProductsPage({
 
       <SurfaceCard className="overflow-hidden">
         <CardContent className="p-0">
+          <div className="flex flex-col gap-2 border-b border-border/70 px-4 py-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+            <p>
+              {productResult.totalCount} ürün içinde sayfa {productResult.page} /{" "}
+              {productResult.totalPages}
+            </p>
+            <PaginationLinks
+              currentPage={productResult.page}
+              hasNextPage={productResult.hasNextPage}
+              hasPreviousPage={productResult.hasPreviousPage}
+              params={params}
+            />
+          </div>
           <div className="hidden grid-cols-[1.3fr_0.7fr_1fr_0.7fr_0.7fr_0.7fr_0.9fr_0.4fr] gap-3 border-b border-border/70 px-4 py-3 text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground xl:grid">
             <span>Ürün</span>
             <span>Marka</span>
@@ -134,11 +150,10 @@ export default async function AdminProductsPage({
                   <MobileLabel label="Stok" value={`${product.totalStock} adet`} />
                   <MobileLabel label="Fiyat" value={product.priceRange} />
                   <Link
-                    aria-label={`${product.productName} düzenle`}
-                    className="inline-flex size-9 items-center justify-center rounded-lg border border-border/70 bg-background/60 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                    className="inline-flex h-9 items-center justify-center rounded-lg border border-border/70 bg-background/60 px-3 text-sm font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"
                     href={`/admin/products/${product.id}`}
                   >
-                    <Edit />
+                    Detay
                   </Link>
                 </div>
               ))}
@@ -146,16 +161,89 @@ export default async function AdminProductsPage({
           ) : (
             <div className="p-6">
               <EmptyState
+                actionHref="/admin/products"
                 actionLabel="Filtreleri Temizle"
                 description="Seçili filtrelerle eşleşen ürün bulunamadı. Import çalıştıktan sonra JOTA ürünleri burada listelenir."
                 title="Ürün bulunamadı"
               />
             </div>
           )}
+          {products.length ? (
+            <div className="flex justify-center border-t border-border/70 px-4 py-4">
+              <PaginationLinks
+                currentPage={productResult.page}
+                hasNextPage={productResult.hasNextPage}
+                hasPreviousPage={productResult.hasPreviousPage}
+                params={params}
+              />
+            </div>
+          ) : null}
         </CardContent>
       </SurfaceCard>
     </div>
   );
+}
+
+function PaginationLinks({
+  currentPage,
+  hasNextPage,
+  hasPreviousPage,
+  params,
+}: {
+  currentPage: number;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
+  params: {
+    active?: "active" | "inactive" | "all";
+    brand?: string;
+    category?: string;
+    q?: string;
+  };
+}) {
+  if (!hasPreviousPage && !hasNextPage) {
+    return null;
+  }
+
+  return (
+    <div className="flex gap-2">
+      {hasPreviousPage ? (
+        <Link
+          className={buttonVariants({ variant: "outline" })}
+          href={getPageHref(params, currentPage - 1)}
+        >
+          Önceki
+        </Link>
+      ) : null}
+      {hasNextPage ? (
+        <Link
+          className={buttonVariants({ variant: "outline" })}
+          href={getPageHref(params, currentPage + 1)}
+        >
+          Sonraki
+        </Link>
+      ) : null}
+    </div>
+  );
+}
+
+function getPageHref(
+  params: {
+    active?: "active" | "inactive" | "all";
+    brand?: string;
+    category?: string;
+    q?: string;
+  },
+  page: number
+) {
+  const nextParams = new URLSearchParams();
+
+  if (params.q) nextParams.set("q", params.q);
+  if (params.brand) nextParams.set("brand", params.brand);
+  if (params.category) nextParams.set("category", params.category);
+  if (params.active) nextParams.set("active", params.active);
+  nextParams.set("page", String(page));
+
+  return `/admin/products?${nextParams.toString()}`;
 }
 
 function ProductStatusBadge({ isActive }: { isActive: boolean }) {
