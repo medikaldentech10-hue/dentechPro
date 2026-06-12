@@ -5,9 +5,17 @@ import { GlassCard } from "@/components/premium/glass-card";
 import { buttonVariants } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { getHeaderAuthState } from "@/lib/auth-ui";
+import type { Profile } from "@/lib/types/auth";
 import { cn } from "@/lib/utils";
 
-export function SearchHero() {
+type SearchHeroProps = {
+  profile?: Profile | null;
+};
+
+export function SearchHero({ profile = null }: SearchHeroProps) {
+  const authState = getHeaderAuthState(profile);
+
   return (
     <section className="mx-auto flex w-full max-w-[1200px] flex-col items-center gap-8 px-4 py-14 text-center md:px-6 md:py-20">
       <div className="flex max-w-3xl flex-col items-center gap-5">
@@ -68,10 +76,10 @@ export function SearchHero() {
           Kataloğu İncele
         </Link>
         <Link
-          href="/login"
+          href={authState.href}
           className={cn(buttonVariants({ variant: "outline" }))}
         >
-          Giriş Yap
+          {authState.label}
         </Link>
       </div>
     </section>

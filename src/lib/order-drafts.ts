@@ -27,6 +27,13 @@ export type RequestDraft = OrderDraftRow & {
   items: RequestListItem[];
 };
 
+export type RequestHistoryFilters = {
+  createdFrom?: string;
+  createdTo?: string;
+  query?: string;
+  status?: OrderDraftRow["status"] | "all";
+};
+
 type DraftItemQueryRow = OrderItemRow & {
   variant: VariantRow & {
     product: ProductRow | null;
@@ -52,6 +59,47 @@ export async function getActiveRequestDraft(profile: Profile) {
   }
 
   return hydrateDraft(draft);
+}
+
+export async function getUserRequestHistory(
+  profile: Profile,
+  filters: RequestHistoryFilters = {}
+) {
+  assertCanCreateOrderRequest(profile);
+
+  const supabase = getSupabaseAdminClient();
+  let query = supabase
+    .from("order_drafts")
+    .select("*")
+    .eq("created_by_user_id", profile.id)
+    .neq("status", "draft")
+    .order("updated_at", { ascending: false })
+    .limit(50);
+
+  if (filters.status && filters.status !== "all") {
+    if (filters.status === "submitted") {
+      query = query.in("status", ["submitted", "whatsapp_approval_pending"]);
+    } else {
+      query = query.eq("status", filters.status);
+    }
+  }
+
+  if (filters.createdFrom) {
+    query = query.gte("created_at", startOfDayIso(filters.createdFrom));
+  }
+
+  if (filters.createdTo) {
+    query = query.lte("created_at", endOfDayIso(filters.createdTo));
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const hydratedDrafts = await Promise.all((data ?? []).map(hydrateDraft));
+  return filterRequestHistorySearch(hydratedDrafts, filters.query);
 }
 
 export async function addVariantToDraft({
@@ -488,4 +536,40 @@ function formatPlainAmount(value: number | null) {
     maximumFractionDigits: 2,
     minimumFractionDigits: 2,
   }).format(value ?? 0);
+}
+
+function filterRequestHistorySearch(
+  drafts: RequestDraft[],
+  query: string | undefined
+) {
+  const needle = query?.trim().toLocaleLowerCase("tr-TR");
+
+  if (!needle) {
+    return drafts;
+  }
+
+  return drafts.filter((draft) => {
+    const haystack = [
+      draft.id,
+      ...draft.items.flatMap((item) => [
+        item.product.product_group_code,
+        item.product.product_name,
+        item.variant.manufacturer_ref,
+        item.variant.variant_code,
+      ]),
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLocaleLowerCase("tr-TR");
+
+    return haystack.includes(needle);
+  });
+}
+
+function startOfDayIso(value: string) {
+  return `${value}T00:00:00.000Z`;
+}
+
+function endOfDayIso(value: string) {
+  return `${value}T23:59:59.999Z`;
 }

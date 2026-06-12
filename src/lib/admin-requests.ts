@@ -207,7 +207,11 @@ export async function getAdminRequestList(
     .select("*");
 
   if (filters.status && filters.status !== "all") {
-    query = query.eq("status", filters.status);
+    if (filters.status === "submitted") {
+      query = query.in("status", ["submitted", "whatsapp_approval_pending"]);
+    } else {
+      query = query.eq("status", filters.status);
+    }
   }
 
   if (filters.source && filters.source !== "all") {

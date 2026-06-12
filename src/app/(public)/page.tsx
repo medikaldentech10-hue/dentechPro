@@ -1,12 +1,15 @@
 import { CategoryCard } from "@/components/marketing/category-card";
 import { SearchHero } from "@/components/marketing/search-hero";
 import { GradientBackground } from "@/components/premium/gradient-background";
+import { getCurrentProfile } from "@/lib/auth";
 import { mainCategories } from "@/lib/constants";
 
-export default function HomePage() {
+export default async function HomePage() {
+  const profile = await getCurrentProfile();
+
   return (
     <GradientBackground className="pb-16">
-      <SearchHero />
+      <SearchHero profile={profile} />
       <section className="mx-auto flex w-full max-w-[1200px] flex-col gap-5 px-4 md:px-6">
         <div className="max-w-2xl">
           <p className="text-sm font-medium uppercase tracking-[0.18em] text-primary">
