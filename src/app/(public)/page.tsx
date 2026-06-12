@@ -7,10 +7,24 @@ export default function HomePage() {
   return (
     <GradientBackground className="pb-16">
       <SearchHero />
-      <section className="mx-auto grid w-full max-w-[1200px] grid-cols-1 gap-4 px-4 md:grid-cols-2 md:px-6 lg:grid-cols-3">
-        {mainCategories.map((category) => (
-          <CategoryCard key={category.title} {...category} />
-        ))}
+      <section className="mx-auto flex w-full max-w-[1200px] flex-col gap-5 px-4 md:px-6">
+        <div className="max-w-2xl">
+          <p className="text-sm font-medium uppercase tracking-[0.18em] text-primary">
+            Kategoriler
+          </p>
+          <h2 className="mt-2 text-2xl font-semibold tracking-normal text-foreground">
+            Aktif katalog ve yakında eklenecek ürün grupları
+          </h2>
+          <p className="mt-3 text-sm leading-6 text-muted-foreground">
+            JOTA Frezler kataloğunu inceleyebilir, diğer ürün grupları için
+            güncellemeleri DENTech Medikal üzerinden takip edebilirsiniz.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {mainCategories.map((category) => (
+            <CategoryCard key={category.title} {...category} />
+          ))}
+        </div>
       </section>
     </GradientBackground>
   );

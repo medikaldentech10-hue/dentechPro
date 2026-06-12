@@ -29,7 +29,7 @@ export function RegisterForm() {
 
   return (
     <CardContent>
-      <form action={formAction} className="grid gap-4 md:grid-cols-2">
+      <form action={formAction} className="grid gap-5 md:grid-cols-2">
         <div className="flex flex-col gap-2">
           <Label htmlFor="full_name">Ad Soyad</Label>
           <Input
@@ -45,7 +45,7 @@ export function RegisterForm() {
           <select
             id="user_type"
             name="user_type"
-            className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
+            className="h-10 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
             defaultValue="doctor"
             required
           >

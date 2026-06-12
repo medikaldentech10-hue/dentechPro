@@ -4,7 +4,6 @@ import Link from "next/link";
 import { Menu } from "lucide-react";
 
 import { Logo } from "@/components/shared/logo";
-import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { buttonVariants } from "@/components/ui/button";
 import {
   Sheet,
@@ -48,10 +47,7 @@ export function MobileNav({ profile = null }: MobileNavProps) {
         >
           <SheetHeader className="border-b border-border/70 p-4">
             <SheetTitle className="sr-only">Mobil navigasyon</SheetTitle>
-            <div className="flex items-center justify-between gap-3">
-              <Logo />
-              <ThemeToggle />
-            </div>
+            <Logo />
           </SheetHeader>
           <nav className="flex flex-col gap-1 p-4">
             {navItems.map((item) => (

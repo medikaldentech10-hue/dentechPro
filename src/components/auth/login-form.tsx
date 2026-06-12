@@ -21,7 +21,7 @@ export function LoginForm() {
 
   return (
     <CardContent>
-      <form action={formAction} className="flex flex-col gap-4">
+      <form action={formAction} className="flex flex-col gap-5">
         <div className="flex flex-col gap-2">
           <Label htmlFor="email">E-posta</Label>
           <Input

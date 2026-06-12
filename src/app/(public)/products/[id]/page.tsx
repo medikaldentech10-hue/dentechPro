@@ -42,7 +42,8 @@ export default async function ProductDetailPage({
   const salesMode = isSalesRep(profile);
   const description = product.description
     ? stripHtml(product.description).slice(0, 180)
-    : "JOTA ürün kataloğu kaydı. Detaylı bilgi için DENTech Medikal ekibiyle iletişime geçebilirsiniz.";
+    : "DENTech Medikal kataloğunda yer alan profesyonel dental ürün. Detaylı bilgi için ekibimizle iletişime geçebilirsiniz.";
+  const displayProductCode = getDisplayCode(product.code);
 
   return (
     <div className="mx-auto grid w-full max-w-[1200px] gap-6 px-4 py-8 md:px-6 lg:grid-cols-[1fr_380px]">
@@ -55,7 +56,9 @@ export default async function ProductDetailPage({
               tone="success"
             />
             <div className="grid gap-4 text-sm md:grid-cols-2">
-              <Info label="Ürün Kodu" value={product.code} />
+              {displayProductCode ? (
+                <Info label="Ürün Kodu" value={displayProductCode} />
+              ) : null}
               <Info
                 label="Varyant"
                 value={primaryVariant?.name ?? "Varyant bilgisi bekleniyor"}
@@ -142,4 +145,18 @@ function formatPrice(price: number | null, currency: string) {
 
 function stripHtml(value: string) {
   return value.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function getDisplayCode(value: string | undefined) {
+  if (!value || isUuid(value)) {
+    return null;
+  }
+
+  return value;
+}
+
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value
+  );
 }

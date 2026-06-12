@@ -28,10 +28,9 @@ export type {
 export type PriceVisibility = "public" | "pending" | "approved";
 
 export const publicNav = [
-  { href: "/", label: "Ana Sayfa" },
-  { href: "/products", label: "JOTA Frezler" },
+  { href: "/products", label: "Katalog" },
   { href: "/usage", label: "Kullanım Alanları" },
-  { href: "/login", label: "Giriş" },
+  { href: "/login", label: "Giriş Yap" },
 ];
 
 export const dashboardNav = [
@@ -98,12 +97,13 @@ export const jotaSubcategories = [
 ];
 
 export const usageFilters = [
-  "Restoratif",
-  "Kanal Tedavisi",
-  "İmplant",
-  "Dijital",
   "Preparasyon",
-  "Finisaj",
+  "Polisaj",
+  "Zirkonya",
+  "Kompozit",
+  "Karbit",
+  "Laboratuvar",
+  "Klinik Kullanım",
 ];
 
 export const sampleProducts = [
@@ -114,7 +114,7 @@ export const sampleProducts = [
     variant: "Alev, Uzun",
     code: "859L.FG.012",
     price: "₺275,00 + KDV Hariç",
-    status: "Chamfer preparasyon için sık kullanılan varyant",
+    status: "Preparasyon için sık kullanılan varyant",
   },
   {
     id: "jota-852-cone-round",

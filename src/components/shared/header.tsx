@@ -1,11 +1,8 @@
 import Link from "next/link";
-import { Search } from "lucide-react";
 
 import { Logo } from "@/components/shared/logo";
 import { MobileNav } from "@/components/shared/mobile-nav";
-import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { buttonVariants } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { getHeaderAuthState } from "@/lib/auth-ui";
 import { publicNav } from "@/lib/constants";
 import type { Profile } from "@/lib/types/auth";
@@ -36,15 +33,7 @@ export function Header({ profile = null }: HeaderProps) {
             </Link>
           ))}
         </nav>
-        <div className="hidden min-w-72 items-center gap-2 rounded-lg border border-border/70 bg-card/70 px-3 py-1.5 shadow-sm backdrop-blur-xl lg:flex">
-          <Search className="text-muted-foreground" />
-          <Input
-            className="h-7 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
-            placeholder="JOTA ürün kataloğu"
-          />
-        </div>
         <div className="hidden items-center gap-2 md:flex">
-          <ThemeToggle />
           {authState.showRequestList ? (
             <Link
               href="/request"
@@ -58,9 +47,6 @@ export function Header({ profile = null }: HeaderProps) {
             className={cn(buttonVariants({ variant: "outline" }))}
           >
             {authState.label}
-          </Link>
-          <Link href="/products" className={cn(buttonVariants())}>
-            JOTA Frezleri Keşfet
           </Link>
         </div>
         <div className="md:hidden">

@@ -50,17 +50,14 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
       <div className="sticky top-16 z-20 -mx-4 flex flex-col justify-between gap-4 border-b border-border/70 bg-background/88 px-4 py-4 shadow-sm backdrop-blur-xl md:static md:mx-0 md:border-b-0 md:bg-transparent md:px-0 md:py-0 md:shadow-none md:backdrop-blur-none">
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <PageTitle
-            description="JOTA ürün kataloğu. Fiyat ve stok görünümü kullanıcı onay durumuna göre sunulur."
-            title="JOTA Frezler"
+            description="DENTech Medikal JOTA kataloğunda ürün, kod ve kullanım alanına göre hızlıca arama yapın."
+            title="Katalog"
           />
           <div className="flex gap-2">
             <FilterDrawer
               categories={categories}
               selectedCategory={filters.category}
             />
-            <Button disabled={priceVisibility !== "approved"}>
-              Talep Oluştur
-            </Button>
           </div>
         </div>
         <form className="grid gap-2 md:grid-cols-[1fr_180px_auto]">

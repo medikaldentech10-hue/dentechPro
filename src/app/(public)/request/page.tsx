@@ -109,7 +109,7 @@ function EmptyRequestList() {
           </p>
         </div>
         <Link className={cn(buttonVariants())} href="/products">
-          JOTA Frezleri Keşfet
+          Kataloğu İncele
         </Link>
       </CardContent>
     </SurfaceCard>
@@ -194,13 +194,15 @@ function RequestList({ draft }: { draft: RequestDraft }) {
 }
 
 function RequestTableRow({ item }: { item: RequestListItem }) {
+  const productCode = getDisplayCode(item.product.product_group_code);
+
   return (
     <tr className="align-top">
       <td className="px-4 py-4">
         <div className="font-medium">{item.product.product_name}</div>
-        <div className="mt-1 text-xs text-muted-foreground">
-          {item.product.product_group_code}
-        </div>
+        {productCode ? (
+          <div className="mt-1 text-xs text-muted-foreground">{productCode}</div>
+        ) : null}
       </td>
       <td className="px-4 py-4">
         <div className="font-medium">{item.variant.variant_code}</div>
@@ -292,4 +294,18 @@ function formatPrice(value: number | null) {
     currency: "TRY",
     style: "currency",
   }).format(value ?? 0)} + KDV Hariç`;
+}
+
+function getDisplayCode(value: string | null | undefined) {
+  if (!value || isUuid(value)) {
+    return null;
+  }
+
+  return value;
+}
+
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value
+  );
 }
