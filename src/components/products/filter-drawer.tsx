@@ -16,11 +16,20 @@ import { cn } from "@/lib/utils";
 
 type FilterDrawerProps = {
   categories: CatalogCategory[];
+  currentParams?: {
+    brand?: string;
+    category?: string;
+    max_price?: string;
+    min_price?: string;
+    q?: string;
+    usage?: string;
+  };
   selectedCategory?: string;
 };
 
 export function FilterDrawer({
   categories,
+  currentParams,
   selectedCategory,
 }: FilterDrawerProps) {
   return (
@@ -46,6 +55,7 @@ export function FilterDrawer({
           </SheetHeader>
           <div className="flex flex-col gap-6 p-4 pt-0">
             <FilterSection
+              currentParams={currentParams}
               items={categories}
               selectedCategory={selectedCategory}
               title="JOTA Alt Kategorileri"

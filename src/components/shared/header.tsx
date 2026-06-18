@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 import { Logo } from "@/components/shared/logo";
 import { MobileNav } from "@/components/shared/mobile-nav";
@@ -13,6 +16,7 @@ type HeaderProps = {
 };
 
 export function Header({ profile = null }: HeaderProps) {
+  const pathname = usePathname();
   const authState = getHeaderAuthState(profile);
   const navItems = authState.isAuthenticated
     ? publicNav.filter((item) => item.href !== "/login")
@@ -27,7 +31,13 @@ export function Header({ profile = null }: HeaderProps) {
             <Link
               key={item.href}
               href={item.href}
-              className="transition hover:text-foreground"
+              aria-current={pathname === item.href ? "page" : undefined}
+              className={cn(
+                "rounded-full px-1.5 py-1 transition hover:text-foreground",
+                (pathname === item.href ||
+                  (item.href !== "/" && pathname.startsWith(`${item.href}/`))) &&
+                  "text-primary"
+              )}
             >
               {item.label}
             </Link>

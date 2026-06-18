@@ -35,19 +35,19 @@ export const publicNav = [
 
 export const dashboardNav = [
   { href: "/dashboard", label: "Panel", icon: Gauge },
-  { href: "/products", label: "Ürün Kataloğu", icon: PackageSearch },
+  { href: "/products", label: "Katalog", icon: PackageSearch },
 ];
 
 export const salesNav = [
-  { href: "/sales", label: "Saha Paneli", icon: Gauge },
-  { href: "/products", label: "Hızlı Ürün Ara", icon: Search },
-  { href: "/dashboard", label: "Müşteri Görünümü", icon: Users },
+  { href: "/sales", label: "Panel", icon: Gauge },
+  { href: "/products", label: "Katalog", icon: PackageSearch },
+  { href: "/sales/request", label: "Talepler", icon: ShoppingBag },
 ];
 
 export const adminNav = [
-  { href: "/admin", label: "Admin Panel", icon: ShieldCheck },
-  { href: "/admin/users", label: "Kullanıcı Onayları", icon: ClipboardCheck },
-  { href: "/admin/products", label: "Ürün Yönetimi", icon: PackageSearch },
+  { href: "/admin", label: "Panel", icon: ShieldCheck },
+  { href: "/admin/users", label: "Kullanıcılar", icon: ClipboardCheck },
+  { href: "/admin/products", label: "Ürünler", icon: PackageSearch },
   { href: "/admin/requests", label: "Talepler", icon: ShoppingBag },
   { href: "/admin/customers", label: "Müşteriler", icon: Users },
 ];

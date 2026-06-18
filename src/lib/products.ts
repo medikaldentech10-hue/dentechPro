@@ -12,9 +12,12 @@ type VariantRow = Database["public"]["Tables"]["product_variants"]["Row"];
 export type ProductFilters = {
   brand?: string;
   category?: string;
+  maxPrice?: number | string;
+  minPrice?: number | string;
   page?: number | string;
   pageSize?: number | string;
   query?: string;
+  usage?: string;
 };
 
 type ProductQueryOptions = {
@@ -136,6 +139,28 @@ export async function getCatalogCategories() {
   return data satisfies CatalogCategory[];
 }
 
+export async function getCatalogUsageAreas() {
+  const supabase = getSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("products")
+    .select("usage_area")
+    .eq("is_active", true)
+    .not("usage_area", "is", null)
+    .order("usage_area", { ascending: true });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return [
+    ...new Set(
+      (data ?? [])
+        .map((row) => row.usage_area?.trim())
+        .filter((value): value is string => Boolean(value))
+    ),
+  ];
+}
+
 export async function getPublicProducts(filters: ProductFilters = {}) {
   const result = await getProductRows(filters);
   return mapProductListResult(result, toPublicProduct);
@@ -183,6 +208,7 @@ async function getProductRows(
   const normalizedBrand = filters.brand?.trim() || "JOTA";
   const normalizedCategory = filters.category?.trim();
   const normalizedQuery = filters.query?.trim().toLocaleLowerCase("tr-TR");
+  const normalizedUsage = filters.usage?.trim();
   const pageSize = clampInteger(filters.pageSize, 24, 1, 60);
   const page = clampInteger(filters.page, 1, 1, 10_000);
   const from = (page - 1) * pageSize;
@@ -193,6 +219,13 @@ async function getProductRows(
   const matchingProductIds = normalizedQuery
     ? await getMatchingVariantProductIds(normalizedQuery)
     : [];
+  const priceFilteredProductIds = options.includeSensitiveVariantFields
+    ? await getPriceFilteredProductIds(filters.minPrice, filters.maxPrice)
+    : null;
+
+  if (priceFilteredProductIds && priceFilteredProductIds.length === 0) {
+    return getEmptyRowsResult(page, pageSize);
+  }
 
   let query = supabase
     .from("products")
@@ -207,6 +240,14 @@ async function getProductRows(
 
   if (categoryId) {
     query = query.eq("category_id", categoryId);
+  }
+
+  if (normalizedUsage) {
+    query = query.eq("usage_area", normalizedUsage);
+  }
+
+  if (priceFilteredProductIds) {
+    query = query.in("id", priceFilteredProductIds);
   }
 
   if (normalizedQuery) {
@@ -262,6 +303,53 @@ async function getProductRows(
     rows,
     totalCount,
     totalPages: Math.max(1, Math.ceil(totalCount / pageSize)),
+  };
+}
+
+async function getPriceFilteredProductIds(
+  minPrice: number | string | undefined,
+  maxPrice: number | string | undefined
+) {
+  const min = getPriceFilterValue(minPrice);
+  const max = getPriceFilterValue(maxPrice);
+
+  if (min === null && max === null) {
+    return null;
+  }
+
+  const supabase = getSupabaseAdminClient();
+  let query = supabase
+    .from("product_variants")
+    .select("product_id")
+    .eq("is_active", true)
+    .limit(5000);
+
+  if (min !== null) {
+    query = query.gte("price", min);
+  }
+
+  if (max !== null) {
+    query = query.lte("price", max);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return [...new Set((data ?? []).map((row) => row.product_id))];
+}
+
+function getEmptyRowsResult(page: number, pageSize: number): ProductRowsResult {
+  return {
+    hasNextPage: false,
+    hasPreviousPage: page > 1,
+    page,
+    pageSize,
+    rows: [],
+    totalCount: 0,
+    totalPages: 1,
   };
 }
 
@@ -514,6 +602,16 @@ function clampInteger(
   }
 
   return Math.min(max, Math.max(min, parsed));
+}
+
+function getPriceFilterValue(value: number | string | undefined) {
+  if (value === undefined || value === "") {
+    return null;
+  }
+
+  const parsed = Number(value);
+
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
 }
 
 function escapeLikePattern(value: string) {

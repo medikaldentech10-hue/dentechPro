@@ -6,17 +6,20 @@ import { cn } from "@/lib/utils";
 
 type FilterSidebarProps = {
   categories: CatalogCategory[];
+  currentParams?: CatalogFilterParams;
   selectedCategory?: string;
 };
 
 export function FilterSidebar({
   categories,
+  currentParams = {},
   selectedCategory,
 }: FilterSidebarProps) {
   return (
     <aside className="hidden w-72 shrink-0 lg:block">
       <SurfaceCard className="sticky top-24 flex flex-col gap-6 p-5">
         <FilterSection
+          currentParams={currentParams}
           items={categories}
           selectedCategory={selectedCategory}
           title="JOTA Alt Kategorileri"
@@ -27,10 +30,12 @@ export function FilterSidebar({
 }
 
 export function FilterSection({
+  currentParams = {},
   items,
   selectedCategory,
   title,
 }: {
+  currentParams?: CatalogFilterParams;
   items: CatalogCategory[];
   selectedCategory?: string;
   title: string;
@@ -39,12 +44,16 @@ export function FilterSection({
     <div className="flex flex-col gap-3">
       <h3 className="text-sm font-semibold">{title}</h3>
       <div className="flex flex-col gap-2">
-        <FilterLink href="/products" isActive={!selectedCategory} label="Tümü" />
+        <FilterLink
+          href={getFilterHref(currentParams)}
+          isActive={!selectedCategory}
+          label="Tümü"
+        />
         {items
           .filter((item) => item.slug !== "frezler" && item.slug !== "jota-frezler")
           .map((item) => (
             <FilterLink
-              href={`/products?category=${encodeURIComponent(item.slug)}`}
+              href={getFilterHref(currentParams, item.slug)}
               isActive={selectedCategory === item.slug}
               key={item.id}
               label={item.name}
@@ -53,6 +62,30 @@ export function FilterSection({
       </div>
     </div>
   );
+}
+
+type CatalogFilterParams = {
+  brand?: string;
+  category?: string;
+  max_price?: string;
+  min_price?: string;
+  q?: string;
+  usage?: string;
+};
+
+function getFilterHref(params: CatalogFilterParams, category?: string) {
+  const nextParams = new URLSearchParams();
+
+  if (params.q) nextParams.set("q", params.q);
+  if (params.brand) nextParams.set("brand", params.brand);
+  if (params.usage) nextParams.set("usage", params.usage);
+  if (params.min_price) nextParams.set("min_price", params.min_price);
+  if (params.max_price) nextParams.set("max_price", params.max_price);
+  if (category) nextParams.set("category", category);
+
+  const query = nextParams.toString();
+
+  return query ? `/products?${query}` : "/products";
 }
 
 function FilterLink({

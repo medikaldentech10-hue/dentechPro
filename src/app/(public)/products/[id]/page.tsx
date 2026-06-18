@@ -3,15 +3,16 @@ import { notFound } from "next/navigation";
 
 import { SurfaceCard } from "@/components/premium/surface-card";
 import { AddToRequestForm } from "@/components/products/add-to-request-form";
-import { ProductCard } from "@/components/products/product-card";
+import { ProductImage } from "@/components/products/product-image";
 import { PageTitle } from "@/components/shared/page-title";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
-import { canViewPrices, getCurrentProfile, isAdmin, isSalesRep } from "@/lib/auth";
+import { canViewPrices, getCurrentProfile, isSalesRep } from "@/lib/auth";
 import {
   getPricedProductByIdForProfile,
   type PricedCatalogVariant,
+  type PublicCatalogVariant,
 } from "@/lib/products";
 import { cn } from "@/lib/utils";
 
@@ -46,15 +47,23 @@ export default async function ProductDetailPage({
   const displayProductCode = getDisplayCode(product.code);
 
   return (
-    <div className="mx-auto grid w-full max-w-[1200px] gap-6 px-4 py-8 md:px-6 lg:grid-cols-[1fr_380px]">
+    <div className="mx-auto grid w-full max-w-[1200px] gap-6 px-4 py-8 md:px-6 lg:grid-cols-[minmax(0,1fr)_360px]">
       <div className="flex flex-col gap-6">
         <PageTitle description={description} title={product.name} />
         <SurfaceCard>
           <CardContent className="flex flex-col gap-5 p-6">
-            <StatusBadge
-              label={product.category?.name ?? "JOTA Frezler"}
-              tone="success"
-            />
+            <div className="flex flex-wrap gap-2">
+              <StatusBadge
+                label={product.category?.name ?? "JOTA Frezler"}
+                tone="success"
+              />
+              <span className="rounded-lg border border-border/70 bg-background/60 px-2.5 py-1 text-xs font-medium text-muted-foreground">
+                {product.brand}
+              </span>
+            </div>
+            <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
+              {description}
+            </p>
             <div className="grid gap-4 text-sm md:grid-cols-2">
               {displayProductCode ? (
                 <Info label="Ürün Kodu" value={displayProductCode} />
@@ -78,47 +87,57 @@ export default async function ProductDetailPage({
                 </>
               ) : null}
             </div>
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-              {pricedVariant ? (
-                <div className="w-full sm:max-w-md">
-                  <AddToRequestForm
-                    disabled={
-                      !pricedVariant.isActive || pricedVariant.stockQuantity === 0
-                    }
-                    disabledReason={
-                      !pricedVariant.isActive
-                        ? "Pasif varyant"
-                        : "Stok bilgisi için iletişime geçin"
-                    }
-                    submitLabel={
-                      salesMode ? "Müşteri Adına Ekle" : "Talep Listesine Ekle"
-                    }
-                    variantId={pricedVariant.id}
-                  />
-                </div>
-              ) : (
-                <Button disabled>
-                  {priceVisibility === "pending"
-                    ? "Hesabınız onaylandıktan sonra talep oluşturabilirsiniz"
-                    : "Fiyat ve sipariş talebi için giriş yapın"}
-                </Button>
-              )}
-              <Link
-                className={cn(buttonVariants({ variant: "link" }))}
-                href="/products"
-              >
-                Kataloğa Dön
-              </Link>
+          </CardContent>
+        </SurfaceCard>
+        <SurfaceCard>
+          <CardContent className="flex flex-col gap-4 p-6">
+            <div>
+              <h2 className="text-lg font-semibold">Varyantlar</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Uygun varyantı seçerek talep listenize ekleyebilirsiniz.
+              </p>
+            </div>
+            <div className="grid gap-3">
+              {product.variants.map((variant) => (
+                <VariantRow
+                  key={variant.id}
+                  priceVisibility={priceVisibility}
+                  salesMode={salesMode}
+                  variant={variant}
+                />
+              ))}
             </div>
           </CardContent>
         </SurfaceCard>
       </div>
-      <ProductCard
-        adminMode={isAdmin(profile)}
-        priceVisibility={priceVisibility}
-        product={product}
-        salesMode={salesMode}
-      />
+      <aside className="lg:sticky lg:top-24 lg:self-start">
+        <SurfaceCard>
+          <CardContent className="flex flex-col gap-5 p-5">
+            <div className="aspect-[4/3] overflow-hidden rounded-xl border border-border/70 bg-[linear-gradient(135deg,rgb(255_255_255/0.92),rgb(20_118_82/0.12))] dark:bg-[linear-gradient(135deg,rgb(255_255_255/0.06),rgb(20_118_82/0.18))]">
+              <ProductImage
+                alt={product.name}
+                fallback={
+                  <div className="flex h-full flex-col justify-between rounded-lg border border-white/65 bg-white/55 p-4 shadow-sm backdrop-blur dark:border-white/10 dark:bg-white/8">
+                    <span className="text-xs font-medium text-muted-foreground">
+                      {product.brand}
+                    </span>
+                    <span className="text-3xl font-semibold text-primary">
+                      {product.category?.name ?? "JOTA"}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      Dental ürün kataloğu
+                    </span>
+                  </div>
+                }
+                src={product.imageUrl ?? primaryVariant?.imageUrl ?? null}
+              />
+            </div>
+            <Link className={cn(buttonVariants({ variant: "outline" }))} href="/products">
+              Kataloğa Dön
+            </Link>
+          </CardContent>
+        </SurfaceCard>
+      </aside>
     </div>
   );
 }
@@ -128,6 +147,72 @@ function Info({ label, value }: { label: string; value: string }) {
     <div className="rounded-lg border border-border/70 bg-background/60 p-4">
       <p className="text-xs text-muted-foreground">{label}</p>
       <p className="mt-1 font-medium">{value}</p>
+    </div>
+  );
+}
+
+function VariantRow({
+  priceVisibility,
+  salesMode,
+  variant,
+}: {
+  priceVisibility: "approved" | "pending" | "public";
+  salesMode: boolean;
+  variant: PricedCatalogVariant | PublicCatalogVariant;
+}) {
+  const displayCode = getDisplayCode(variant.code);
+  const pricedVariant = "price" in variant ? variant : null;
+
+  return (
+    <div className="grid gap-4 rounded-xl border border-border/70 bg-background/60 p-4 md:grid-cols-[minmax(0,1fr)_180px_220px] md:items-center">
+      <div>
+        <p className="font-medium">{variant.name}</p>
+        <div className="mt-1 flex flex-wrap gap-2 text-xs text-muted-foreground">
+          {displayCode ? <span>SKU: {displayCode}</span> : null}
+          <span>Paket: {variant.packageQuantity}</span>
+          {variant.manufacturerRef && !isUuid(variant.manufacturerRef) ? (
+            <span>Ref: {variant.manufacturerRef}</span>
+          ) : null}
+        </div>
+      </div>
+      <div className="text-sm">
+        {pricedVariant ? (
+          <>
+            <p className="font-semibold">
+              {formatPrice(pricedVariant.price, pricedVariant.currency)}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Stok: {pricedVariant.stockQuantity} adet
+            </p>
+          </>
+        ) : (
+          <p className="rounded-lg border border-border/70 bg-muted px-3 py-2 text-xs font-medium text-muted-foreground">
+            {priceVisibility === "pending"
+              ? "Fiyat için hesap onayı bekleniyor"
+              : "Fiyat için giriş yapın"}
+          </p>
+        )}
+      </div>
+      <div>
+        {pricedVariant ? (
+          <AddToRequestForm
+            disabled={!pricedVariant.isActive || pricedVariant.stockQuantity === 0}
+            disabledReason={
+              !pricedVariant.isActive
+                ? "Pasif varyant"
+                : "Stok bilgisi için iletişime geçin"
+            }
+            submitLabel={salesMode ? "Müşteri Adına Ekle" : "Talep Listesine Ekle"}
+            variantId={pricedVariant.id}
+          />
+        ) : (
+          <Button className="w-full" disabled>
+            {priceVisibility === "pending"
+              ? "Onay Bekleniyor"
+              : "Giriş Yapın"}
+          </Button>
+        )}
+      </div>
     </div>
   );
 }

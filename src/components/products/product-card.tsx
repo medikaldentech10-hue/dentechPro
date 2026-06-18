@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
 
 import { AddToRequestForm } from "@/components/products/add-to-request-form";
 import { ProductImage } from "@/components/products/product-image";
@@ -74,18 +73,13 @@ export function ProductCard({
           />
         </div>
         <div className="flex flex-col gap-3">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex flex-wrap gap-2">
-              <StatusBadge
-                label={catalogProduct.category?.name ?? "JOTA Frezler"}
-                tone="success"
-              />
-              <span className="rounded-lg border border-border/70 bg-background/60 px-2.5 py-1 text-xs font-medium text-muted-foreground">
-                {catalogProduct.brand}
-              </span>
-            </div>
-            <span className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-border/70 bg-background/60 text-muted-foreground transition group-hover/card:bg-muted group-hover/card:text-foreground">
-              <ArrowRight />
+          <div className="flex flex-wrap gap-2">
+            <StatusBadge
+              label={catalogProduct.category?.name ?? "JOTA Frezler"}
+              tone="success"
+            />
+            <span className="rounded-lg border border-border/70 bg-background/60 px-2.5 py-1 text-xs font-medium text-muted-foreground">
+              {catalogProduct.brand}
             </span>
           </div>
           <div className="flex flex-col gap-2">

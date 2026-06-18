@@ -46,7 +46,11 @@ export function AppShell({
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border/70 bg-background/82 px-4 shadow-sm backdrop-blur-xl supports-[backdrop-filter]:bg-background/68 md:px-6 lg:px-8">
           <div className="lg:hidden">
-            <MobileNav profile={profile} />
+            <MobileNav
+              navItems={navItems}
+              profile={profile}
+              sectionLabel={sectionLabel}
+            />
           </div>
           <div className="hidden text-sm font-medium text-muted-foreground lg:block">
             {sectionLabel}

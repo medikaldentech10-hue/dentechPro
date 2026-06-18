@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Menu } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
 import { Logo } from "@/components/shared/logo";
 import { buttonVariants } from "@/components/ui/button";
@@ -17,15 +19,31 @@ import { publicNav } from "@/lib/constants";
 import type { Profile } from "@/lib/types/auth";
 import { cn } from "@/lib/utils";
 
-type MobileNavProps = {
-  profile?: Profile | null;
+type MobileNavItem = {
+  href: string;
+  icon?: LucideIcon;
+  label: string;
 };
 
-export function MobileNav({ profile = null }: MobileNavProps) {
+type MobileNavProps = {
+  navItems?: MobileNavItem[];
+  profile?: Profile | null;
+  sectionLabel?: string;
+};
+
+export function MobileNav({
+  navItems: providedNavItems,
+  profile = null,
+  sectionLabel = "Dentech Pro",
+}: MobileNavProps) {
+  const pathname = usePathname();
   const authState = getHeaderAuthState(profile);
-  const navItems = authState.isAuthenticated
-    ? publicNav.filter((item) => item.href !== "/login")
-    : publicNav;
+  const navItems: MobileNavItem[] =
+    providedNavItems ??
+    (authState.isAuthenticated
+      ? publicNav.filter((item) => item.href !== "/login")
+      : publicNav);
+  const activeHref = getActiveHref(navItems, pathname);
 
   return (
     <div>
@@ -48,21 +66,34 @@ export function MobileNav({ profile = null }: MobileNavProps) {
           <SheetHeader className="border-b border-border/70 p-4">
             <SheetTitle className="sr-only">Mobil navigasyon</SheetTitle>
             <Logo />
+            <p className="mt-3 text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">
+              {sectionLabel}
+            </p>
           </SheetHeader>
           <nav className="flex flex-col gap-1 p-4">
             {navItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
-                className="rounded-lg px-3 py-3 text-sm font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                aria-current={activeHref === item.href ? "page" : undefined}
+                className={cn(
+                  "flex items-center gap-3 rounded-lg border border-transparent px-3 py-3 text-sm font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground",
+                  activeHref === item.href &&
+                    "border-primary/25 bg-primary/10 text-primary"
+                )}
               >
+                {item.icon ? <item.icon className="size-4" /> : null}
                 {item.label}
               </Link>
             ))}
             {authState.showRequestList ? (
               <Link
                 href="/request"
-                className="rounded-lg px-3 py-3 text-sm font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                className={cn(
+                  "rounded-lg border border-transparent px-3 py-3 text-sm font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground",
+                  pathname === "/request" &&
+                    "border-primary/25 bg-primary/10 text-primary"
+                )}
               >
                 Talep Listem
               </Link>
@@ -81,4 +112,11 @@ export function MobileNav({ profile = null }: MobileNavProps) {
       </Sheet>
     </div>
   );
+}
+
+function getActiveHref(items: MobileNavItem[], pathname: string) {
+  return [...items]
+    .sort((a, b) => b.href.length - a.href.length)
+    .find((item) => pathname === item.href || pathname.startsWith(`${item.href}/`))
+    ?.href;
 }

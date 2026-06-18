@@ -343,7 +343,7 @@ function RequestHistoryRow({ draft }: { draft: RequestDraft }) {
         label="Talep"
         value={
           <div>
-            <p className="font-medium">{draft.id.slice(0, 8)}</p>
+            <p className="font-medium">Talep özeti</p>
             <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
               {draft.items
                 .map((item) => item.product.product_name)
@@ -363,6 +363,8 @@ function RequestHistoryRow({ draft }: { draft: RequestDraft }) {
 
 function RequestTableRow({ item }: { item: RequestListItem }) {
   const productCode = getDisplayCode(item.product.product_group_code);
+  const variantCode = getDisplayCode(item.variant.variant_code);
+  const manufacturerRef = getDisplayCode(item.variant.manufacturer_ref);
 
   return (
     <tr className="align-top">
@@ -373,9 +375,9 @@ function RequestTableRow({ item }: { item: RequestListItem }) {
         ) : null}
       </td>
       <td className="px-4 py-4">
-        <div className="font-medium">{item.variant.variant_code}</div>
+        <div className="font-medium">{variantCode ?? "JOTA varyant"}</div>
         <div className="mt-1 text-xs text-muted-foreground">
-          {item.variant.manufacturer_ref ?? "JOTA varyant"}
+          {manufacturerRef ?? "Teknik kod gizlendi"}
         </div>
       </td>
       <td className="px-4 py-4">
@@ -395,13 +397,15 @@ function RequestTableRow({ item }: { item: RequestListItem }) {
 }
 
 function RequestMobileCard({ item }: { item: RequestListItem }) {
+  const variantCode = getDisplayCode(item.variant.variant_code);
+
   return (
     <div className="rounded-xl border border-border/70 bg-background/60 p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="font-medium">{item.product.product_name}</p>
           <p className="mt-1 text-xs text-muted-foreground">
-            {item.variant.variant_code}
+            {variantCode ?? "JOTA varyant"}
           </p>
         </div>
         <RemoveItemForm itemId={item.id} />

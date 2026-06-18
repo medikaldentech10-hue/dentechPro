@@ -11,17 +11,23 @@ import { Input } from "@/components/ui/input";
 import { canViewPrices, getCurrentProfile, isAdmin, isSalesRep } from "@/lib/auth";
 import {
   getCatalogCategories,
+  getCatalogUsageAreas,
   getPricedProductsForProfile,
   type ProductFilters,
 } from "@/lib/products";
 
+type ProductsSearchParams = {
+  brand?: string;
+  category?: string;
+  max_price?: string;
+  min_price?: string;
+  page?: string;
+  q?: string;
+  usage?: string;
+};
+
 type ProductsPageProps = {
-  searchParams: Promise<{
-    brand?: string;
-    category?: string;
-    page?: string;
-    q?: string;
-  }>;
+  searchParams: Promise<ProductsSearchParams>;
 };
 
 export default async function ProductsPage({ searchParams }: ProductsPageProps) {
@@ -30,16 +36,21 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
   const filters: ProductFilters = {
     brand: params.brand || "JOTA",
     category: params.category,
+    maxPrice: params.max_price,
+    minPrice: params.min_price,
     page: params.page,
     pageSize: 24,
     query: params.q,
+    usage: params.usage,
   };
-  const [categories, productResult] = await Promise.all([
+  const hasPriceAccess = canViewPrices(profile);
+  const [categories, usageAreas, productResult] = await Promise.all([
     getCatalogCategories(),
+    getCatalogUsageAreas(),
     getPricedProductsForProfile(profile, filters),
   ]);
   const products = productResult.products;
-  const priceVisibility = canViewPrices(profile)
+  const priceVisibility = hasPriceAccess
     ? "approved"
     : profile
       ? "pending"
@@ -56,11 +67,12 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
           <div className="flex gap-2">
             <FilterDrawer
               categories={categories}
+              currentParams={params}
               selectedCategory={filters.category}
             />
           </div>
         </div>
-        <form className="grid gap-2 md:grid-cols-[1fr_180px_auto]">
+        <form className="grid gap-2 md:grid-cols-[minmax(180px,1.4fr)_minmax(140px,0.8fr)_minmax(140px,0.8fr)_minmax(140px,0.8fr)_auto]">
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -73,17 +85,66 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
           <input name="page" type="hidden" value="1" />
           <select
             className="h-10 rounded-lg border border-input bg-background px-3 text-sm"
+            defaultValue={filters.category ?? ""}
+            name="category"
+          >
+            <option value="">Tüm kategoriler</option>
+            {categories
+              .filter(
+                (item) => item.slug !== "frezler" && item.slug !== "jota-frezler"
+              )
+              .map((category) => (
+                <option key={category.id} value={category.slug}>
+                  {category.name}
+                </option>
+              ))}
+          </select>
+          <select
+            className="h-10 rounded-lg border border-input bg-background px-3 text-sm"
             defaultValue={filters.brand}
             name="brand"
           >
             <option value="JOTA">JOTA</option>
           </select>
+          <select
+            className="h-10 rounded-lg border border-input bg-background px-3 text-sm"
+            defaultValue={filters.usage ?? ""}
+            name="usage"
+          >
+            <option value="">Tüm kullanım alanları</option>
+            {usageAreas.map((usageArea) => (
+              <option key={usageArea} value={usageArea}>
+                {usageArea}
+              </option>
+            ))}
+          </select>
+          {hasPriceAccess ? (
+            <div className="grid grid-cols-2 gap-2 md:col-span-2 xl:col-span-1">
+              <Input
+                className="h-10"
+                defaultValue={params.min_price}
+                min={0}
+                name="min_price"
+                placeholder="Min fiyat"
+                type="number"
+              />
+              <Input
+                className="h-10"
+                defaultValue={params.max_price}
+                min={0}
+                name="max_price"
+                placeholder="Max fiyat"
+                type="number"
+              />
+            </div>
+          ) : null}
           <Button type="submit">Filtrele</Button>
         </form>
       </div>
       <div className="flex gap-6">
         <FilterSidebar
           categories={categories}
+          currentParams={params}
           selectedCategory={filters.category}
         />
         <div className="min-w-0 flex-1">
@@ -144,7 +205,7 @@ function PaginationLinks({
   currentPage: number;
   hasNextPage: boolean;
   hasPreviousPage: boolean;
-  params: { brand?: string; category?: string; q?: string };
+  params: ProductsSearchParams;
 }) {
   if (!hasPreviousPage && !hasNextPage) {
     return null;
@@ -173,7 +234,7 @@ function PaginationLinks({
 }
 
 function getPageHref(
-  params: { brand?: string; category?: string; q?: string },
+  params: ProductsSearchParams,
   page: number
 ) {
   const nextParams = new URLSearchParams();
@@ -181,6 +242,9 @@ function getPageHref(
   if (params.q) nextParams.set("q", params.q);
   if (params.brand) nextParams.set("brand", params.brand);
   if (params.category) nextParams.set("category", params.category);
+  if (params.usage) nextParams.set("usage", params.usage);
+  if (params.min_price) nextParams.set("min_price", params.min_price);
+  if (params.max_price) nextParams.set("max_price", params.max_price);
   nextParams.set("page", String(page));
 
   return `/products?${nextParams.toString()}`;
