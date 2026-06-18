@@ -53,8 +53,8 @@ export function ProductCard({
         className="absolute inset-0 z-0 rounded-2xl outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
         href={detailHref}
       />
-      <div className="pointer-events-none relative z-10 flex flex-1 flex-col gap-4 px-4 pt-4">
-        <div className="aspect-[4/3] overflow-hidden rounded-2xl border border-border/60 bg-[radial-gradient(circle_at_20%_20%,rgb(20_118_82/0.14),transparent_34%),linear-gradient(135deg,rgb(255_255_255/0.96),rgb(241_245_249/0.72))] p-2 shadow-inner dark:bg-[radial-gradient(circle_at_20%_20%,rgb(20_118_82/0.2),transparent_34%),linear-gradient(135deg,rgb(255_255_255/0.07),rgb(15_23_42/0.5))]">
+      <div className="pointer-events-none relative z-10 flex flex-1 flex-col gap-4 px-3 pt-3 sm:px-4 sm:pt-4">
+        <div className="min-h-[210px] overflow-hidden rounded-2xl border border-border/60 bg-[radial-gradient(circle_at_20%_20%,rgb(20_118_82/0.14),transparent_34%),linear-gradient(135deg,rgb(255_255_255/0.96),rgb(241_245_249/0.72))] p-2 shadow-inner sm:aspect-[4/3] sm:min-h-0 dark:bg-[radial-gradient(circle_at_20%_20%,rgb(20_118_82/0.2),transparent_34%),linear-gradient(135deg,rgb(255_255_255/0.07),rgb(15_23_42/0.5))]">
           <ProductImage
             alt={catalogProduct.name}
             fallback={
@@ -103,7 +103,7 @@ export function ProductCard({
           </div>
         </div>
       </div>
-      <CardContent className="relative z-20 mt-auto px-4 pb-4 pt-3">
+      <CardContent className="relative z-20 mt-auto px-3 pb-3 pt-3 sm:px-4 sm:pb-4">
         <div className="flex flex-col gap-3 rounded-2xl border border-border/60 bg-background/72 p-3 shadow-sm backdrop-blur">
           <PriceState visibility={priceVisibility} variant={primaryVariant} />
           <ProductAction

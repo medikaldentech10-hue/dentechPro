@@ -48,12 +48,12 @@ export function FilterDrawer({
         />
         <SheetContent
           side="bottom"
-          className="max-h-[86dvh] overflow-y-auto rounded-t-2xl border-border/70 bg-background/94 backdrop-blur-xl"
+          className="inset-x-2 bottom-2 max-h-[78dvh] overflow-hidden rounded-2xl border border-border/70 bg-background/96 p-0 shadow-2xl backdrop-blur-xl"
         >
-          <SheetHeader>
+          <SheetHeader className="border-b border-border/70 p-4 pr-12">
             <SheetTitle>JOTA katalog filtreleri</SheetTitle>
           </SheetHeader>
-          <div className="flex flex-col gap-6 p-4 pt-0">
+          <div className="max-h-[calc(78dvh-64px)] overflow-y-auto overscroll-contain p-4">
             <FilterSection
               currentParams={currentParams}
               items={categories}

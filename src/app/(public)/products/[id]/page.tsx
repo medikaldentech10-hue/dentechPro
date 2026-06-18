@@ -47,11 +47,11 @@ export default async function ProductDetailPage({
   const displayProductCode = getDisplayCode(product.code);
 
   return (
-    <div className="mx-auto grid w-full max-w-[1200px] gap-6 px-4 py-8 md:px-6 lg:grid-cols-[minmax(0,1fr)_380px]">
+    <div className="mx-auto grid w-full max-w-[1200px] gap-6 overflow-hidden px-4 py-8 md:px-6 lg:grid-cols-[minmax(0,1fr)_380px]">
       <div className="flex flex-col gap-6">
         <PageTitle description={description} title={product.name} />
         <SurfaceCard className="rounded-2xl border-border/70 bg-card/78">
-          <CardContent className="flex flex-col gap-5 p-6">
+          <CardContent className="flex min-w-0 flex-col gap-5 p-4 sm:p-6">
             <div className="flex flex-wrap gap-2">
               <StatusBadge
                 label={product.category?.name ?? "JOTA Frezler"}
@@ -90,7 +90,7 @@ export default async function ProductDetailPage({
           </CardContent>
         </SurfaceCard>
         <SurfaceCard className="rounded-2xl border-border/70 bg-card/78">
-          <CardContent className="flex flex-col gap-4 p-6">
+          <CardContent className="flex min-w-0 flex-col gap-4 p-4 sm:p-6">
             <div>
               <h2 className="text-lg font-semibold">Varyantlar</h2>
               <p className="mt-1 text-sm text-muted-foreground">
@@ -112,8 +112,8 @@ export default async function ProductDetailPage({
       </div>
       <aside className="lg:sticky lg:top-24 lg:self-start">
         <SurfaceCard className="rounded-2xl border-border/70 bg-card/78 shadow-[0_18px_60px_rgb(15_23_42/0.08)]">
-          <CardContent className="flex flex-col gap-5 p-5">
-            <div className="aspect-[4/3] overflow-hidden rounded-2xl border border-border/70 bg-[radial-gradient(circle_at_20%_20%,rgb(20_118_82/0.14),transparent_34%),linear-gradient(135deg,rgb(255_255_255/0.96),rgb(241_245_249/0.72))] p-2 shadow-inner dark:bg-[radial-gradient(circle_at_20%_20%,rgb(20_118_82/0.2),transparent_34%),linear-gradient(135deg,rgb(255_255_255/0.07),rgb(15_23_42/0.5))]">
+          <CardContent className="flex min-w-0 flex-col gap-5 p-4 sm:p-5">
+            <div className="min-h-[220px] overflow-hidden rounded-2xl border border-border/70 bg-[radial-gradient(circle_at_20%_20%,rgb(20_118_82/0.14),transparent_34%),linear-gradient(135deg,rgb(255_255_255/0.96),rgb(241_245_249/0.72))] p-2 shadow-inner sm:aspect-[4/3] sm:min-h-0 dark:bg-[radial-gradient(circle_at_20%_20%,rgb(20_118_82/0.2),transparent_34%),linear-gradient(135deg,rgb(255_255_255/0.07),rgb(15_23_42/0.5))]">
               <ProductImage
                 alt={product.name}
                 fallback={
@@ -164,8 +164,8 @@ function VariantRow({
   const pricedVariant = "price" in variant ? variant : null;
 
   return (
-    <div className="grid gap-4 rounded-2xl border border-border/65 bg-background/68 p-4 shadow-sm transition hover:border-primary/25 hover:bg-background/82 md:grid-cols-[minmax(0,1fr)_190px_220px] md:items-center">
-      <div>
+    <div className="grid min-w-0 gap-4 rounded-2xl border border-border/65 bg-background/68 p-4 shadow-sm transition hover:border-primary/25 hover:bg-background/82 md:grid-cols-[minmax(0,1fr)_190px_minmax(0,220px)] md:items-center">
+      <div className="min-w-0">
         <p className="font-semibold leading-6">{variant.name}</p>
         <div className="mt-1 flex flex-wrap gap-2 text-xs text-muted-foreground">
           {displayCode ? (
@@ -183,7 +183,7 @@ function VariantRow({
           ) : null}
         </div>
       </div>
-      <div className="text-sm">
+      <div className="min-w-0 text-sm">
         {pricedVariant ? (
           <>
             <p className="font-semibold">
@@ -201,7 +201,7 @@ function VariantRow({
           </p>
         )}
       </div>
-      <div>
+      <div className="min-w-0">
         {pricedVariant ? (
           <AddToRequestForm
             disabled={!pricedVariant.isActive || pricedVariant.stockQuantity === 0}
