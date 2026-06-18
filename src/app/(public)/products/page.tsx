@@ -15,6 +15,7 @@ import {
   getPricedProductsForProfile,
   type ProductFilters,
 } from "@/lib/products";
+import { cn } from "@/lib/utils";
 
 type ProductsSearchParams = {
   brand?: string;
@@ -55,6 +56,27 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
     : profile
       ? "pending"
       : "public";
+  const hasActiveFilters = Boolean(
+    params.q ||
+      params.category ||
+      params.usage ||
+      params.min_price ||
+      params.max_price ||
+      (params.brand && params.brand !== "JOTA")
+  );
+  const activeFilterLabels = [
+    params.q ? `Arama: ${params.q}` : null,
+    params.category
+      ? `Kategori: ${
+          categories.find((category) => category.slug === params.category)?.name ??
+          params.category
+        }`
+      : null,
+    params.usage ? `Kullanım: ${params.usage}` : null,
+    params.brand && params.brand !== "JOTA" ? `Marka: ${params.brand}` : null,
+    hasPriceAccess && params.min_price ? `Min: ₺${params.min_price}` : null,
+    hasPriceAccess && params.max_price ? `Max: ₺${params.max_price}` : null,
+  ].filter((label): label is string => Boolean(label));
 
   return (
     <div className="mx-auto flex w-full max-w-[1320px] flex-col gap-6 px-4 py-6 md:px-6 md:py-8">
@@ -140,6 +162,29 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
           ) : null}
           <Button type="submit">Filtrele</Button>
         </form>
+        {hasActiveFilters ? (
+          <div className="flex flex-col gap-2 rounded-2xl border border-border/60 bg-card/60 px-3 py-3 shadow-sm backdrop-blur md:flex-row md:items-center md:justify-between">
+            <div className="flex flex-wrap gap-2">
+              {activeFilterLabels.map((label) => (
+                <span
+                  className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium text-primary"
+                  key={label}
+                >
+                  {label}
+                </span>
+              ))}
+            </div>
+            <Link
+              className={cn(
+                buttonVariants({ variant: "link" }),
+                "h-auto self-start px-0 text-sm md:self-center"
+              )}
+              href="/products"
+            >
+              Filtreleri Temizle
+            </Link>
+          </div>
+        ) : null}
       </div>
       <div className="flex gap-6">
         <FilterSidebar

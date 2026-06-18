@@ -24,7 +24,7 @@ export function CategoryCard({
   const content = (
     <PremiumCard
       className={cn(
-        "min-h-44",
+        "min-h-44 overflow-hidden rounded-2xl bg-card/86",
         status === "coming-soon" &&
           "opacity-70 hover:translate-y-0 hover:border-border/70 hover:shadow-[0_16px_55px_rgb(15_23_42/0.07)] dark:hover:shadow-[0_18px_65px_rgb(0_0_0/0.22)]"
       )}
@@ -35,7 +35,7 @@ export function CategoryCard({
             label={status === "active" ? meta : "Yakında"}
             tone={status === "active" ? "success" : "muted"}
           />
-          <span className="flex size-9 items-center justify-center rounded-lg bg-accent text-primary shadow-sm">
+          <span className="flex size-9 items-center justify-center rounded-xl border border-primary/15 bg-primary/10 text-primary shadow-sm">
             {status === "active" ? <ArrowRight /> : <Lock />}
           </span>
         </div>

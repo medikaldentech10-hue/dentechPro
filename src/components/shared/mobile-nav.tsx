@@ -2,8 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+import {
+  ClipboardCheck,
+  Gauge,
+  Menu,
+  PackageSearch,
+  ShieldCheck,
+  ShoppingBag,
+  Users,
+} from "lucide-react";
 
 import { Logo } from "@/components/shared/logo";
 import { buttonVariants } from "@/components/ui/button";
@@ -21,7 +28,6 @@ import { cn } from "@/lib/utils";
 
 type MobileNavItem = {
   href: string;
-  icon?: LucideIcon;
   label: string;
 };
 
@@ -77,12 +83,15 @@ export function MobileNav({
                 href={item.href}
                 aria-current={activeHref === item.href ? "page" : undefined}
                 className={cn(
-                  "flex items-center gap-3 rounded-lg border border-transparent px-3 py-3 text-sm font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground",
+                  "relative flex items-center gap-3 rounded-lg border border-transparent px-3 py-3 text-sm font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground",
                   activeHref === item.href &&
-                    "border-primary/25 bg-primary/10 text-primary"
+                    "border-primary/30 bg-primary/12 text-primary ring-1 ring-primary/15"
                 )}
               >
-                {item.icon ? <item.icon className="size-4" /> : null}
+                {activeHref === item.href ? (
+                  <span className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-primary" />
+                ) : null}
+                {providedNavItems ? <NavIcon href={item.href} /> : null}
                 {item.label}
               </Link>
             ))}
@@ -90,11 +99,14 @@ export function MobileNav({
               <Link
                 href="/request"
                 className={cn(
-                  "rounded-lg border border-transparent px-3 py-3 text-sm font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground",
+                  "relative rounded-lg border border-transparent px-3 py-3 text-sm font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground",
                   pathname === "/request" &&
-                    "border-primary/25 bg-primary/10 text-primary"
+                    "border-primary/30 bg-primary/12 text-primary ring-1 ring-primary/15"
                 )}
               >
+                {pathname === "/request" ? (
+                  <span className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-primary" />
+                ) : null}
                 Talep Listem
               </Link>
             ) : null}
@@ -112,6 +124,23 @@ export function MobileNav({
       </Sheet>
     </div>
   );
+}
+
+function NavIcon({ href }: { href: string }) {
+  const Icon =
+    href === "/admin"
+      ? ShieldCheck
+      : href === "/admin/users"
+        ? ClipboardCheck
+        : href === "/admin/products" || href === "/products"
+          ? PackageSearch
+          : href === "/admin/requests" || href === "/sales/request"
+            ? ShoppingBag
+            : href === "/admin/customers"
+              ? Users
+              : Gauge;
+
+  return <Icon className="size-4" />;
 }
 
 function getActiveHref(items: MobileNavItem[], pathname: string) {

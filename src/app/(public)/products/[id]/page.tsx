@@ -47,10 +47,10 @@ export default async function ProductDetailPage({
   const displayProductCode = getDisplayCode(product.code);
 
   return (
-    <div className="mx-auto grid w-full max-w-[1200px] gap-6 px-4 py-8 md:px-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+    <div className="mx-auto grid w-full max-w-[1200px] gap-6 px-4 py-8 md:px-6 lg:grid-cols-[minmax(0,1fr)_380px]">
       <div className="flex flex-col gap-6">
         <PageTitle description={description} title={product.name} />
-        <SurfaceCard>
+        <SurfaceCard className="rounded-2xl border-border/70 bg-card/78">
           <CardContent className="flex flex-col gap-5 p-6">
             <div className="flex flex-wrap gap-2">
               <StatusBadge
@@ -64,7 +64,7 @@ export default async function ProductDetailPage({
             <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
               {description}
             </p>
-            <div className="grid gap-4 text-sm md:grid-cols-2">
+            <div className="grid gap-3 text-sm md:grid-cols-2">
               {displayProductCode ? (
                 <Info label="Ürün Kodu" value={displayProductCode} />
               ) : null}
@@ -89,7 +89,7 @@ export default async function ProductDetailPage({
             </div>
           </CardContent>
         </SurfaceCard>
-        <SurfaceCard>
+        <SurfaceCard className="rounded-2xl border-border/70 bg-card/78">
           <CardContent className="flex flex-col gap-4 p-6">
             <div>
               <h2 className="text-lg font-semibold">Varyantlar</h2>
@@ -111,9 +111,9 @@ export default async function ProductDetailPage({
         </SurfaceCard>
       </div>
       <aside className="lg:sticky lg:top-24 lg:self-start">
-        <SurfaceCard>
+        <SurfaceCard className="rounded-2xl border-border/70 bg-card/78 shadow-[0_18px_60px_rgb(15_23_42/0.08)]">
           <CardContent className="flex flex-col gap-5 p-5">
-            <div className="aspect-[4/3] overflow-hidden rounded-xl border border-border/70 bg-[linear-gradient(135deg,rgb(255_255_255/0.92),rgb(20_118_82/0.12))] dark:bg-[linear-gradient(135deg,rgb(255_255_255/0.06),rgb(20_118_82/0.18))]">
+            <div className="aspect-[4/3] overflow-hidden rounded-2xl border border-border/70 bg-[radial-gradient(circle_at_20%_20%,rgb(20_118_82/0.14),transparent_34%),linear-gradient(135deg,rgb(255_255_255/0.96),rgb(241_245_249/0.72))] p-2 shadow-inner dark:bg-[radial-gradient(circle_at_20%_20%,rgb(20_118_82/0.2),transparent_34%),linear-gradient(135deg,rgb(255_255_255/0.07),rgb(15_23_42/0.5))]">
               <ProductImage
                 alt={product.name}
                 fallback={
@@ -144,7 +144,7 @@ export default async function ProductDetailPage({
 
 function Info({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-border/70 bg-background/60 p-4">
+    <div className="rounded-xl border border-border/65 bg-background/68 p-4 shadow-sm">
       <p className="text-xs text-muted-foreground">{label}</p>
       <p className="mt-1 font-medium">{value}</p>
     </div>
@@ -164,14 +164,22 @@ function VariantRow({
   const pricedVariant = "price" in variant ? variant : null;
 
   return (
-    <div className="grid gap-4 rounded-xl border border-border/70 bg-background/60 p-4 md:grid-cols-[minmax(0,1fr)_180px_220px] md:items-center">
+    <div className="grid gap-4 rounded-2xl border border-border/65 bg-background/68 p-4 shadow-sm transition hover:border-primary/25 hover:bg-background/82 md:grid-cols-[minmax(0,1fr)_190px_220px] md:items-center">
       <div>
-        <p className="font-medium">{variant.name}</p>
+        <p className="font-semibold leading-6">{variant.name}</p>
         <div className="mt-1 flex flex-wrap gap-2 text-xs text-muted-foreground">
-          {displayCode ? <span>SKU: {displayCode}</span> : null}
-          <span>Paket: {variant.packageQuantity}</span>
+          {displayCode ? (
+            <span className="rounded-full bg-muted px-2.5 py-1">
+              SKU: {displayCode}
+            </span>
+          ) : null}
+          <span className="rounded-full bg-muted px-2.5 py-1">
+            Paket: {variant.packageQuantity}
+          </span>
           {variant.manufacturerRef && !isUuid(variant.manufacturerRef) ? (
-            <span>Ref: {variant.manufacturerRef}</span>
+            <span className="rounded-full bg-muted px-2.5 py-1">
+              Ref: {variant.manufacturerRef}
+            </span>
           ) : null}
         </div>
       </div>

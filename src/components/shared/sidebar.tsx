@@ -2,7 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { LucideIcon } from "lucide-react";
+import {
+  ClipboardCheck,
+  Gauge,
+  PackageSearch,
+  ShieldCheck,
+  ShoppingBag,
+  Users,
+} from "lucide-react";
 
 import { Logo } from "@/components/shared/logo";
 import { cn } from "@/lib/utils";
@@ -10,7 +17,6 @@ import { cn } from "@/lib/utils";
 type SidebarItem = {
   href: string;
   label: string;
-  icon: LucideIcon;
 };
 
 type SidebarProps = {
@@ -37,12 +43,15 @@ export function Sidebar({ items, sectionLabel }: SidebarProps) {
                 href={item.href}
                 aria-current={activeHref === item.href ? "page" : undefined}
                 className={cn(
-                  "flex items-center gap-3 rounded-lg border border-transparent px-3 py-2.5 text-sm font-medium text-muted-foreground transition hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                  "relative flex items-center gap-3 rounded-lg border border-transparent px-3 py-2.5 text-sm font-medium text-muted-foreground transition hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
                   activeHref === item.href &&
-                    "border-primary/25 bg-primary/10 text-primary shadow-sm"
+                    "border-primary/30 bg-primary/12 text-primary shadow-sm ring-1 ring-primary/15"
                 )}
               >
-                <item.icon className="size-4" />
+                {activeHref === item.href ? (
+                  <span className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-primary" />
+                ) : null}
+                <NavIcon href={item.href} />
                 {item.label}
               </Link>
             ))}
@@ -51,6 +60,23 @@ export function Sidebar({ items, sectionLabel }: SidebarProps) {
       </div>
     </aside>
   );
+}
+
+function NavIcon({ href }: { href: string }) {
+  const Icon =
+    href === "/admin"
+      ? ShieldCheck
+      : href === "/admin/users"
+        ? ClipboardCheck
+        : href === "/admin/products" || href === "/products"
+          ? PackageSearch
+          : href === "/admin/requests" || href === "/sales/request"
+            ? ShoppingBag
+            : href === "/admin/customers"
+              ? Users
+              : Gauge;
+
+  return <Icon className="size-4" />;
 }
 
 function getActiveHref(items: SidebarItem[], pathname: string) {

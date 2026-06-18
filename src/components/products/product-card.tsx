@@ -47,17 +47,18 @@ export function ProductCard({
   const description = getProductDescription(catalogProduct);
 
   return (
-    <PremiumCard className="h-full">
+    <PremiumCard className="group/card relative h-full overflow-hidden rounded-2xl border-border/75 bg-card/90 shadow-[0_18px_60px_rgb(15_23_42/0.08)] hover:border-primary/35 hover:shadow-[0_24px_80px_rgb(20_118_82/0.14)]">
       <Link
         aria-label={`${catalogProduct.name} detayını aç`}
-        className="flex flex-1 flex-col gap-4 px-4 pt-4 outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+        className="absolute inset-0 z-0 rounded-2xl outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
         href={detailHref}
-      >
-        <div className="aspect-[4/3] overflow-hidden rounded-xl border border-border/70 bg-[linear-gradient(135deg,rgb(255_255_255/0.92),rgb(20_118_82/0.12))] dark:bg-[linear-gradient(135deg,rgb(255_255_255/0.06),rgb(20_118_82/0.18))]">
+      />
+      <div className="pointer-events-none relative z-10 flex flex-1 flex-col gap-4 px-4 pt-4">
+        <div className="aspect-[4/3] overflow-hidden rounded-2xl border border-border/60 bg-[radial-gradient(circle_at_20%_20%,rgb(20_118_82/0.14),transparent_34%),linear-gradient(135deg,rgb(255_255_255/0.96),rgb(241_245_249/0.72))] p-2 shadow-inner dark:bg-[radial-gradient(circle_at_20%_20%,rgb(20_118_82/0.2),transparent_34%),linear-gradient(135deg,rgb(255_255_255/0.07),rgb(15_23_42/0.5))]">
           <ProductImage
             alt={catalogProduct.name}
             fallback={
-              <div className="flex h-full flex-col justify-between rounded-lg border border-white/65 bg-white/55 p-4 shadow-sm backdrop-blur dark:border-white/10 dark:bg-white/8">
+              <div className="flex h-full flex-col justify-between rounded-xl border border-white/65 bg-white/70 p-4 shadow-sm backdrop-blur dark:border-white/10 dark:bg-white/8">
                 <span className="text-xs font-medium text-muted-foreground">
                   {catalogProduct.brand}
                 </span>
@@ -72,36 +73,46 @@ export function ProductCard({
             src={catalogProduct.imageUrl ?? primaryVariant?.imageUrl}
           />
         </div>
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3 pb-1">
           <div className="flex flex-wrap gap-2">
             <StatusBadge
               label={catalogProduct.category?.name ?? "JOTA Frezler"}
               tone="success"
             />
-            <span className="rounded-lg border border-border/70 bg-background/60 px-2.5 py-1 text-xs font-medium text-muted-foreground">
+            <span className="rounded-full border border-border/70 bg-background/72 px-2.5 py-1 text-xs font-medium text-muted-foreground shadow-sm">
               {catalogProduct.brand}
             </span>
           </div>
-          <div className="flex flex-col gap-2">
-            <CardTitle className="text-lg">{catalogProduct.name}</CardTitle>
+          <div className="flex min-h-[132px] flex-col gap-2">
+            <CardTitle className="text-[1.05rem] leading-6 text-foreground md:text-lg">
+              {catalogProduct.name}
+            </CardTitle>
             <p className="line-clamp-2 text-sm leading-6 text-muted-foreground">
               {description}
             </p>
-            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-              <span>{catalogProduct.variantCount} varyant</span>
-              {displayCode ? <span>SKU: {displayCode}</span> : null}
+            <div className="mt-auto flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              <span className="rounded-full bg-muted px-2.5 py-1">
+                {catalogProduct.variantCount} varyant
+              </span>
+              {displayCode ? (
+                <span className="rounded-full bg-muted px-2.5 py-1">
+                  SKU: {displayCode}
+                </span>
+              ) : null}
             </div>
           </div>
         </div>
-      </Link>
-      <CardContent className="mt-auto flex flex-col gap-4 px-4 pb-4 pt-2">
-        <PriceState visibility={priceVisibility} variant={primaryVariant} />
-        <ProductAction
-          adminMode={adminMode}
-          priceVisibility={priceVisibility}
-          salesMode={salesMode}
-          variant={primaryVariant}
-        />
+      </div>
+      <CardContent className="relative z-20 mt-auto px-4 pb-4 pt-3">
+        <div className="flex flex-col gap-3 rounded-2xl border border-border/60 bg-background/72 p-3 shadow-sm backdrop-blur">
+          <PriceState visibility={priceVisibility} variant={primaryVariant} />
+          <ProductAction
+            adminMode={adminMode}
+            priceVisibility={priceVisibility}
+            salesMode={salesMode}
+            variant={primaryVariant}
+          />
+        </div>
       </CardContent>
     </PremiumCard>
   );
