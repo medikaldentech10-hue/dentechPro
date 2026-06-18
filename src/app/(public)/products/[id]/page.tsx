@@ -18,10 +18,14 @@ import { cn } from "@/lib/utils";
 
 export default async function ProductDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { id } = await params;
+  const query = await searchParams;
+  const selectedVariantId = getStringParam(query.variant);
   const profile = await getCurrentProfile();
   const product = await getPricedProductByIdForProfile(profile, id);
 
@@ -34,16 +38,16 @@ export default async function ProductDetailPage({
     : profile
       ? "pending"
       : "public";
-  const primaryVariant = product.variants[0] ?? null;
+  const selectedVariant =
+    product.variants.find((variant) => variant.id === selectedVariantId) ?? null;
+  const primaryVariant = selectedVariant ?? product.variants[0] ?? null;
   const canSeeCommercialData =
     priceVisibility === "approved" && primaryVariant && "price" in primaryVariant;
   const pricedVariant = canSeeCommercialData
     ? (primaryVariant as PricedCatalogVariant)
     : null;
   const salesMode = isSalesRep(profile);
-  const description = product.description
-    ? stripHtml(product.description).slice(0, 180)
-    : "DENTech Medikal kataloğunda yer alan profesyonel dental ürün. Detaylı bilgi için ekibimizle iletişime geçebilirsiniz.";
+  const description = getProductDescription(product);
   const displayProductCode = getDisplayCode(product.code);
 
   return (
@@ -100,6 +104,7 @@ export default async function ProductDetailPage({
             <div className="grid gap-3">
               {product.variants.map((variant) => (
                 <VariantRow
+                  isSelected={variant.id === selectedVariantId}
                   key={variant.id}
                   priceVisibility={priceVisibility}
                   salesMode={salesMode}
@@ -113,7 +118,7 @@ export default async function ProductDetailPage({
       <aside className="lg:sticky lg:top-24 lg:self-start">
         <SurfaceCard className="rounded-2xl border-border/70 bg-card/78 shadow-[0_18px_60px_rgb(15_23_42/0.08)]">
           <CardContent className="flex min-w-0 flex-col gap-5 p-4 sm:p-5">
-            <div className="min-h-[220px] overflow-hidden rounded-2xl border border-border/70 bg-[radial-gradient(circle_at_20%_20%,rgb(20_118_82/0.14),transparent_34%),linear-gradient(135deg,rgb(255_255_255/0.96),rgb(241_245_249/0.72))] p-2 shadow-inner sm:aspect-[4/3] sm:min-h-0 dark:bg-[radial-gradient(circle_at_20%_20%,rgb(20_118_82/0.2),transparent_34%),linear-gradient(135deg,rgb(255_255_255/0.07),rgb(15_23_42/0.5))]">
+            <div className="h-[220px] overflow-hidden rounded-2xl border border-border/70 bg-[radial-gradient(circle_at_20%_20%,rgb(20_118_82/0.14),transparent_34%),linear-gradient(135deg,rgb(255_255_255/0.96),rgb(241_245_249/0.72))] p-2 shadow-inner sm:aspect-[4/3] sm:h-auto dark:bg-[radial-gradient(circle_at_20%_20%,rgb(20_118_82/0.2),transparent_34%),linear-gradient(135deg,rgb(255_255_255/0.07),rgb(15_23_42/0.5))]">
               <ProductImage
                 alt={product.name}
                 fallback={
@@ -152,22 +157,39 @@ function Info({ label, value }: { label: string; value: string }) {
 }
 
 function VariantRow({
+  isSelected,
   priceVisibility,
   salesMode,
   variant,
 }: {
+  isSelected: boolean;
   priceVisibility: "approved" | "pending" | "public";
   salesMode: boolean;
   variant: PricedCatalogVariant | PublicCatalogVariant;
 }) {
   const displayCode = getDisplayCode(variant.code);
+  const labels = getVariantLabels(variant);
   const pricedVariant = "price" in variant ? variant : null;
 
   return (
-    <div className="grid min-w-0 gap-4 rounded-2xl border border-border/65 bg-background/68 p-4 shadow-sm transition hover:border-primary/25 hover:bg-background/82 md:grid-cols-[minmax(0,1fr)_190px_minmax(0,220px)] md:items-center">
+    <div
+      className={cn(
+        "grid min-w-0 scroll-mt-24 gap-4 rounded-2xl border border-border/65 bg-background/68 p-4 shadow-sm transition hover:border-primary/25 hover:bg-background/82 md:grid-cols-[minmax(0,1fr)_190px_minmax(0,220px)] md:items-center",
+        isSelected && "border-primary/45 bg-primary/5 ring-2 ring-primary/15"
+      )}
+      id={`variant-${variant.id}`}
+    >
       <div className="min-w-0">
         <p className="font-semibold leading-6">{variant.name}</p>
         <div className="mt-1 flex flex-wrap gap-2 text-xs text-muted-foreground">
+          {labels.map((label) => (
+            <span
+              className="rounded-full border border-primary/15 bg-primary/8 px-2.5 py-1 text-primary"
+              key={label}
+            >
+              {label}
+            </span>
+          ))}
           {displayCode ? (
             <span className="rounded-full bg-muted px-2.5 py-1">
               SKU: {displayCode}
@@ -240,6 +262,31 @@ function stripHtml(value: string) {
   return value.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
 }
 
+function getProductDescription(product: {
+  category: { name: string } | null;
+  description: string | null;
+  name: string;
+  usageArea: string | null;
+}) {
+  const description = product.description ? stripHtml(product.description) : "";
+  const normalizedDescription = normalizeText(description);
+  const normalizedName = normalizeText(product.name);
+
+  if (
+    description &&
+    normalizedDescription !== normalizedName &&
+    !normalizedDescription.startsWith(normalizedName)
+  ) {
+    return description.slice(0, 180);
+  }
+
+  if (product.usageArea) {
+    return `${product.usageArea} kullanımı için katalogda yer alan profesyonel dental ürün.`;
+  }
+
+  return `${product.category?.name ?? "JOTA Frezler"} kategorisinde listelenen profesyonel dental ürün.`;
+}
+
 function getDisplayCode(value: string | undefined) {
   if (!value || isUuid(value)) {
     return null;
@@ -248,8 +295,61 @@ function getDisplayCode(value: string | undefined) {
   return value;
 }
 
+function getVariantLabels(variant: PublicCatalogVariant | PricedCatalogVariant) {
+  const labels = [
+    normalizeHolder(variant.connectionType ?? variant.code),
+    normalizeGritLabel(variant.color ?? variant.grit ?? variant.code),
+    variant.diameter ? `Ø ${variant.diameter}` : getSizeFromCode(variant.code),
+  ];
+
+  return labels.filter((label): label is string => Boolean(label));
+}
+
+function normalizeHolder(value: string) {
+  const match = value.toUpperCase().match(/\b(FG|RA|HP)\b/);
+
+  return match?.[1] ?? null;
+}
+
+function normalizeGritLabel(value: string) {
+  const normalized = normalizeText(value);
+
+  if (normalized.includes("black") || normalized.includes("siyah")) return "Siyah";
+  if (normalized.includes("green") || normalized.includes("yesil")) return "Yeşil";
+  if (normalized.includes("blue") || normalized.includes("mavi")) return "Mavi";
+  if (normalized.includes("red") || normalized.includes("kirmizi")) return "Kırmızı";
+  if (normalized.includes("yellow") || normalized.includes("sari")) return "Sarı";
+
+  const grit = value.toUpperCase().match(/\b(XC|C|M|F|SF|UF)\b/)?.[1];
+
+  return grit ?? null;
+}
+
+function getSizeFromCode(value: string) {
+  const match = value.match(/(?:^|[.-])(\d{3})(?:$|[.-])/);
+
+  return match ? `Ø ${Number(match[1]) / 10}` : null;
+}
+
 function isUuid(value: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
     value
   );
+}
+
+function normalizeText(value: string) {
+  return value
+    .toLocaleLowerCase("tr-TR")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/ı/g, "i")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function getStringParam(value: string | string[] | undefined) {
+  const item = Array.isArray(value) ? value[0] : value;
+  const trimmed = item?.trim();
+
+  return trimmed || undefined;
 }

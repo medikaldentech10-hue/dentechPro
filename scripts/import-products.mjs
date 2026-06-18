@@ -115,7 +115,12 @@ async function readIkasCsv(filePath) {
         "kategori adı",
         "category name",
       ]) || "Diğer Ürünler";
-    const categorySlug = normalizeCategory(categories, rawCategory);
+    const categorySlug = normalizeCategory(categories, {
+      categoryName: rawCategory,
+      productName,
+      sku,
+      variantName,
+    });
     const productGroupCode =
       getValue(row, [
         "product group code",
@@ -164,8 +169,14 @@ async function readIkasCsv(filePath) {
       usage_area: getValue(row, ["usage_area", "kullanim alani", "kullanım alanı"]),
     });
 
+    const variantAttributes = inferVariantAttributes({ productName, row, sku, variantName });
+
     product.variants.push({
+      color: variantAttributes.color,
+      connection_type: variantAttributes.connection_type,
       currency: getValue(row, ["currency", "para birimi"]) || "TRY",
+      diameter: variantAttributes.diameter,
+      grit: variantAttributes.grit,
       image_url: getValue(row, [
         "variant image",
         "variant_image",
@@ -423,12 +434,16 @@ function ensureRootCategories(categories) {
   });
 }
 
-function normalizeCategory(categories, categoryName) {
-  const slug = mapJotaCategorySlug(categoryName);
+function normalizeCategory(
+  categories,
+  { categoryName, productName = "", sku = "", variantName = "" }
+) {
+  const slug = mapJotaCategorySlug(categoryName, productName, variantName, sku);
+  const displayName = getJotaCategoryName(slug, categoryName);
 
   if (!categories.has(slug)) {
     categories.set(slug, {
-      name: categoryName.trim(),
+      name: displayName,
       parent_slug: "jota-frezler",
       slug,
       sort_order: 100 + categories.size,
@@ -438,20 +453,121 @@ function normalizeCategory(categories, categoryName) {
   return slug;
 }
 
-function mapJotaCategorySlug(categoryName) {
-  const normalized = normalizeText(categoryName);
+function mapJotaCategorySlug(...values) {
+  const normalized = normalizeText(values.filter(Boolean).join(" "));
 
   if (normalized.includes("elmas")) return "elmas-frezler";
-  if (normalized.includes("karbit")) return "karbit-frezler";
-  if (normalized.includes("tas") || normalized.includes("aşındır")) {
+  if (normalized.includes("diamond")) return "elmas-frezler";
+  if (normalized.includes("karbit") || normalized.includes("carbide")) {
+    return "karbit-frezler";
+  }
+  if (
+    normalized.includes("tas") ||
+    normalized.includes("asindir") ||
+    normalized.includes("abrasive")
+  ) {
     return "asindirici-taslar";
   }
-  if (normalized.includes("disk")) return "ayirici-diskler";
-  if (normalized.includes("cila") || normalized.includes("polisaj")) {
+  if (normalized.includes("disk") || normalized.includes("disc")) {
+    return "ayirici-diskler";
+  }
+  if (
+    normalized.includes("cila") ||
+    normalized.includes("polisaj") ||
+    normalized.includes("polish")
+  ) {
     return "cilalama-frezleri";
   }
+  if (normalized.includes("set") || normalized.includes("kit")) {
+    return "setler-paketler";
+  }
 
-  return slugify(categoryName || "Diger Urunler");
+  return slugify(values.find(Boolean) || "Diger Urunler");
+}
+
+function getJotaCategoryName(slug, fallback) {
+  const names = {
+    "asindirici-taslar": "Aşındırıcı Taşlar",
+    "ayirici-diskler": "Ayırıcı Diskler",
+    "cilalama-frezleri": "Cilalama Frezleri",
+    "elmas-frezler": "Elmas Frezler",
+    "karbit-frezler": "Karbit Frezler",
+    "setler-paketler": "Setler / Paketler",
+  };
+
+  return names[slug] ?? fallback.trim();
+}
+
+function inferVariantAttributes({ productName, row, sku, variantName }) {
+  const combined = [productName, variantName, sku].filter(Boolean).join(" ");
+  const directConnection = getValue(row, [
+    "connection type",
+    "connection_type",
+    "shank",
+    "sap",
+    "şaft",
+    "saft",
+  ]);
+  const directColor = getValue(row, ["color", "renk"]);
+  const directDiameter = getValue(row, ["diameter", "cap", "çap"]);
+  const directGrit = getValue(row, ["grit", "kum", "kumlama"]);
+
+  return {
+    color: normalizeColor(directColor || combined),
+    connection_type: normalizeConnectionType(directConnection || combined),
+    diameter: parseDiameter(directDiameter || sku || variantName),
+    grit: normalizeGrit(directGrit || directColor || combined),
+  };
+}
+
+function normalizeConnectionType(value) {
+  const match = String(value ?? "").toUpperCase().match(/\b(FG|RA|HP)\b/);
+
+  return match?.[1];
+}
+
+function normalizeColor(value) {
+  const normalized = normalizeText(value);
+
+  if (normalized.includes("black") || normalized.includes("siyah")) return "Siyah";
+  if (normalized.includes("green") || normalized.includes("yesil")) return "Yeşil";
+  if (normalized.includes("blue") || normalized.includes("mavi")) return "Mavi";
+  if (normalized.includes("red") || normalized.includes("kirmizi")) return "Kırmızı";
+  if (normalized.includes("yellow") || normalized.includes("sari")) return "Sarı";
+  if (normalized.includes("white") || normalized.includes("beyaz")) return "Beyaz";
+
+  return undefined;
+}
+
+function normalizeGrit(value) {
+  const normalized = normalizeText(value);
+  const grit = String(value ?? "").toUpperCase().match(/\b(XC|C|M|F|SF|UF)\b/)?.[1];
+
+  if (grit) return grit;
+  if (normalized.includes("coarse")) return "C";
+  if (normalized.includes("medium")) return "M";
+  if (normalized.includes("fine")) return "F";
+  if (normalized.includes("super fine")) return "SF";
+  if (normalized.includes("ultra fine")) return "UF";
+
+  return undefined;
+}
+
+function parseDiameter(value) {
+  if (!value) return undefined;
+  const sizeCode = String(value).match(/(?:^|[.-])(\d{3})(?:$|[.-])/);
+
+  if (sizeCode) {
+    return Number(sizeCode[1]) / 10;
+  }
+
+  const direct = Number(String(value).replace(",", "."));
+
+  if (Number.isFinite(direct) && direct > 0) {
+    return direct;
+  }
+
+  return undefined;
 }
 
 function parseCsv(contents) {

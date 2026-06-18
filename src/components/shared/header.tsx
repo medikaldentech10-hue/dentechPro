@@ -18,9 +18,7 @@ type HeaderProps = {
 export function Header({ profile = null }: HeaderProps) {
   const pathname = usePathname();
   const authState = getHeaderAuthState(profile);
-  const navItems = authState.isAuthenticated
-    ? publicNav.filter((item) => item.href !== "/login")
-    : publicNav;
+  const navItems = publicNav.filter((item) => item.href !== "/login");
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/70 bg-background/82 shadow-sm backdrop-blur-xl supports-[backdrop-filter]:bg-background/68">

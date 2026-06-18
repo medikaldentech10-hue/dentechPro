@@ -45,6 +45,7 @@ export function ProductCard({
   const detailHref = `/products/${catalogProduct.id}`;
   const displayCode = getDisplayCode(primaryVariant?.code ?? catalogProduct.code);
   const description = getProductDescription(catalogProduct);
+  const variantChips = getVariantChips(catalogProduct.variants);
 
   return (
     <PremiumCard className="group/card relative h-full overflow-hidden rounded-2xl border-border/75 bg-card/90 shadow-[0_18px_60px_rgb(15_23_42/0.08)] hover:border-primary/35 hover:shadow-[0_24px_80px_rgb(20_118_82/0.14)]">
@@ -54,7 +55,7 @@ export function ProductCard({
         href={detailHref}
       />
       <div className="pointer-events-none relative z-10 flex flex-1 flex-col gap-4 px-3 pt-3 sm:px-4 sm:pt-4">
-        <div className="min-h-[210px] overflow-hidden rounded-2xl border border-border/60 bg-[radial-gradient(circle_at_20%_20%,rgb(20_118_82/0.14),transparent_34%),linear-gradient(135deg,rgb(255_255_255/0.96),rgb(241_245_249/0.72))] p-2 shadow-inner sm:aspect-[4/3] sm:min-h-0 dark:bg-[radial-gradient(circle_at_20%_20%,rgb(20_118_82/0.2),transparent_34%),linear-gradient(135deg,rgb(255_255_255/0.07),rgb(15_23_42/0.5))]">
+        <div className="h-[210px] overflow-hidden rounded-2xl border border-border/60 bg-[radial-gradient(circle_at_20%_20%,rgb(20_118_82/0.14),transparent_34%),linear-gradient(135deg,rgb(255_255_255/0.96),rgb(241_245_249/0.72))] p-2 shadow-inner sm:aspect-[4/3] sm:h-auto dark:bg-[radial-gradient(circle_at_20%_20%,rgb(20_118_82/0.2),transparent_34%),linear-gradient(135deg,rgb(255_255_255/0.07),rgb(15_23_42/0.5))]">
           <ProductImage
             alt={catalogProduct.name}
             fallback={
@@ -91,9 +92,21 @@ export function ProductCard({
               {description}
             </p>
             <div className="mt-auto flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-              <span className="rounded-full bg-muted px-2.5 py-1">
-                {catalogProduct.variantCount} varyant
-              </span>
+              {variantChips.length ? (
+                variantChips.map((chip) => (
+                  <Link
+                    className="pointer-events-auto relative z-20 rounded-full bg-muted px-2.5 py-1 transition hover:bg-primary/10 hover:text-primary"
+                    href={`${detailHref}?variant=${chip.variantId}`}
+                    key={`${chip.label}-${chip.variantId}`}
+                  >
+                    {chip.label}
+                  </Link>
+                ))
+              ) : (
+                <span className="rounded-full bg-muted px-2.5 py-1">
+                  Varyant seçenekleri
+                </span>
+              )}
               {displayCode ? (
                 <span className="rounded-full bg-muted px-2.5 py-1">
                   SKU: {displayCode}
@@ -247,6 +260,8 @@ function normalizeProduct(
       {
         code: product.code,
         connectionType: "FG",
+        color: null,
+        diameter: null,
         currency: "TRY",
         grit: null,
         id: product.id,
@@ -271,8 +286,14 @@ function getProductDescription(
   product: PublicCatalogProduct | PricedCatalogProduct
 ) {
   const description = product.description ? stripHtml(product.description) : "";
+  const normalizedDescription = normalizeText(description);
+  const normalizedName = normalizeText(product.name);
 
-  if (description) {
+  if (
+    description &&
+    normalizedDescription !== normalizedName &&
+    !normalizedDescription.startsWith(normalizedName)
+  ) {
     return description.slice(0, 132);
   }
 
@@ -280,7 +301,69 @@ function getProductDescription(
     return `${product.usageArea} kullanımı için katalogda yer alan profesyonel dental ürün.`;
   }
 
-  return "DENTech Medikal kataloğunda yer alan profesyonel dental ürün.";
+  return `${product.category?.name ?? "JOTA Frezler"} kategorisinde listelenen profesyonel dental ürün.`;
+}
+
+function getVariantChips(
+  variants: Array<PublicCatalogVariant | PricedCatalogVariant>
+) {
+  const seen = new Set<string>();
+  const chips: Array<{ label: string; variantId: string }> = [];
+
+  for (const variant of variants) {
+    for (const label of getVariantLabels(variant)) {
+      const key = normalizeText(label);
+
+      if (seen.has(key)) {
+        continue;
+      }
+
+      seen.add(key);
+      chips.push({ label, variantId: variant.id });
+
+      if (chips.length >= 5) {
+        return chips;
+      }
+    }
+  }
+
+  return chips;
+}
+
+function getVariantLabels(variant: PublicCatalogVariant | PricedCatalogVariant) {
+  const labels = [
+    normalizeHolder(variant.connectionType ?? variant.code),
+    normalizeGritLabel(variant.color ?? variant.grit ?? variant.code),
+    variant.diameter ? `Ø ${variant.diameter}` : getSizeFromCode(variant.code),
+  ];
+
+  return labels.filter((label): label is string => Boolean(label));
+}
+
+function normalizeHolder(value: string) {
+  const match = value.toUpperCase().match(/\b(FG|RA|HP)\b/);
+
+  return match?.[1] ?? null;
+}
+
+function normalizeGritLabel(value: string) {
+  const normalized = normalizeText(value);
+
+  if (normalized.includes("black") || normalized.includes("siyah")) return "Siyah";
+  if (normalized.includes("green") || normalized.includes("yesil")) return "Yeşil";
+  if (normalized.includes("blue") || normalized.includes("mavi")) return "Mavi";
+  if (normalized.includes("red") || normalized.includes("kirmizi")) return "Kırmızı";
+  if (normalized.includes("yellow") || normalized.includes("sari")) return "Sarı";
+
+  const grit = value.toUpperCase().match(/\b(XC|C|M|F|SF|UF)\b/)?.[1];
+
+  return grit ?? null;
+}
+
+function getSizeFromCode(value: string) {
+  const match = value.match(/(?:^|[.-])(\d{3})(?:$|[.-])/);
+
+  return match ? `Ø ${Number(match[1]) / 10}` : null;
 }
 
 function getDisplayCode(value: string | undefined) {
@@ -295,6 +378,16 @@ function isUuid(value: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
     value
   );
+}
+
+function normalizeText(value: string) {
+  return value
+    .toLocaleLowerCase("tr-TR")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/ı/g, "i")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function parseLegacyPrice(value: string) {

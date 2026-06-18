@@ -32,6 +32,8 @@ export type CatalogCategory = Pick<
 export type PublicCatalogVariant = {
   code: string;
   connectionType: string | null;
+  color: string | null;
+  diameter: number | null;
   grit: string | null;
   id: string;
   imageUrl: string | null;
@@ -79,6 +81,7 @@ export type ProductListResult<TProduct> = {
 type CatalogVariantRow = Pick<
   VariantRow,
   | "connection_type"
+  | "color"
   | "currency"
   | "diameter"
   | "grit"
@@ -425,8 +428,8 @@ async function getListVariantsForProducts(
 ) {
   const supabase = getSupabaseAdminClient();
   const select = includeSensitiveVariantFields
-    ? "id,product_id,variant_code,manufacturer_ref,connection_type,diameter,grit,package_quantity,price,currency,stock_quantity,stock_status,image_url,is_active"
-    : "id,product_id,variant_code,manufacturer_ref,connection_type,diameter,grit,package_quantity,image_url,is_active";
+    ? "id,product_id,variant_code,manufacturer_ref,connection_type,color,diameter,grit,package_quantity,price,currency,stock_quantity,stock_status,image_url,is_active"
+    : "id,product_id,variant_code,manufacturer_ref,connection_type,color,diameter,grit,package_quantity,image_url,is_active";
   const { data, error } = await supabase
     .from("product_variants")
     .select(select)
@@ -443,6 +446,7 @@ async function getListVariantsForProducts(
       Pick<
         CatalogVariantRow,
         | "connection_type"
+        | "color"
         | "diameter"
         | "grit"
         | "id"
@@ -458,6 +462,7 @@ async function getListVariantsForProducts(
   return rows.reduce((variantsByProduct, row) => {
     const normalizedVariant = {
       connection_type: row.connection_type,
+      color: row.color,
       currency: row.currency ?? "TRY",
       diameter: row.diameter,
       grit: row.grit,
@@ -513,6 +518,8 @@ function toPublicVariant(row: CatalogVariantRow): PublicCatalogVariant {
   return {
     code: row.variant_code,
     connectionType: row.connection_type,
+    color: row.color,
+    diameter: row.diameter,
     grit: row.grit,
     id: row.id,
     imageUrl: row.image_url,

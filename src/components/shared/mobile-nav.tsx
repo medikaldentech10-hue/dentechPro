@@ -45,10 +45,7 @@ export function MobileNav({
   const pathname = usePathname();
   const authState = getHeaderAuthState(profile);
   const navItems: MobileNavItem[] =
-    providedNavItems ??
-    (authState.isAuthenticated
-      ? publicNav.filter((item) => item.href !== "/login")
-      : publicNav);
+    providedNavItems ?? publicNav.filter((item) => item.href !== "/login");
   const activeHref = getActiveHref(navItems, pathname);
 
   return (

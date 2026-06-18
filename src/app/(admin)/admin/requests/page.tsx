@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { Eye } from "lucide-react";
 
 import { SurfaceCard } from "@/components/premium/surface-card";
@@ -179,11 +180,18 @@ function RequestFilters({ filters }: { filters: AdminRequestListFilters }) {
 }
 
 function RequestRow({ request }: { request: AdminRequestListItem }) {
+  const detailHref = `/admin/requests/${request.id}`;
+
   return (
-    <div className="grid gap-4 px-4 py-4 text-sm xl:grid-cols-[1.15fr_0.65fr_0.8fr_0.7fr_0.65fr_0.75fr_0.9fr_0.9fr_0.35fr] xl:items-center">
-      <MobileLabel label="Müşteri / Kullanıcı" value={requestOwnerName(request)} />
+    <div className="relative grid gap-4 px-4 py-4 text-sm transition hover:bg-muted/45 xl:grid-cols-[1.35fr_0.65fr_0.8fr_0.7fr_0.55fr_0.75fr_0.85fr_0.85fr_0.35fr] xl:items-center">
+      <Link
+        aria-label="Talep detayını aç"
+        className="absolute inset-0 z-0"
+        href={detailHref}
+      />
+      <MobileLabel label="Müşteri" value={<RequestIdentity request={request} />} />
       <MobileLabel label="Kaynak" value={requestSourceLabel(request.source)} />
-      <div className="flex items-center justify-between gap-3 xl:block">
+      <div className="relative z-10 flex items-center justify-between gap-3 xl:block">
         <span className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground xl:hidden">
           Durum
         </span>
@@ -194,14 +202,42 @@ function RequestRow({ request }: { request: AdminRequestListItem }) {
       <MobileLabel label="Oluşturan" value={request.requester?.full_name ?? "-"} />
       <MobileLabel label="Oluşturma" value={formatDate(request.created_at)} />
       <MobileLabel label="Güncelleme" value={formatDate(request.updated_at)} />
-      <Link
-        aria-label="Talep detayını aç"
-        className="inline-flex size-9 items-center justify-center rounded-lg border border-border/70 bg-background/60 text-muted-foreground transition hover:bg-muted hover:text-foreground"
-        href={`/admin/requests/${request.id}`}
-      >
+      <span className="relative z-10 inline-flex size-9 items-center justify-center rounded-lg border border-border/70 bg-background/60 text-muted-foreground">
         <Eye />
-      </Link>
+      </span>
     </div>
+  );
+}
+
+function RequestIdentity({ request }: { request: AdminRequestListItem }) {
+  const companyName = request.customer?.company_name?.trim();
+  const customerName = request.customer?.name?.trim();
+  const fallbackName =
+    request.requester?.full_name?.trim() || request.requester?.email?.trim() || "-";
+  const primary = companyName || customerName || fallbackName;
+  const secondary =
+    companyName && customerName && companyName !== customerName ? customerName : null;
+  const contact = [request.customer?.phone, request.customer?.email]
+    .filter(Boolean)
+    .join(" · ");
+
+  return (
+    <span className="block min-w-0 text-right xl:text-left">
+      <span className="block truncate font-semibold text-foreground">{primary}</span>
+      {secondary ? (
+        <span className="mt-0.5 block truncate text-xs font-normal text-muted-foreground">
+          {secondary}
+        </span>
+      ) : null}
+      {contact ? (
+        <span className="mt-0.5 block truncate text-xs font-normal text-muted-foreground">
+          {contact}
+        </span>
+      ) : null}
+      <span className="mt-0.5 block truncate text-[11px] font-normal text-muted-foreground/75">
+        Talep: {request.id.slice(0, 8)}
+      </span>
+    </span>
   );
 }
 
@@ -231,25 +267,15 @@ function MobileLabel({
   value,
 }: {
   label: string;
-  value: string;
+  value: ReactNode;
 }) {
   return (
-    <div className="flex items-center justify-between gap-3 xl:block">
+    <div className="relative z-10 flex items-center justify-between gap-3 xl:block">
       <span className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground xl:hidden">
         {label}
       </span>
       <span className="min-w-0 text-right font-medium xl:text-left">{value}</span>
     </div>
-  );
-}
-
-function requestOwnerName(request: AdminRequestListItem) {
-  return (
-    request.customer?.company_name ||
-    request.customer?.name ||
-    request.requester?.full_name ||
-    request.requester?.email ||
-    "-"
   );
 }
 
