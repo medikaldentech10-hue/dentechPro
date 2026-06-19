@@ -1,6 +1,7 @@
 import "server-only";
 
 import { canViewPrices } from "@/lib/auth";
+import { interpretCatalogQueryLocal } from "@/lib/search-interpretation";
 import { getSupabaseAdminClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/database.types";
 import type { Profile } from "@/lib/types/auth";
@@ -131,32 +132,12 @@ type CatalogSearch = {
   variantTerms: string[];
 };
 
-export type CatalogQueryCriterion = {
-  label: string;
-  searchTerms: string[];
-  type: "holder" | "color" | "diameter" | "usage";
-  value: string;
-};
-
 export function getCanViewPrices(profile: Profile | null) {
   return canViewPrices(profile);
 }
 
 export function interpretCatalogQuery(query: string | undefined) {
-  if (!query?.trim()) {
-    return [];
-  }
-
-  const normalizedQuery = normalizeSearchText(query);
-  const terms = splitSearchTerms(normalizedQuery);
-  const criteria: CatalogQueryCriterion[] = [];
-
-  addUniqueCriteria(criteria, getHolderCriteria(terms));
-  addUniqueCriteria(criteria, getColorCriteria(terms));
-  addUniqueCriteria(criteria, getDiameterCriteria(terms));
-  addUniqueCriteria(criteria, getUsageCriteria(terms, normalizedQuery));
-
-  return criteria;
+  return interpretCatalogQueryLocal(query);
 }
 
 export async function getCatalogCategories() {
@@ -712,7 +693,7 @@ function buildCatalogSearch(rawQuery: string): CatalogSearch {
   const raw = rawQuery.trim();
   const normalizedRaw = normalizeSearchText(raw);
   const baseTerms = splitSearchTerms(normalizedRaw);
-  const interpretedTerms = interpretCatalogQuery(raw).flatMap(
+  const interpretedTerms = interpretCatalogQueryLocal(raw).flatMap(
     (criterion) => criterion.searchTerms
   );
   const expandedTerms = uniqueStrings([
@@ -741,185 +722,6 @@ function isHolderTerm(term: string) {
   const normalized = term.toLocaleUpperCase("tr-TR");
 
   return normalized === "FG" || normalized === "RA" || normalized === "HP";
-}
-
-function addUniqueCriteria(
-  currentCriteria: CatalogQueryCriterion[],
-  nextCriteria: CatalogQueryCriterion[]
-) {
-  const existingKeys = new Set(
-    currentCriteria.map((criterion) => `${criterion.type}:${criterion.value}`)
-  );
-
-  for (const criterion of nextCriteria) {
-    const key = `${criterion.type}:${criterion.value}`;
-
-    if (existingKeys.has(key)) {
-      continue;
-    }
-
-    currentCriteria.push(criterion);
-    existingKeys.add(key);
-  }
-}
-
-function getHolderCriteria(terms: string[]): CatalogQueryCriterion[] {
-  return terms
-    .map((term) => term.toLocaleUpperCase("tr-TR"))
-    .filter((term) => term === "FG" || term === "RA" || term === "HP")
-    .map((holder) => ({
-      label: holder,
-      searchTerms: [holder],
-      type: "holder" as const,
-      value: holder,
-    }));
-}
-
-function getColorCriteria(terms: string[]): CatalogQueryCriterion[] {
-  const colorMap: Record<string, Omit<CatalogQueryCriterion, "type">> = {
-    black: {
-      label: "Siyah",
-      searchTerms: ["siyah", "black"],
-      value: "siyah",
-    },
-    blue: {
-      label: "Mavi",
-      searchTerms: ["mavi", "blue"],
-      value: "mavi",
-    },
-    green: {
-      label: "Yeşil",
-      searchTerms: ["yeşil", "yesil", "green"],
-      value: "yesil",
-    },
-    kirmizi: {
-      label: "Kırmızı",
-      searchTerms: ["kırmızı", "kirmizi", "red"],
-      value: "kirmizi",
-    },
-    mavi: {
-      label: "Mavi",
-      searchTerms: ["mavi", "blue"],
-      value: "mavi",
-    },
-    red: {
-      label: "Kırmızı",
-      searchTerms: ["kırmızı", "kirmizi", "red"],
-      value: "kirmizi",
-    },
-    sari: {
-      label: "Sarı",
-      searchTerms: ["sarı", "sari", "yellow"],
-      value: "sari",
-    },
-    siyah: {
-      label: "Siyah",
-      searchTerms: ["siyah", "black"],
-      value: "siyah",
-    },
-    yellow: {
-      label: "Sarı",
-      searchTerms: ["sarı", "sari", "yellow"],
-      value: "sari",
-    },
-    yesil: {
-      label: "Yeşil",
-      searchTerms: ["yeşil", "yesil", "green"],
-      value: "yesil",
-    },
-  };
-
-  return terms
-    .map((term) => colorMap[normalizeSearchText(term)])
-    .filter((criterion): criterion is Omit<CatalogQueryCriterion, "type"> =>
-      Boolean(criterion)
-    )
-    .map((criterion) => ({ ...criterion, type: "color" as const }));
-}
-
-function getDiameterCriteria(terms: string[]): CatalogQueryCriterion[] {
-  return uniqueStrings(
-    terms
-      .map((term) => term.replace(/[^\d]/g, ""))
-      .filter((term) => /^0\d{2}$/.test(term))
-  )
-    .filter((term) => {
-      const numeric = Number(term);
-
-      return numeric >= 10 && numeric <= 18;
-    })
-    .map((diameter) => ({
-      label: diameter,
-      searchTerms: [diameter, String(Number(diameter) / 10)],
-      type: "diameter" as const,
-      value: diameter,
-    }));
-}
-
-function getUsageCriteria(
-  terms: string[],
-  normalizedQuery: string
-): CatalogQueryCriterion[] {
-  const joinedQuery = ` ${normalizedQuery} `;
-  const usageRules: Array<{
-    label: string;
-    match: string[];
-    searchTerms: string[];
-    value: string;
-  }> = [
-    {
-      label: "Zirkonya",
-      match: ["zirkonya", "zirkon", "zirconia"],
-      searchTerms: ["zirkonya", "zirkon", "zirconia"],
-      value: "zirkonya",
-    },
-    {
-      label: "Polisaj",
-      match: ["polisaj", "cilalama", "polish", "polisher"],
-      searchTerms: ["polisaj", "cilalama", "polish", "polisher"],
-      value: "polisaj",
-    },
-    {
-      label: "Kompozit",
-      match: ["kompozit", "composite"],
-      searchTerms: ["kompozit", "composite"],
-      value: "kompozit",
-    },
-    {
-      label: "Karbit",
-      match: ["karbit", "carbide"],
-      searchTerms: ["karbit", "carbide"],
-      value: "karbit",
-    },
-    {
-      label: "Elmas",
-      match: ["elmas", "diamond"],
-      searchTerms: ["elmas", "diamond"],
-      value: "elmas",
-    },
-    {
-      label: "Set",
-      match: ["set", "paket", "kit"],
-      searchTerms: ["set", "paket", "kit"],
-      value: "set",
-    },
-  ];
-
-  return usageRules
-    .filter((rule) =>
-      rule.match.some(
-        (match) =>
-          terms.includes(match) ||
-          joinedQuery.includes(` ${match} `) ||
-          normalizedQuery.includes(`${match} frez`)
-      )
-    )
-    .map((rule) => ({
-      label: rule.label,
-      searchTerms: rule.searchTerms,
-      type: "usage" as const,
-      value: rule.value,
-    }));
 }
 
 function getSearchSynonyms(term: string) {
