@@ -13,6 +13,7 @@ import {
   getCatalogCategories,
   getCatalogUsageAreas,
   getPricedProductsForProfile,
+  interpretCatalogQuery,
   type ProductFilters,
 } from "@/lib/products";
 import { cn } from "@/lib/utils";
@@ -92,6 +93,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
     hasPriceAccess && params.min_price ? `Min: ₺${params.min_price}` : null,
     hasPriceAccess && params.max_price ? `Max: ₺${params.max_price}` : null,
   ].filter((label): label is string => Boolean(label));
+  const interpretedCriteria = interpretCatalogQuery(params.q);
 
   return (
     <div className="mx-auto flex w-full max-w-[1320px] flex-col gap-6 px-4 py-6 md:px-6 md:py-8">
@@ -203,15 +205,37 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
         </div>
         {hasActiveFilters ? (
           <div className="flex flex-col gap-2 rounded-2xl border border-border/60 bg-card/60 px-3 py-3 shadow-sm backdrop-blur md:flex-row md:items-center md:justify-between">
-            <div className="flex flex-wrap gap-2">
-              {activeFilterLabels.map((label) => (
-                <span
-                  className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium text-primary"
-                  key={label}
-                >
-                  {label}
-                </span>
-              ))}
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-wrap gap-2">
+                {activeFilterLabels.map((label) => (
+                  <span
+                    className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium text-primary"
+                    key={label}
+                  >
+                    {label}
+                  </span>
+                ))}
+              </div>
+              {interpretedCriteria.length ? (
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <span className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                    Akıllı arama
+                  </span>
+                  <div className="flex flex-wrap gap-2">
+                    <span className="text-xs text-muted-foreground">
+                      Aramanızdan algılanan kriterler:
+                    </span>
+                    {interpretedCriteria.map((criterion) => (
+                      <span
+                        className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-primary"
+                        key={`${criterion.type}-${criterion.value}`}
+                      >
+                        {criterion.label}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
             </div>
             <Link
               className={cn(
