@@ -50,6 +50,7 @@ export const adminNav = [
   { href: "/admin/products", label: "Ürünler", icon: PackageSearch },
   { href: "/admin/requests", label: "Talepler", icon: ShoppingBag },
   { href: "/admin/customers", label: "Müşteriler", icon: Users },
+  { href: "/admin/search-logs", label: "Arama Logları", icon: Search },
 ];
 
 export const mainCategories = [

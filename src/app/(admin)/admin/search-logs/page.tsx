@@ -1,0 +1,232 @@
+import Link from "next/link";
+import type { ReactNode } from "react";
+
+import { SurfaceCard } from "@/components/premium/surface-card";
+import { EmptyState } from "@/components/shared/empty-state";
+import { PageTitle } from "@/components/shared/page-title";
+import { Badge } from "@/components/ui/badge";
+import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  getAdminSearchLogAnalytics,
+  type SearchLogEntry,
+  type SearchTermSummary,
+} from "@/lib/search-logs";
+
+export const dynamic = "force-dynamic";
+
+export default async function AdminSearchLogsPage() {
+  const analytics = await getAdminSearchLogAnalytics();
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+        <PageTitle
+          description="Katalog aramalarını, sonuçsuz sorguları ve en çok aranan terimleri takip edin."
+          title="Arama Logları"
+        />
+        <Link className="text-sm font-medium text-primary hover:underline" href="/admin">
+          Admin paneline dön
+        </Link>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <SummaryCard
+          label="Kayıtlı Arama"
+          value={formatNumber(analytics.totalLoggedSearches)}
+        />
+        <SummaryCard
+          label="Ortalama Sonuç"
+          value={formatNumber(analytics.averageResultCount)}
+        />
+        <SummaryCard
+          label="Sonuçsuz Arama"
+          value={formatNumber(analytics.noResultSearches.length)}
+        />
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-[1.35fr_0.85fr]">
+        <LatestSearchesCard searches={analytics.latestSearches} />
+        <div className="grid gap-4">
+          <TopSearchesCard searches={analytics.topSearches} />
+          <NoResultSearchesCard searches={analytics.noResultSearches} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SummaryCard({ label, value }: { label: string; value: string }) {
+  return (
+    <SurfaceCard>
+      <CardContent className="p-5">
+        <p className="text-sm text-muted-foreground">{label}</p>
+        <p className="mt-2 text-3xl font-semibold tracking-tight">{value}</p>
+      </CardContent>
+    </SurfaceCard>
+  );
+}
+
+function LatestSearchesCard({ searches }: { searches: SearchLogEntry[] }) {
+  return (
+    <SurfaceCard className="overflow-hidden">
+      <CardHeader>
+        <CardTitle>Son Aramalar</CardTitle>
+      </CardHeader>
+      <CardContent className="p-0">
+        {searches.length ? (
+          <div className="divide-y divide-border/60">
+            {searches.map((search) => (
+              <SearchRow key={search.id} search={search} />
+            ))}
+          </div>
+        ) : (
+          <div className="p-6">
+            <EmptyState
+              description="Katalogda arama yapıldığında güvenli arama metrikleri burada görünür."
+              title="Henüz arama logu yok"
+            />
+          </div>
+        )}
+      </CardContent>
+    </SurfaceCard>
+  );
+}
+
+function SearchRow({ search }: { search: SearchLogEntry }) {
+  const chipLabels = getChipLabels(search);
+
+  return (
+    <div className="grid gap-3 px-4 py-4 text-sm md:grid-cols-[1fr_0.6fr_0.5fr_0.65fr] md:items-center">
+      <div className="min-w-0">
+        <p className="truncate font-semibold text-foreground">{search.query}</p>
+        {chipLabels.length ? (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {chipLabels.map((chip) => (
+              <Badge
+                className="border-primary/20 bg-primary/10 text-primary"
+                key={chip}
+                variant="outline"
+              >
+                {chip}
+              </Badge>
+            ))}
+          </div>
+        ) : (
+          <p className="mt-1 text-xs text-muted-foreground">Kriter algılanmadı</p>
+        )}
+      </div>
+      <MobileLabel label="Rol" value={roleLabel(search.role)} />
+      <MobileLabel label="Sonuç" value={formatNumber(search.resultCount)} />
+      <MobileLabel label="Tarih" value={formatDate(search.createdAt)} />
+    </div>
+  );
+}
+
+function TopSearchesCard({ searches }: { searches: SearchTermSummary[] }) {
+  return (
+    <SurfaceCard>
+      <CardHeader>
+        <CardTitle>En Çok Arananlar</CardTitle>
+      </CardHeader>
+      <CardContent className="grid gap-3">
+        {searches.length ? (
+          searches.map((search) => (
+            <div
+              className="flex items-center justify-between gap-3 rounded-xl border border-border/70 bg-background/60 p-3"
+              key={search.query}
+            >
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold">{search.query}</p>
+                <p className="text-xs text-muted-foreground">
+                  Ortalama {formatNumber(search.averageResultCount)} sonuç
+                </p>
+              </div>
+              <Badge variant="outline">{search.count}</Badge>
+            </div>
+          ))
+        ) : (
+          <EmptyListText>Henüz yeterli arama yok.</EmptyListText>
+        )}
+      </CardContent>
+    </SurfaceCard>
+  );
+}
+
+function NoResultSearchesCard({ searches }: { searches: SearchLogEntry[] }) {
+  return (
+    <SurfaceCard>
+      <CardHeader>
+        <CardTitle>Sonuçsuz Aramalar</CardTitle>
+      </CardHeader>
+      <CardContent className="grid gap-3">
+        {searches.length ? (
+          searches.map((search) => (
+            <div
+              className="rounded-xl border border-border/70 bg-background/60 p-3"
+              key={search.id}
+            >
+              <p className="truncate text-sm font-semibold">{search.query}</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {formatDate(search.createdAt)} · {roleLabel(search.role)}
+              </p>
+            </div>
+          ))
+        ) : (
+          <EmptyListText>Sonuçsuz arama bulunmuyor.</EmptyListText>
+        )}
+      </CardContent>
+    </SurfaceCard>
+  );
+}
+
+function MobileLabel({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between gap-3 md:block">
+      <span className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground md:hidden">
+        {label}
+      </span>
+      <span className="text-right font-medium md:text-left">{value}</span>
+    </div>
+  );
+}
+
+function EmptyListText({ children }: { children: ReactNode }) {
+  return <p className="text-sm text-muted-foreground">{children}</p>;
+}
+
+function getChipLabels(search: SearchLogEntry) {
+  const chipLabels = search.tokens.chips.map((chip) => chip.label);
+  const categoryLabels = search.tokens.category.map((category) =>
+    category.replace(/\b\w/g, (letter) => letter.toLocaleUpperCase("tr-TR"))
+  );
+
+  return [...new Set([...chipLabels, ...categoryLabels])].slice(0, 8);
+}
+
+function roleLabel(role: SearchLogEntry["role"]) {
+  const labels: Record<SearchLogEntry["role"], string> = {
+    admin: "Admin",
+    approved_doctor: "Onaylı Hekim",
+    approved_lab: "Onaylı Lab",
+    approved_vet: "Onaylı Vet",
+    pending_user: "Onay Bekliyor",
+    public: "Ziyaretçi",
+    sales_rep: "Saha",
+    suspended_user: "Askıda",
+  };
+
+  return labels[role];
+}
+
+function formatNumber(value: number) {
+  return new Intl.NumberFormat("tr-TR", {
+    maximumFractionDigits: 1,
+  }).format(value);
+}
+
+function formatDate(value: string) {
+  return new Intl.DateTimeFormat("tr-TR", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(value));
+}

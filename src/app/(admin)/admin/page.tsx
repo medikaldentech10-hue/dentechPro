@@ -38,6 +38,7 @@ export default async function AdminPage() {
           <AdminLink href="/admin/users">Kullanıcılar</AdminLink>
           <AdminLink href="/admin/requests">Talepler</AdminLink>
           <AdminLink href="/admin/customers">Müşteriler</AdminLink>
+          <AdminLink href="/admin/search-logs">Arama Logları</AdminLink>
         </div>
       </div>
 

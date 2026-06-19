@@ -16,6 +16,7 @@ import {
   interpretCatalogQuery,
   type ProductFilters,
 } from "@/lib/products";
+import { recordCatalogSearch } from "@/lib/search-logs";
 import { cn } from "@/lib/utils";
 
 type ProductsSearchParams = {
@@ -66,6 +67,11 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
     getCatalogUsageAreas(),
     getPricedProductsForProfile(profile, filters),
   ]);
+  await recordCatalogSearch({
+    profile,
+    query: params.q,
+    resultCount: productResult.totalCount,
+  });
   const products = productResult.products;
   const priceVisibility = hasPriceAccess
     ? "approved"
