@@ -237,6 +237,11 @@ async function ensureCategoryIds() {
       sort_order: 106,
     },
     {
+      name: "Setler / Paketler",
+      slug: "setler-paketler",
+      sort_order: 107,
+    },
+    {
       name: "Diğer Ürünler",
       slug: "diger-urunler",
       sort_order: 199,
@@ -382,6 +387,13 @@ async function getProductCountsByCategory() {
 function mapJotaCategorySlug(...values) {
   const normalized = normalizeText(values.filter(Boolean).join(" "));
 
+  if (
+    normalized.includes("set") ||
+    normalized.includes("kit") ||
+    normalized.includes("paket")
+  ) {
+    return "setler-paketler";
+  }
   if (normalized.includes("karbit") || normalized.includes("carbide")) {
     return "karbit-frezler";
   }
@@ -413,6 +425,9 @@ function mapJotaCategorySlug(...values) {
     normalized.includes("parlat")
   ) {
     return "cilalama-frezleri";
+  }
+  if (normalized.includes("cerrahi")) {
+    return "karbit-frezler";
   }
 
   return "diger-urunler";

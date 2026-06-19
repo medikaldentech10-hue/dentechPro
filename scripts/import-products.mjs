@@ -114,6 +114,8 @@ async function readIkasCsv(filePath) {
         "kategori adi",
         "kategori adı",
         "category name",
+        "categories",
+        "kategoriler",
       ]) || "Diğer Ürünler";
     const categorySlug = normalizeCategory(categories, {
       categoryName: rawCategory,
@@ -137,14 +139,17 @@ async function readIkasCsv(filePath) {
       brand,
       category_slug: categorySlug,
       description: getValue(row, ["description", "aciklama", "açıklama"]),
-      image_url: getValue(row, [
-        "image",
-        "image url",
-        "image_url",
-        "gorsel",
-        "görsel",
-        "resim",
-      ]),
+      image_url: normalizeImageUrl(
+        getValue(row, [
+          "image",
+          "image url",
+          "image_url",
+          "resim url",
+          "gorsel",
+          "görsel",
+          "resim",
+        ])
+      ),
       is_active: parseActive(getValue(row, ["active", "aktif", "status", "durum"])),
       product_group_code: productGroupCode,
       product_name: productName || variantName || sku,
@@ -156,14 +161,17 @@ async function readIkasCsv(filePath) {
       brand,
       category_slug: categorySlug,
       description: getValue(row, ["description", "aciklama", "açıklama"]),
-      image_url: getValue(row, [
-        "image",
-        "image url",
-        "image_url",
-        "gorsel",
-        "görsel",
-        "resim",
-      ]),
+      image_url: normalizeImageUrl(
+        getValue(row, [
+          "image",
+          "image url",
+          "image_url",
+          "resim url",
+          "gorsel",
+          "görsel",
+          "resim",
+        ])
+      ),
       is_active: parseActive(getValue(row, ["active", "aktif", "status", "durum"])),
       product_name: productName,
       usage_area: getValue(row, ["usage_area", "kullanim alani", "kullanım alanı"]),
@@ -177,13 +185,16 @@ async function readIkasCsv(filePath) {
       currency: getValue(row, ["currency", "para birimi"]) || "TRY",
       diameter: variantAttributes.diameter,
       grit: variantAttributes.grit,
-      image_url: getValue(row, [
-        "variant image",
-        "variant_image",
-        "image",
-        "image url",
-        "image_url",
-      ]),
+      image_url: normalizeImageUrl(
+        getValue(row, [
+          "variant image",
+          "variant_image",
+          "image",
+          "image url",
+          "image_url",
+          "resim url",
+        ])
+      ),
       is_active: parseActive(getValue(row, ["active", "aktif", "status", "durum"])),
       manufacturer_ref: variantName || getValue(row, ["manufacturer_ref", "ref"]),
       price: parseMoney(getValue(row, ["price", "fiyat", "sale price", "satis fiyati"])),
@@ -456,6 +467,13 @@ function normalizeCategory(
 function mapJotaCategorySlug(...values) {
   const normalized = normalizeText(values.filter(Boolean).join(" "));
 
+  if (
+    normalized.includes("set") ||
+    normalized.includes("kit") ||
+    normalized.includes("paket")
+  ) {
+    return "setler-paketler";
+  }
   if (normalized.includes("elmas")) return "elmas-frezler";
   if (normalized.includes("diamond")) return "elmas-frezler";
   if (normalized.includes("karbit") || normalized.includes("carbide")) {
@@ -463,6 +481,7 @@ function mapJotaCategorySlug(...values) {
   }
   if (
     normalized.includes("tas") ||
+    normalized.includes("abraziv") ||
     normalized.includes("asindir") ||
     normalized.includes("abrasive")
   ) {
@@ -478,9 +497,7 @@ function mapJotaCategorySlug(...values) {
   ) {
     return "cilalama-frezleri";
   }
-  if (normalized.includes("set") || normalized.includes("kit")) {
-    return "setler-paketler";
-  }
+  if (normalized.includes("cerrahi")) return "karbit-frezler";
 
   return slugify(values.find(Boolean) || "Diger Urunler");
 }
@@ -510,13 +527,26 @@ function inferVariantAttributes({ productName, row, sku, variantName }) {
   ]);
   const directColor = getValue(row, ["color", "renk"]);
   const directDiameter = getValue(row, ["diameter", "cap", "çap"]);
+  const variantValue1 = getValue(row, [
+    "variant value 1",
+    "variant_value_1",
+    "varyant deger 1",
+    "varyant değer 1",
+  ]);
+  const variantValue2 = getValue(row, [
+    "variant value 2",
+    "variant_value_2",
+    "varyant deger 2",
+    "varyant değer 2",
+  ]);
   const directGrit = getValue(row, ["grit", "kum", "kumlama"]);
+  const variantValues = [variantValue1, variantValue2].filter(Boolean).join(" ");
 
   return {
-    color: normalizeColor(directColor || combined),
+    color: normalizeColor(directColor || variantValues || combined),
     connection_type: normalizeConnectionType(directConnection || combined),
-    diameter: parseDiameter(directDiameter || sku || variantName),
-    grit: normalizeGrit(directGrit || directColor || combined),
+    diameter: parseDiameter(directDiameter || variantValues || sku || variantName),
+    grit: normalizeGrit(directGrit || directColor || variantValues || combined),
   };
 }
 
@@ -707,6 +737,15 @@ function getStockStatus(stockQuantity) {
 
 function getStockStatusForOptionalStock(stockQuantity) {
   return typeof stockQuantity === "number" ? getStockStatus(stockQuantity) : undefined;
+}
+
+function normalizeImageUrl(value) {
+  const firstImageUrl = String(value ?? "")
+    .split(";")
+    .map((item) => item.trim())
+    .find((item) => /^https?:\/\//i.test(item) && !/\.(mp4|mov|webm)(\?|$)/i.test(item));
+
+  return firstImageUrl || undefined;
 }
 
 function slugify(value) {

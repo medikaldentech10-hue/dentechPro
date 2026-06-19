@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { MessageCircle } from "lucide-react";
+import { FileDown, MessageCircle } from "lucide-react";
 
 import {
   updateRequestPaymentInfoAction,
@@ -306,6 +306,13 @@ function RequestSummary({ request }: { request: AdminRequestDetail }) {
         </form>
 
         <div className="grid gap-2">
+          <a
+            className={cn(buttonVariants({ variant: "outline" }), "w-full")}
+            href={`/admin/requests/${request.id}/quote`}
+          >
+            <FileDown data-icon="inline-start" />
+            PDF Teklif İndir
+          </a>
           <a
             className={cn(buttonVariants(), "w-full")}
             href={whatsAppUrl}

@@ -123,6 +123,14 @@ type ProductRowsResult = {
   totalPages: number;
 };
 
+type CatalogSearch = {
+  diameterValues: number[];
+  normalizedTerms: string[];
+  productTerms: string[];
+  raw: string;
+  variantTerms: string[];
+};
+
 export function getCanViewPrices(profile: Profile | null) {
   return canViewPrices(profile);
 }
@@ -210,7 +218,8 @@ async function getProductRows(
   const supabase = getSupabaseAdminClient();
   const normalizedBrand = filters.brand?.trim() || "JOTA";
   const normalizedCategory = filters.category?.trim();
-  const normalizedQuery = filters.query?.trim().toLocaleLowerCase("tr-TR");
+  const normalizedQuery = filters.query?.trim();
+  const search = normalizedQuery ? buildCatalogSearch(normalizedQuery) : null;
   const normalizedUsage = filters.usage?.trim();
   const pageSize = clampInteger(filters.pageSize, 24, 1, 60);
   const page = clampInteger(filters.page, 1, 1, 10_000);
@@ -219,9 +228,12 @@ async function getProductRows(
   const categoryId = normalizedCategory
     ? await getCategoryIdBySlug(normalizedCategory)
     : null;
-  const matchingProductIds = normalizedQuery
-    ? await getMatchingVariantProductIds(normalizedQuery)
-    : [];
+  const [matchingVariantProductIds, matchingCategoryIds] = search
+    ? await Promise.all([
+        getMatchingVariantProductIds(search),
+        getMatchingCategoryIds(search),
+      ])
+    : [[], []];
   const priceFilteredProductIds = options.includeSensitiveVariantFields
     ? await getPriceFilteredProductIds(filters.minPrice, filters.maxPrice)
     : null;
@@ -253,16 +265,25 @@ async function getProductRows(
     query = query.in("id", priceFilteredProductIds);
   }
 
-  if (normalizedQuery) {
-    const escapedQuery = escapeLikePattern(normalizedQuery);
+  if (search) {
     const productSearch = [
-      `product_name.ilike.%${escapedQuery}%`,
-      `product_group_code.ilike.%${escapedQuery}%`,
-      `description.ilike.%${escapedQuery}%`,
-      `usage_area.ilike.%${escapedQuery}%`,
-      ...matchingProductIds.map((id) => `id.eq.${id}`),
+      ...search.productTerms.flatMap((term) => {
+        const escapedTerm = escapeLikePattern(term);
+        return [
+          `product_name.ilike.%${escapedTerm}%`,
+          `product_group_code.ilike.%${escapedTerm}%`,
+          `description.ilike.%${escapedTerm}%`,
+          `usage_area.ilike.%${escapedTerm}%`,
+          `brand.ilike.%${escapedTerm}%`,
+        ];
+      }),
+      ...matchingCategoryIds.map((id) => `category_id.eq.${id}`),
+      ...matchingVariantProductIds.map((id) => `id.eq.${id}`),
     ].join(",");
-    query = query.or(productSearch);
+
+    if (productSearch) {
+      query = query.or(productSearch);
+    }
   }
 
   const { count, data, error } = await query;
@@ -275,7 +296,8 @@ async function getProductRows(
   const variantSummaries = productRows.length
     ? await getListVariantsForProducts(
         productRows.map((row) => row.id),
-        Boolean(options.includeSensitiveVariantFields)
+        Boolean(options.includeSensitiveVariantFields),
+        search
       )
     : new Map<string, CatalogVariantRow[]>();
   const rows = productRows.map((product) => ({
@@ -424,7 +446,8 @@ function normalizeProductRows(rows: unknown[]): ProductQueryRow[] {
 
 async function getListVariantsForProducts(
   productIds: string[],
-  includeSensitiveVariantFields: boolean
+  includeSensitiveVariantFields: boolean,
+  search: CatalogSearch | null = null
 ) {
   const supabase = getSupabaseAdminClient();
   const select = includeSensitiveVariantFields
@@ -459,7 +482,7 @@ async function getListVariantsForProducts(
       >
   >;
 
-  return rows.reduce((variantsByProduct, row) => {
+  const variantsByProduct = rows.reduce((currentVariantsByProduct, row) => {
     const normalizedVariant = {
       connection_type: row.connection_type,
       color: row.color,
@@ -477,11 +500,19 @@ async function getListVariantsForProducts(
       stock_status: row.stock_status ?? "ask_for_stock",
       variant_code: row.variant_code,
     } satisfies CatalogVariantRow;
-    const current = variantsByProduct.get(normalizedVariant.product_id) ?? [];
+    const current = currentVariantsByProduct.get(normalizedVariant.product_id) ?? [];
     current.push(normalizedVariant);
-    variantsByProduct.set(normalizedVariant.product_id, current);
-    return variantsByProduct;
+    currentVariantsByProduct.set(normalizedVariant.product_id, current);
+    return currentVariantsByProduct;
   }, new Map<string, CatalogVariantRow[]>());
+
+  if (search) {
+    for (const [productId, variants] of variantsByProduct) {
+      variantsByProduct.set(productId, sortVariantsBySearchMatch(variants, search));
+    }
+  }
+
+  return variantsByProduct;
 }
 
 function toPublicProduct(row: ProductQueryRow): PublicCatalogProduct {
@@ -570,16 +601,33 @@ async function getCategoryIdBySlug(slug: string) {
   return data?.id ?? null;
 }
 
-async function getMatchingVariantProductIds(searchQuery: string) {
+async function getMatchingVariantProductIds(search: CatalogSearch) {
   const supabase = getSupabaseAdminClient();
-  const escapedQuery = escapeLikePattern(searchQuery);
+  const variantSearch = [
+    ...search.variantTerms.flatMap((term) => {
+      const escapedTerm = escapeLikePattern(term);
+      const upperTerm = term.toLocaleUpperCase("tr-TR");
+      return [
+        `variant_code.ilike.%${escapedTerm}%`,
+        `manufacturer_ref.ilike.%${escapedTerm}%`,
+        `connection_type.eq.${upperTerm}`,
+        `color.ilike.%${escapedTerm}%`,
+        `grit.eq.${upperTerm}`,
+      ];
+    }),
+    ...search.diameterValues.map((diameter) => `diameter.eq.${diameter}`),
+  ].join(",");
+
+  if (!variantSearch) {
+    return [];
+  }
+
   const { data, error } = await supabase
     .from("product_variants")
     .select("product_id")
-    .or(
-      `variant_code.ilike.%${escapedQuery}%,manufacturer_ref.ilike.%${escapedQuery}%`
-    )
-    .limit(200);
+    .eq("is_active", true)
+    .or(variantSearch)
+    .limit(5000);
 
   if (error) {
     throw new Error(error.message);
@@ -588,12 +636,183 @@ async function getMatchingVariantProductIds(searchQuery: string) {
   return [...new Set((data ?? []).map((row) => row.product_id))];
 }
 
+async function getMatchingCategoryIds(search: CatalogSearch) {
+  const supabase = getSupabaseAdminClient();
+  const categorySearch = search.productTerms
+    .flatMap((term) => {
+      const escapedTerm = escapeLikePattern(term);
+      return [`name.ilike.%${escapedTerm}%`, `slug.ilike.%${escapedTerm}%`];
+    })
+    .join(",");
+
+  if (!categorySearch) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from("categories")
+    .select("id")
+    .eq("status", "active")
+    .or(categorySearch)
+    .limit(100);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return [...new Set((data ?? []).map((row) => row.id))];
+}
+
 function getVariantName(row: CatalogVariantRow) {
-  return (
-    [row.connection_type, row.diameter ? `Ø ${row.diameter}` : null, row.grit]
-      .filter(Boolean)
-      .join(" · ") || row.variant_code
+  const label = [
+    row.connection_type,
+    row.color,
+    row.diameter ? `Ø ${row.diameter}` : null,
+    row.grit,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  if (label) {
+    return label;
+  }
+
+  if (row.manufacturer_ref && !isUuid(row.manufacturer_ref)) {
+    return row.manufacturer_ref;
+  }
+
+  return isUuid(row.variant_code) ? "Varyant seçeneği" : row.variant_code;
+}
+
+function buildCatalogSearch(rawQuery: string): CatalogSearch {
+  const raw = rawQuery.trim();
+  const normalizedRaw = normalizeSearchText(raw);
+  const baseTerms = splitSearchTerms(normalizedRaw);
+  const expandedTerms = uniqueStrings([
+    normalizedRaw,
+    ...baseTerms,
+    ...baseTerms.flatMap(getSearchSynonyms),
+    ...getSearchSynonyms(normalizedRaw),
+  ]);
+  const holderTerms = expandedTerms
+    .map((term) => term.toLocaleUpperCase("tr-TR"))
+    .filter((term) => term === "FG" || term === "RA" || term === "HP");
+  const diameterValues = getDiameterSearchValues(expandedTerms);
+
+  return {
+    diameterValues,
+    normalizedTerms: expandedTerms.map(normalizeSearchText),
+    productTerms: uniqueStrings(expandedTerms.filter((term) => !isHolderTerm(term))),
+    raw,
+    variantTerms: uniqueStrings([...expandedTerms, ...holderTerms]),
+  };
+}
+
+function isHolderTerm(term: string) {
+  const normalized = term.toLocaleUpperCase("tr-TR");
+
+  return normalized === "FG" || normalized === "RA" || normalized === "HP";
+}
+
+function getSearchSynonyms(term: string) {
+  const normalized = normalizeSearchText(term);
+  const synonyms: Record<string, string[]> = {
+    black: ["siyah"],
+    blue: ["mavi"],
+    carbide: ["karbit"],
+    cilalama: ["polisaj", "polish", "polisher"],
+    composite: ["kompozit"],
+    diamond: ["elmas"],
+    green: ["yesil", "yeşil"],
+    karbit: ["carbide"],
+    kirmizi: ["kırmızı", "red"],
+    kırmızı: ["kirmizi", "red"],
+    mavi: ["blue"],
+    polisaj: ["cilalama", "polish", "polisher"],
+    red: ["kirmizi", "kırmızı"],
+    sari: ["sarı", "yellow"],
+    sarı: ["sari", "yellow"],
+    set: ["paket", "kit"],
+    siyah: ["black"],
+    yesil: ["yeşil", "green"],
+    yeşil: ["yesil", "green"],
+    yellow: ["sari", "sarı"],
+    zirconia: ["zirkonya", "zirkon"],
+    zirkon: ["zirkonya", "zirconia"],
+    zirkonya: ["zirkon", "zirconia"],
+  };
+
+  return synonyms[normalized] ?? [];
+}
+
+function splitSearchTerms(value: string) {
+  return value
+    .split(/[\s,/.-]+/)
+    .map((term) => term.trim())
+    .filter(Boolean);
+}
+
+function getDiameterSearchValues(terms: string[]) {
+  return uniqueNumbers(
+    terms.flatMap((term) => {
+      const normalized = term.replace(/[^\d]/g, "");
+
+      if (!/^\d{2}$/.test(normalized) && !/^0\d{2}$/.test(normalized)) {
+        return [];
+      }
+
+      const numeric = Number(normalized);
+
+      if (!Number.isFinite(numeric) || numeric <= 0) {
+        return [];
+      }
+
+      return [numeric / 10];
+    })
   );
+}
+
+function sortVariantsBySearchMatch(
+  variants: CatalogVariantRow[],
+  search: CatalogSearch
+) {
+  return [...variants].sort((a, b) => {
+    const scoreDifference =
+      getVariantSearchScore(b, search) - getVariantSearchScore(a, search);
+
+    if (scoreDifference !== 0) {
+      return scoreDifference;
+    }
+
+    return a.variant_code.localeCompare(b.variant_code, "tr-TR");
+  });
+}
+
+function getVariantSearchScore(variant: CatalogVariantRow, search: CatalogSearch) {
+  const haystack = normalizeSearchText(
+    [
+      variant.variant_code,
+      variant.manufacturer_ref,
+      variant.connection_type,
+      variant.color,
+      variant.grit,
+      variant.diameter ? formatDiameterCode(variant.diameter) : null,
+      variant.diameter ? String(variant.diameter) : null,
+    ]
+      .filter(Boolean)
+      .join(" ")
+  );
+  const termScore = search.normalizedTerms.reduce(
+    (score, term) => score + (haystack.includes(term) ? 1 : 0),
+    0
+  );
+  const diameterScore = search.diameterValues.some(
+    (diameter) => variant.diameter === diameter
+  )
+    ? 2
+    : 0;
+
+  return termScore + diameterScore;
 }
 
 function clampInteger(
@@ -623,6 +842,28 @@ function getPriceFilterValue(value: number | string | undefined) {
 
 function escapeLikePattern(value: string) {
   return value.replace(/[%_,]/g, "");
+}
+
+function normalizeSearchText(value: string) {
+  return value
+    .toLocaleLowerCase("tr-TR")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/ı/g, "i")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function uniqueStrings(values: string[]) {
+  return [...new Set(values.map((value) => value.trim()).filter(Boolean))];
+}
+
+function uniqueNumbers(values: number[]) {
+  return [...new Set(values.filter((value) => Number.isFinite(value)))];
+}
+
+function formatDiameterCode(value: number) {
+  return String(Math.round(value * 10)).padStart(3, "0");
 }
 
 function isUuid(value: string) {

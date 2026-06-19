@@ -31,6 +31,21 @@ type ProductsPageProps = {
   searchParams: Promise<ProductsSearchParams>;
 };
 
+const SEARCH_SUGGESTIONS = [
+  "859",
+  "014",
+  "FG",
+  "RA",
+  "mavi",
+  "kırmızı",
+  "zirkonya",
+  "polisaj",
+  "kompozit",
+  "set",
+  "elmas frez",
+  "karbit frez",
+] as const;
+
 export default async function ProductsPage({ searchParams }: ProductsPageProps) {
   const params = await searchParams;
   const profile = await getCurrentProfile();
@@ -162,6 +177,30 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
           ) : null}
           <Button type="submit">Filtrele</Button>
         </form>
+        <div className="flex flex-col gap-2 rounded-2xl border border-border/60 bg-card/55 px-3 py-3 shadow-sm backdrop-blur">
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+              Popüler aramalar
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Ürün kodu, ölçü veya kullanım alanı ile arayın
+            </p>
+          </div>
+          <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0">
+            {SEARCH_SUGGESTIONS.map((suggestion) => (
+              <Link
+                className={cn(
+                  "shrink-0 rounded-full border border-border/70 bg-background/75 px-3 py-1.5 text-xs font-medium text-muted-foreground shadow-sm transition hover:border-primary/35 hover:bg-primary/10 hover:text-primary",
+                  params.q === suggestion && "border-primary/40 bg-primary/12 text-primary"
+                )}
+                href={`/products?q=${encodeURIComponent(suggestion)}`}
+                key={suggestion}
+              >
+                {suggestion}
+              </Link>
+            ))}
+          </div>
+        </div>
         {hasActiveFilters ? (
           <div className="flex flex-col gap-2 rounded-2xl border border-border/60 bg-card/60 px-3 py-3 shadow-sm backdrop-blur md:flex-row md:items-center md:justify-between">
             <div className="flex flex-wrap gap-2">
