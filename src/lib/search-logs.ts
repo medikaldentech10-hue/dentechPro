@@ -27,9 +27,11 @@ export type SearchLogTokenPayload = {
 export type SearchLogEntry = {
   createdAt: string;
   id: string;
+  normalizedQuery: string;
   query: string;
   resultCount: number;
   role: PublicRole;
+  source: string;
   tokens: SearchLogTokenPayload;
   usedAi: boolean;
 };
@@ -52,8 +54,11 @@ type SearchLogRow = {
   created_at?: unknown;
   id?: unknown;
   interpreted_tokens?: unknown;
+  normalized_query?: unknown;
   query?: unknown;
   result_count?: unknown;
+  source?: unknown;
+  user_role?: unknown;
   used_ai?: unknown;
 };
 
@@ -87,11 +92,14 @@ export async function recordCatalogSearch({
     };
     const { error } = await supabase.from("search_logs").insert({
       interpreted_tokens: tokens as unknown as Json,
+      normalized_query: tokens.normalizedQuery,
+      source: "catalog",
+      user_role: tokens.role,
       ...basePayload,
     });
 
     if (error) {
-      if (isMissingInterpretedTokensColumn(error.message)) {
+      if (isMissingSearchLogAnalyticsColumn(error.message)) {
         const { error: fallbackError } = await supabase
           .from("search_logs")
           .insert(basePayload);
@@ -124,11 +132,13 @@ export async function getAdminSearchLogAnalytics(): Promise<SearchLogAnalytics> 
   const supabase = getSupabaseAdminClient();
   const { data, error } = await supabase
     .from("search_logs")
-    .select("id, query, interpreted_tokens, result_count, used_ai, created_at")
+    .select(
+      "id, query, normalized_query, interpreted_tokens, user_role, source, result_count, used_ai, created_at"
+    )
     .order("created_at", { ascending: false })
     .limit(SEARCH_LOG_ANALYTICS_LIMIT);
 
-  if (error && isMissingInterpretedTokensColumn(error.message)) {
+  if (error && isMissingSearchLogAnalyticsColumn(error.message)) {
     const fallbackResult = await supabase
       .from("search_logs")
       .select("id, query, result_count, used_ai, created_at")
@@ -171,10 +181,13 @@ function mapSearchLogAnalytics(rows: SearchLogRow[]): SearchLogAnalytics {
   };
 }
 
-function isMissingInterpretedTokensColumn(message: string) {
+function isMissingSearchLogAnalyticsColumn(message: string) {
   return (
     message.includes("search_logs.interpreted_tokens does not exist") ||
     message.includes("interpreted_tokens") ||
+    message.includes("normalized_query") ||
+    message.includes("user_role") ||
+    message.includes("source") ||
     message.includes("schema cache")
   );
 }
@@ -208,25 +221,40 @@ function getProfileRole(profile: Profile | null): PublicRole {
 }
 
 function mapSearchLogRow(row: SearchLogRow): SearchLogEntry {
-  const tokens = parseTokenPayload(row.interpreted_tokens);
+  const fallbackRole = getPublicRole(row.user_role) ?? "public";
+  const tokens = parseTokenPayload(
+    row.interpreted_tokens,
+    getStringValue(row.normalized_query),
+    fallbackRole
+  );
+  const role = getPublicRole(row.user_role) ?? tokens.role;
 
   return {
     createdAt: getStringValue(row.created_at) ?? new Date(0).toISOString(),
     id: getStringValue(row.id) ?? "",
+    normalizedQuery: getStringValue(row.normalized_query) ?? tokens.normalizedQuery,
     query: getStringValue(row.query) ?? "",
     resultCount: getNumberValue(row.result_count),
-    role: tokens.role,
+    role,
+    source: getStringValue(row.source) ?? "catalog",
     tokens,
     usedAi: row.used_ai === true,
   };
 }
 
-function parseTokenPayload(value: unknown): SearchLogTokenPayload {
+function parseTokenPayload(
+  value: unknown,
+  normalizedQuery: string | null,
+  fallbackRole: PublicRole
+): SearchLogTokenPayload {
   if (!isRecord(value)) {
-    return getEmptyTokenPayload("public");
+    return {
+      ...getEmptyTokenPayload(fallbackRole),
+      normalizedQuery: normalizedQuery ?? "",
+    };
   }
 
-  const role = getPublicRole(value.role);
+  const role = getPublicRole(value.role) ?? fallbackRole;
 
   return {
     category: getStringArray(value.category),
@@ -235,7 +263,8 @@ function parseTokenPayload(value: unknown): SearchLogTokenPayload {
     confidence: getNumberValue(value.confidence),
     diameter: getStringArray(value.diameter),
     holder: getStringArray(value.holder),
-    normalizedQuery: getStringValue(value.normalizedQuery) ?? "",
+    normalizedQuery:
+      getStringValue(value.normalizedQuery) ?? normalizedQuery ?? "",
     role,
     usage: getStringArray(value.usage),
   };
@@ -323,7 +352,7 @@ function getStringArray(value: unknown) {
     : [];
 }
 
-function getPublicRole(value: unknown): PublicRole {
+function getPublicRole(value: unknown): PublicRole | null {
   if (
     value === "admin" ||
     value === "sales_rep" ||
@@ -337,7 +366,7 @@ function getPublicRole(value: unknown): PublicRole {
     return value;
   }
 
-  return "public";
+  return null;
 }
 
 function getStringValue(value: unknown) {

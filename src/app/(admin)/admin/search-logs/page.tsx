@@ -96,9 +96,14 @@ function SearchRow({ search }: { search: SearchLogEntry }) {
   const chipLabels = getChipLabels(search);
 
   return (
-    <div className="grid gap-3 px-4 py-4 text-sm md:grid-cols-[1fr_0.6fr_0.5fr_0.65fr] md:items-center">
+    <div className="grid gap-3 px-4 py-4 text-sm md:grid-cols-[1fr_0.5fr_0.55fr_0.45fr_0.65fr] md:items-center">
       <div className="min-w-0">
         <p className="truncate font-semibold text-foreground">{search.query}</p>
+        {search.normalizedQuery && search.normalizedQuery !== search.query ? (
+          <p className="mt-1 truncate text-xs text-muted-foreground">
+            Normalize: {search.normalizedQuery}
+          </p>
+        ) : null}
         {chipLabels.length ? (
           <div className="mt-2 flex flex-wrap gap-1.5">
             {chipLabels.map((chip) => (
@@ -116,6 +121,7 @@ function SearchRow({ search }: { search: SearchLogEntry }) {
         )}
       </div>
       <MobileLabel label="Rol" value={roleLabel(search.role)} />
+      <MobileLabel label="Kaynak" value={sourceLabel(search.source)} />
       <MobileLabel label="Sonuç" value={formatNumber(search.resultCount)} />
       <MobileLabel label="Tarih" value={formatDate(search.createdAt)} />
     </div>
@@ -216,6 +222,10 @@ function roleLabel(role: SearchLogEntry["role"]) {
   };
 
   return labels[role];
+}
+
+function sourceLabel(source: string) {
+  return source === "catalog" ? "Katalog" : source;
 }
 
 function formatNumber(value: number) {

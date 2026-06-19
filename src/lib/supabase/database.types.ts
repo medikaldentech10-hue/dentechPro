@@ -338,9 +338,40 @@ export type Database = {
         Relationships: [];
       };
       search_logs: {
-        Row: Record<string, unknown>;
-        Insert: Record<string, unknown>;
-        Update: Record<string, unknown>;
+        Row: {
+          id: string;
+          user_id: string | null;
+          query: string;
+          normalized_query: string | null;
+          interpreted_tokens: Json | null;
+          result_count: number;
+          used_ai: boolean;
+          user_role: string | null;
+          source: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id?: string | null;
+          query: string;
+          normalized_query?: string | null;
+          interpreted_tokens?: Json | null;
+          result_count?: number;
+          used_ai?: boolean;
+          user_role?: string | null;
+          source?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          user_id?: string | null;
+          query?: string;
+          normalized_query?: string | null;
+          interpreted_tokens?: Json | null;
+          result_count?: number;
+          used_ai?: boolean;
+          user_role?: string | null;
+          source?: string | null;
+        };
         Relationships: [];
       };
       audit_logs: {
