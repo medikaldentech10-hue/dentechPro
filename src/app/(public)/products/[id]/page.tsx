@@ -255,7 +255,7 @@ function formatPrice(price: number | null, currency: string) {
   return `${new Intl.NumberFormat("tr-TR", {
     currency,
     style: "currency",
-  }).format(price)} + KDV Hariç`;
+  }).format(price)} + KDV`;
 }
 
 function stripHtml(value: string) {

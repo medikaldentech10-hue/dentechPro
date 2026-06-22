@@ -491,7 +491,7 @@ function formatPrice(value: number | null) {
   return `${new Intl.NumberFormat("tr-TR", {
     currency: "TRY",
     style: "currency",
-  }).format(value ?? 0)} + KDV Hariç`;
+  }).format(value ?? 0)} + KDV`;
 }
 
 function formatDate(value: string) {
