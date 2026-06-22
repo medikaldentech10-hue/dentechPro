@@ -1,4 +1,4 @@
-import "server-only";
+﻿import "server-only";
 
 import { canViewPrices } from "@/lib/auth";
 import { interpretCatalogQueryLocal } from "@/lib/search-interpretation";
@@ -536,7 +536,7 @@ function toPublicProduct(row: ProductQueryRow): PublicCatalogProduct {
     id: row.id,
     imageUrl: row.image_url,
     name: row.product_name,
-    status: row.usage_area ?? "JOTA ürün kataloğu",
+    status: row.usage_area ?? "JOTA Ã¼rÃ¼n kataloÄŸu",
     usageArea: row.usage_area,
     variantCount: row.variants.length,
     variants: row.variants.map(toPublicVariant),
@@ -672,11 +672,11 @@ function getVariantName(row: CatalogVariantRow) {
   const label = [
     row.connection_type,
     row.color,
-    row.diameter ? `Ø ${row.diameter}` : null,
+    formatDisplayDiameter(row.diameter),
     row.grit,
   ]
     .filter(Boolean)
-    .join(" · ");
+    .join(" Â· ");
 
   if (label) {
     return label;
@@ -686,7 +686,7 @@ function getVariantName(row: CatalogVariantRow) {
     return row.manufacturer_ref;
   }
 
-  return isUuid(row.variant_code) ? "Varyant seçeneği" : row.variant_code;
+  return isUuid(row.variant_code) ? "Varyant seÃ§eneÄŸi" : row.variant_code;
 }
 
 function buildCatalogSearch(rawQuery: string): CatalogSearch {
@@ -733,20 +733,20 @@ function getSearchSynonyms(term: string) {
     cilalama: ["polisaj", "polish", "polisher"],
     composite: ["kompozit"],
     diamond: ["elmas"],
-    green: ["yesil", "yeşil"],
+    green: ["yesil", "yeÅŸil"],
     karbit: ["carbide"],
-    kirmizi: ["kırmızı", "red"],
-    kırmızı: ["kirmizi", "red"],
+    kirmizi: ["kÄ±rmÄ±zÄ±", "red"],
+    "kÄ±rmÄ±zÄ±": ["kirmizi", "red"],
     mavi: ["blue"],
     polisaj: ["cilalama", "polish", "polisher"],
-    red: ["kirmizi", "kırmızı"],
-    sari: ["sarı", "yellow"],
-    sarı: ["sari", "yellow"],
+    red: ["kirmizi", "kÄ±rmÄ±zÄ±"],
+    sari: ["sarÄ±", "yellow"],
+    "sarÄ±": ["sari", "yellow"],
     set: ["paket", "kit"],
     siyah: ["black"],
-    yesil: ["yeşil", "green"],
-    yeşil: ["yesil", "green"],
-    yellow: ["sari", "sarı"],
+    yesil: ["yeÅŸil", "green"],
+    "yeÅŸil": ["yesil", "green"],
+    yellow: ["sari", "sarÄ±"],
     zirconia: ["zirkonya", "zirkon"],
     zirkon: ["zirkonya", "zirconia"],
     zirkonya: ["zirkon", "zirconia"],
@@ -859,7 +859,7 @@ function normalizeSearchText(value: string) {
     .toLocaleLowerCase("tr-TR")
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
-    .replace(/ı/g, "i")
+    .replace(/Ä±/g, "i")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -874,6 +874,16 @@ function uniqueNumbers(values: number[]) {
 
 function formatDiameterCode(value: number) {
   return String(Math.round(value * 10)).padStart(3, "0");
+}
+
+function formatDisplayDiameter(value: number | null) {
+  if (value === null || !Number.isFinite(value) || value <= 0 || value > 6) {
+    return null;
+  }
+
+  const formatted = Number.isInteger(value) ? String(value) : value.toFixed(1);
+
+  return `Ø ${formatted}`;
 }
 
 function isUuid(value: string) {

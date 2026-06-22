@@ -296,10 +296,11 @@ function getDisplayCode(value: string | undefined) {
 }
 
 function getVariantLabels(variant: PublicCatalogVariant | PricedCatalogVariant) {
+  const diameter = formatDisplayDiameter(variant.diameter);
   const labels = [
     normalizeHolder(variant.connectionType ?? variant.code),
     normalizeGritLabel(variant.color ?? variant.grit ?? variant.code),
-    variant.diameter ? `Ø ${variant.diameter}` : getSizeFromCode(variant.code),
+    diameter ? `Ø ${diameter}` : getSizeFromCode(variant.code),
   ];
 
   return labels.filter((label): label is string => Boolean(label));
@@ -328,7 +329,27 @@ function normalizeGritLabel(value: string) {
 function getSizeFromCode(value: string) {
   const match = value.match(/(?:^|[.-])(\d{3})(?:$|[.-])/);
 
-  return match ? `Ø ${Number(match[1]) / 10}` : null;
+  if (!match || !isValidDiameterCode(match[1])) {
+    return null;
+  }
+
+  const diameter = formatDisplayDiameter(Number(match[1]) / 10);
+
+  return diameter ? `Ø ${diameter}` : null;
+}
+
+function formatDisplayDiameter(value: number | null) {
+  if (value === null || !Number.isFinite(value) || value <= 0 || value > 6) {
+    return null;
+  }
+
+  return Number.isInteger(value) ? String(value) : value.toFixed(1);
+}
+
+function isValidDiameterCode(value: string) {
+  const numeric = Number(value);
+
+  return Number.isInteger(numeric) && numeric >= 1 && numeric <= 60;
 }
 
 function isUuid(value: string) {

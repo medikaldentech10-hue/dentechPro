@@ -42,10 +42,21 @@ export type SearchTermSummary = {
   query: string;
 };
 
+export type SearchTokenSummary = {
+  count: number;
+  label: string;
+  type: string;
+  value: string;
+};
+
 export type SearchLogAnalytics = {
   averageResultCount: number;
   latestSearches: SearchLogEntry[];
+  mostCommonNoResultQuery: SearchTermSummary | null;
+  mostSearchedToken: SearchTokenSummary | null;
   noResultSearches: SearchLogEntry[];
+  searchesToday: number;
+  topTokens: SearchTokenSummary[];
   topSearches: SearchTermSummary[];
   totalLoggedSearches: number;
 };
@@ -163,6 +174,13 @@ export async function getAdminSearchLogAnalytics(): Promise<SearchLogAnalytics> 
 
 function mapSearchLogAnalytics(rows: SearchLogRow[]): SearchLogAnalytics {
   const latestSearches = rows.map(mapSearchLogRow);
+  const noResultSearches = latestSearches
+    .filter((entry) => entry.resultCount === 0)
+    .slice(0, 12);
+  const topTokens = getTopTokens(latestSearches);
+  const noResultQuerySummaries = getTopSearches(
+    latestSearches.filter((entry) => entry.resultCount === 0)
+  );
   const totalResultCount = latestSearches.reduce(
     (sum, entry) => sum + entry.resultCount,
     0
@@ -173,9 +191,11 @@ function mapSearchLogAnalytics(rows: SearchLogRow[]): SearchLogAnalytics {
       ? totalResultCount / latestSearches.length
       : 0,
     latestSearches: latestSearches.slice(0, 40),
-    noResultSearches: latestSearches
-      .filter((entry) => entry.resultCount === 0)
-      .slice(0, 12),
+    mostCommonNoResultQuery: noResultQuerySummaries[0] ?? null,
+    mostSearchedToken: topTokens[0] ?? null,
+    noResultSearches,
+    searchesToday: latestSearches.filter((entry) => isToday(entry.createdAt)).length,
+    topTokens,
     topSearches: getTopSearches(latestSearches),
     totalLoggedSearches: latestSearches.length,
   };
@@ -319,6 +339,79 @@ function getTopSearches(entries: SearchLogEntry[]) {
     }))
     .sort((a, b) => b.count - a.count || a.query.localeCompare(b.query, "tr"))
     .slice(0, 12);
+}
+
+function getTopTokens(entries: SearchLogEntry[]) {
+  const summaries = new Map<
+    string,
+    { count: number; label: string; type: string; value: string }
+  >();
+
+  for (const entry of entries) {
+    const chips = entry.tokens.chips.length
+      ? entry.tokens.chips
+      : getFallbackChips(entry.tokens);
+
+    for (const chip of chips) {
+      const key = `${chip.type}:${normalizeSearchLogTerm(chip.value || chip.label)}`;
+
+      if (!chip.label || !chip.type || !key) {
+        continue;
+      }
+
+      const current = summaries.get(key);
+
+      if (current) {
+        current.count += 1;
+      } else {
+        summaries.set(key, {
+          count: 1,
+          label: chip.label,
+          type: chip.type,
+          value: chip.value,
+        });
+      }
+    }
+  }
+
+  return [...summaries.values()]
+    .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, "tr"))
+    .slice(0, 12);
+}
+
+function getFallbackChips(tokens: SearchLogTokenPayload) {
+  return [
+    ...tokens.holder.map((value) => ({ label: value, type: "holder", value })),
+    ...tokens.color.map((value) => ({ label: value, type: "color", value })),
+    ...tokens.diameter.map((value) => ({
+      label: value,
+      type: "diameter",
+      value,
+    })),
+    ...tokens.usage.map((value) => ({ label: value, type: "usage", value })),
+    ...tokens.category.map((value) => ({
+      label: value,
+      type: "category",
+      value,
+    })),
+  ];
+}
+
+function isToday(value: string) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return false;
+  }
+
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    day: "2-digit",
+    month: "2-digit",
+    timeZone: "Europe/Istanbul",
+    year: "numeric",
+  });
+
+  return formatter.format(date) === formatter.format(new Date());
 }
 
 function normalizeSearchLogTerm(value: string) {

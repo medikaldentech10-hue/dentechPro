@@ -19,7 +19,7 @@ export function ProductImage({ alt, fallback, src }: ProductImageProps) {
     // eslint-disable-next-line @next/next/no-img-element
     <img
       alt={alt}
-      className="h-full w-full object-cover"
+      className="h-full w-full object-contain"
       loading="lazy"
       onError={() => setFailed(true)}
       src={src}

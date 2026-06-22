@@ -114,7 +114,7 @@ export const sampleProducts = [
     category: "Elmas Frezler",
     variant: "Alev, Uzun",
     code: "859L.FG.012",
-    price: "₺275,00 + KDV Hariç",
+    price: "₺275,00 + KDV",
     status: "Preparasyon için sık kullanılan varyant",
   },
   {
@@ -123,7 +123,7 @@ export const sampleProducts = [
     category: "Elmas Frezler",
     variant: "Konik, Yuvarlak Uçlu",
     code: "852.FG.014",
-    price: "₺285,00 + KDV Hariç",
+    price: "₺285,00 + KDV",
     status: "Kuron preparasyonu placeholder",
   },
   {
@@ -132,7 +132,7 @@ export const sampleProducts = [
     category: "Elmas Frezler",
     variant: "Zirkonya düzeltme",
     code: "Z850.FG.016",
-    price: "₺410,00 + KDV Hariç",
+    price: "₺410,00 + KDV",
     status: "Zirkonya polisaj öncesi kullanım",
   },
   {
@@ -141,7 +141,7 @@ export const sampleProducts = [
     category: "Cilalama Frezleri",
     variant: "Orta gren polisaj",
     code: "9805M.RA",
-    price: "₺365,00 + KDV Hariç",
+    price: "₺365,00 + KDV",
     status: "Kompozit cilalama için öneri placeholder",
   },
   {
@@ -150,7 +150,7 @@ export const sampleProducts = [
     category: "Karbit Frezler",
     variant: "Çapraz kesim",
     code: "CQ1.FG.010",
-    price: "₺320,00 + KDV Hariç",
+    price: "₺320,00 + KDV",
     status: "Hızlı ürün arama için örnek kayıt",
   },
 ];
