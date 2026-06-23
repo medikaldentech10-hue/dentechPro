@@ -13,12 +13,12 @@ type AddToRequestFormProps = {
 export function AddToRequestForm({
   disabled = false,
   disabledReason,
-  submitLabel = "Talep Listesine Ekle",
+  submitLabel = "Ekle",
   variantId,
 }: AddToRequestFormProps) {
   if (disabled) {
     return (
-      <Button className="w-full" disabled>
+      <Button className="w-full rounded-full font-semibold shadow-sm" disabled>
         {disabledReason ?? submitLabel}
       </Button>
     );
@@ -27,20 +27,26 @@ export function AddToRequestForm({
   return (
     <form
       action={addToOrderDraftAction}
-      className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-[88px_minmax(0,1fr)]"
+      className="grid min-w-0 grid-cols-[72px_minmax(0,1fr)] gap-2"
     >
       <input name="variant_id" type="hidden" value={variantId} />
       <input
         aria-label="Adet"
-        className="h-10 min-w-0 rounded-lg border border-input bg-background px-3 text-sm"
+        className="h-10 min-w-0 rounded-full border border-input bg-background/80 px-2 text-center text-sm shadow-sm"
         defaultValue={1}
         min={1}
         name="quantity"
         step={1}
         type="number"
       />
-      <Button className="min-w-0 w-full whitespace-normal text-center leading-5" type="submit">
-        <ListPlus data-icon="inline-start" />
+      <Button
+        className="min-w-0 w-full rounded-full px-3 font-semibold shadow-sm"
+        type="submit"
+      >
+        <ListPlus className={submitLabel === "Ekle" ? "hidden sm:block" : ""} data-icon="inline-start" />
+        {submitLabel === "Ekle" ? (
+          <span className="sr-only">Talep Listesine Ekle</span>
+        ) : null}
         {submitLabel}
       </Button>
     </form>

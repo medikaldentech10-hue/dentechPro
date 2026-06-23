@@ -228,8 +228,6 @@ async function getProductRows(
   const normalizedUsage = filters.usage?.trim();
   const pageSize = clampInteger(filters.pageSize, 24, 1, 60);
   const page = clampInteger(filters.page, 1, 1, 10_000);
-  const from = (page - 1) * pageSize;
-  const to = from + pageSize - 1;
   const categoryId = normalizedCategory
     ? await getCategoryIdBySlug(normalizedCategory)
     : null;
@@ -256,7 +254,7 @@ async function getProductRows(
     .eq("is_active", true)
     .eq("brand", normalizedBrand)
     .order("product_name", { ascending: true })
-    .range(from, to);
+    .limit(5000);
 
   if (categoryId) {
     query = query.eq("category_id", categoryId);
@@ -268,27 +266,6 @@ async function getProductRows(
 
   if (priceFilteredProductIds) {
     query = query.in("id", priceFilteredProductIds);
-  }
-
-  if (search) {
-    const productSearch = [
-      ...search.productTerms.flatMap((term) => {
-        const escapedTerm = escapeLikePattern(term);
-        return [
-          `product_name.ilike.%${escapedTerm}%`,
-          `product_group_code.ilike.%${escapedTerm}%`,
-          `description.ilike.%${escapedTerm}%`,
-          `usage_area.ilike.%${escapedTerm}%`,
-          `brand.ilike.%${escapedTerm}%`,
-        ];
-      }),
-      ...matchingCategoryIds.map((id) => `category_id.eq.${id}`),
-      ...matchingVariantProductIds.map((id) => `id.eq.${id}`),
-    ].join(",");
-
-    if (productSearch) {
-      query = query.or(productSearch);
-    }
   }
 
   const { count, data, error } = await query;
@@ -309,8 +286,20 @@ async function getProductRows(
     ...product,
     variants: variantSummaries.get(product.id) ?? [],
   }));
-  const totalCount = count ?? 0;
-  const variantCount = rows.reduce(
+  const searchedRows = search
+    ? rows.filter((row) =>
+        rowMatchesCatalogSearch(row, search, {
+          matchingCategoryIds,
+          matchingVariantProductIds,
+        })
+      )
+    : rows;
+  const groupedRows = groupCatalogProductRows(rows, searchedRows);
+  const totalCount = groupedRows.length;
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize;
+  const paginatedRows = groupedRows.slice(from, to);
+  const variantCount = paginatedRows.reduce(
     (sum, product) => sum + product.variants.length,
     0
   );
@@ -320,17 +309,18 @@ async function getProductRows(
     includeSensitiveVariantFields: Boolean(options.includeSensitiveVariantFields),
     page,
     pageSize,
-    productCount: rows.length,
+    productCount: paginatedRows.length,
+    rawProductCount: count ?? rows.length,
     totalCount,
     variantCount,
   });
 
   return {
-    hasNextPage: to + 1 < totalCount,
+    hasNextPage: to < totalCount,
     hasPreviousPage: page > 1,
     page,
     pageSize,
-    rows,
+    rows: paginatedRows,
     totalCount,
     totalPages: Math.max(1, Math.ceil(totalCount / pageSize)),
   };
@@ -403,15 +393,48 @@ async function getProductRowById(productId: string) {
   }
 
   const row = data ? normalizeProductRows([data])[0] : null;
+  const groupedRow = row ? await getGroupedProductDetailRow(row) : null;
 
   logProductQuery("products.detail", {
     durationMs: Math.round(performance.now() - startedAt),
-    found: Boolean(row),
+    found: Boolean(groupedRow),
     productId,
-    variantCount: row?.variants.length ?? 0,
+    variantCount: groupedRow?.variants.length ?? 0,
   });
 
-  return row;
+  return groupedRow;
+}
+
+async function getGroupedProductDetailRow(row: ProductQueryRow) {
+  const family = getProductFamilyParts(row.product_name);
+
+  if (!family.baseCode || !family.remainder || !row.category_id) {
+    return row;
+  }
+
+  const supabase = getSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("products")
+    .select("*,category:categories(*),variants:product_variants(*)")
+    .eq("is_active", true)
+    .eq("brand", row.brand)
+    .eq("category_id", row.category_id)
+    .ilike("product_name", `%${escapeLikePattern(family.remainder)}%`)
+    .limit(100);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const familyRows = normalizeProductRows(data ?? []).filter(
+    (candidate) => getProductFamilyKey(candidate) === getProductFamilyKey(row)
+  );
+
+  if (familyRows.length <= 1) {
+    return row;
+  }
+
+  return mergeProductFamilyRows(familyRows);
 }
 
 function normalizeListProductRows(rows: unknown[]): Omit<ProductQueryRow, "variants">[] {
@@ -589,6 +612,118 @@ function mapProductListResult<TProduct>(
     totalCount: result.totalCount,
     totalPages: result.totalPages,
   };
+}
+
+function groupCatalogProductRows(
+  allRows: ProductQueryRow[],
+  visibleRows: ProductQueryRow[]
+) {
+  const visibleFamilyKeys = new Set(visibleRows.map(getProductFamilyKey));
+  const groups = allRows.reduce((currentGroups, row) => {
+    const key = getProductFamilyKey(row);
+
+    if (!visibleFamilyKeys.has(key)) {
+      return currentGroups;
+    }
+
+    const current = currentGroups.get(key) ?? [];
+    current.push(row);
+    currentGroups.set(key, current);
+    return currentGroups;
+  }, new Map<string, ProductQueryRow[]>());
+
+  return Array.from(groups.values())
+    .map(mergeProductFamilyRows)
+    .sort((left, right) => left.product_name.localeCompare(right.product_name, "tr-TR"));
+}
+
+function mergeProductFamilyRows(rows: ProductQueryRow[]): ProductQueryRow {
+  const sortedRows = [...rows].sort((left, right) =>
+    left.product_name.localeCompare(right.product_name, "tr-TR")
+  );
+  const canonical =
+    sortedRows.find((row) => isBaseFamilyProductName(row.product_name)) ?? sortedRows[0];
+  const family = getProductFamilyParts(canonical.product_name);
+  const mergedVariants = uniqueVariants(
+    sortedRows.flatMap((row) => row.variants)
+  ).sort((left, right) =>
+    getVariantSortLabel(left).localeCompare(getVariantSortLabel(right), "tr-TR", {
+      numeric: true,
+    })
+  );
+
+  return {
+    ...canonical,
+    description: canonical.description ?? sortedRows.find((row) => row.description)?.description ?? null,
+    image_url: canonical.image_url ?? sortedRows.find((row) => row.image_url)?.image_url ?? null,
+    product_group_code: family.baseCode ?? canonical.product_group_code,
+    product_name: family.displayName ?? canonical.product_name,
+    variants: mergedVariants,
+  };
+}
+
+function uniqueVariants(variants: CatalogVariantRow[]) {
+  const seen = new Set<string>();
+  const unique: CatalogVariantRow[] = [];
+
+  for (const variant of variants) {
+    if (seen.has(variant.id)) {
+      continue;
+    }
+
+    seen.add(variant.id);
+    unique.push(variant);
+  }
+
+  return unique;
+}
+
+function getVariantSortLabel(variant: CatalogVariantRow) {
+  return [
+    variant.connection_type,
+    formatDiameterCode(variant.diameter ?? 0),
+    variant.grit,
+    variant.color,
+    variant.variant_code,
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
+function rowMatchesCatalogSearch(
+  row: ProductQueryRow,
+  search: CatalogSearch,
+  matches: {
+    matchingCategoryIds: string[];
+    matchingVariantProductIds: string[];
+  }
+) {
+  if (
+    (row.category_id && matches.matchingCategoryIds.includes(row.category_id)) ||
+    matches.matchingVariantProductIds.includes(row.id)
+  ) {
+    return true;
+  }
+
+  const productHaystack = normalizeSearchText(
+    [
+      row.product_name,
+      row.product_group_code,
+      row.description,
+      row.usage_area,
+      row.brand,
+      row.category?.name,
+      row.category?.slug,
+    ]
+      .filter(Boolean)
+      .join(" ")
+  );
+
+  if (search.productTerms.some((term) => productHaystack.includes(term))) {
+    return true;
+  }
+
+  return row.variants.some((variant) => getVariantSearchScore(variant, search) > 0);
 }
 
 async function getCategoryIdBySlug(slug: string) {
@@ -823,6 +958,66 @@ function getVariantSearchScore(variant: CatalogVariantRow, search: CatalogSearch
     : 0;
 
   return termScore + diameterScore;
+}
+
+const GROUPABLE_JOTA_SUFFIXES = new Set([
+  "C",
+  "F",
+  "G",
+  "M",
+  "SG",
+  "SF",
+  "UF",
+  "XC",
+]);
+
+function getProductFamilyKey(row: Pick<ProductQueryRow, "brand" | "category_id" | "product_name">) {
+  const family = getProductFamilyParts(row.product_name);
+  const token = family.baseCode ?? normalizeSearchText(row.product_name);
+
+  return [
+    normalizeSearchText(row.brand),
+    row.category_id,
+    token,
+    normalizeSearchText(family.remainder ?? ""),
+  ].join("|");
+}
+
+function getProductFamilyParts(productName: string) {
+  const normalizedName = productName
+    .replace(/\s+/g, " ")
+    .replace(/^JOTA\s+/i, "")
+    .trim();
+  const [firstToken, ...restTokens] = normalizedName.split(" ");
+  const parsedToken = parseGroupableJotaToken(firstToken ?? "");
+  const baseCode = parsedToken?.baseCode ?? firstToken ?? null;
+  const remainder = restTokens.join(" ").trim();
+
+  return {
+    baseCode,
+    displayName: baseCode ? [baseCode, remainder].filter(Boolean).join(" ") : null,
+    remainder,
+  };
+}
+
+function isBaseFamilyProductName(productName: string) {
+  const [firstToken] = productName.replace(/\s+/g, " ").trim().split(" ");
+
+  return Boolean(firstToken && /^\d{3,5}$/.test(firstToken));
+}
+
+function parseGroupableJotaToken(token: string) {
+  const normalized = token.toLocaleUpperCase("tr-TR").trim();
+  const match = normalized.match(/^(\d{3,5})([A-Z]{1,2})$/);
+
+  if (!match || !GROUPABLE_JOTA_SUFFIXES.has(match[2])) {
+    return null;
+  }
+
+  return {
+    baseCode: match[1],
+    suffix: match[2],
+  };
 }
 
 function clampInteger(
