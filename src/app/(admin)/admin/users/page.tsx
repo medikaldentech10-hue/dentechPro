@@ -14,9 +14,6 @@ export default async function AdminUsersPage() {
   const { data: profiles, error } = await supabase
     .from("profiles")
     .select("*")
-    .or(
-      "verification_status.eq.pending,role.eq.pending_user,verification_status.eq.rejected,verification_status.eq.suspended"
-    )
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -26,14 +23,23 @@ export default async function AdminUsersPage() {
   return (
     <div className="flex flex-col gap-6">
       <PageTitle
-        title="Kullanıcı Onayları"
-        description="Yeni kayıt taleplerini inceleyin, kullanıcı rolünü belirleyin ve fiyat görünümünü admin onayıyla açın."
+        title="Kullanıcı Yönetimi"
+        description="Kayıtlı uygulama kullanıcılarını inceleyin, bekleyen başvuruları onaylayın ve rol durumlarını takip edin."
       />
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-5">
+        <ReviewStat label="Toplam" value={profiles.length} />
         <ReviewStat
           label="Bekleyen"
           value={profiles.filter((profile) => isPendingReview(profile)).length}
+        />
+        <ReviewStat
+          label="Onaylı"
+          value={
+            profiles.filter(
+              (profile) => profile.verification_status === "approved"
+            ).length
+          }
         />
         <ReviewStat
           label="Reddedilen"
@@ -101,10 +107,11 @@ export default async function AdminUsersPage() {
               </span>
               <div className="flex max-w-md flex-col gap-1">
                 <h2 className="text-lg font-semibold">
-                  Bekleyen kullanıcı bulunmuyor
+                  Kayıtlı kullanıcı bulunmuyor
                 </h2>
                 <p className="text-sm leading-6 text-muted-foreground">
-                  Yeni kayıt talepleri geldiğinde bu panelde listelenecek.
+                  Yeni hesap başvuruları ve onaylı kullanıcılar bu panelde
+                  listelenecek.
                 </p>
               </div>
             </div>

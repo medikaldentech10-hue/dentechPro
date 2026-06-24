@@ -10,8 +10,8 @@ export default function DashboardPage() {
   return (
     <div className="flex flex-col gap-6">
       <PageTitle
-        title="Müşteri Paneli"
-        description="Onay durumuna göre fiyat görünümü, talep listesi ve JOTA katalog erişimi için placeholder alan."
+        title="Kullanıcı Paneli"
+        description="Onaylı hesaplar için fiyat görünümü, talep listesi ve JOTA katalog erişimi."
       />
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <StatCard

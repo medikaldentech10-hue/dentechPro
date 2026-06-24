@@ -94,6 +94,11 @@ Required Supabase Auth settings:
 - Configure Site URL to the Vercel production URL.
 - Add local and preview URLs to Auth redirect URLs as needed, for example
   `http://localhost:3000` and `https://<preview-domain>`.
+- Email confirmation is disabled for the MVP when immediate login after admin
+  approval is required. In that configuration, a signup confirmation email is
+  not expected to be sent.
+- Configure a custom SMTP provider before relying on production auth emails.
+  Use only real, accessible test email addresses when testing email delivery.
 
 After creating the first user through `/register`, promote that profile to admin
 from the Supabase SQL editor:

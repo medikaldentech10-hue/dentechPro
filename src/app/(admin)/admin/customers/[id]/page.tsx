@@ -40,7 +40,7 @@ export default async function AdminCustomerDetailPage({
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <PageTitle
-          description="Müşteri iletişim bilgileri ve ilgili talep geçmişi."
+          description="Satış/talep akışındaki müşteri kaydı ve ilgili talep geçmişi. Uygulama kullanıcı onayları /admin/users altında yönetilir."
           title={customer.name}
         />
         <Link className="text-sm font-medium text-primary" href="/admin/customers">

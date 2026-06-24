@@ -33,7 +33,7 @@ export default async function AdminCustomersPage({
   return (
     <div className="flex flex-col gap-6">
       <PageTitle
-        description="Saha ve admin talep akışlarında kullanılan müşteri kayıtlarını yönetin."
+        description="Saha ve admin talep akışlarında kullanılan ayrı müşteri kayıtlarını yönetin. Kayıtlı uygulama kullanıcıları /admin/users altında izlenir."
         title="Müşteriler"
       />
 
