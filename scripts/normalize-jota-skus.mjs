@@ -1,9 +1,13 @@
 import { createClient } from "@supabase/supabase-js";
 import fs from "node:fs";
+import path from "node:path";
 
 const GRIT_SUFFIXES = ["SG", "EF", "G", "F"];
 const HOLDER_CODES = new Set(["FG", "RA", "HP", "GFG", "SGFG", "FFG", "EFFG"]);
 const SAMPLE_MODELS = new Set(["801", "801L", "881", "881F", "881SG", "558", "850", "850G", "Z850", "ZR600", "ZIR600"]);
+const REPORT_DIR = path.join(process.cwd(), "scripts", "reports");
+const CONFLICT_REPORT_PATH = path.join(REPORT_DIR, "jota-sku-normalization-conflicts.csv");
+const SKIPPED_REPORT_PATH = path.join(REPORT_DIR, "jota-sku-normalization-skipped.csv");
 
 main().catch((error) => {
   console.error("[sku-normalize] failed", error);
@@ -33,6 +37,7 @@ async function main() {
   );
   const safePlans = [];
   const skippedPlans = [];
+  const conflictPlans = [];
 
   for (const plan of plans) {
     if (!plan.targetSku) {
@@ -49,17 +54,22 @@ async function main() {
     const existingOwner = existingSkuOwners.get(plan.targetSku);
 
     if (duplicateCount > 1) {
-      skippedPlans.push({ ...plan, reason: "duplicate_target_in_batch" });
+      const skippedPlan = { ...plan, reason: "duplicate_target_in_batch" };
+      skippedPlans.push(skippedPlan);
+      conflictPlans.push({ ...skippedPlan, conflictType: "duplicate_target_in_batch" });
       continue;
     }
 
     if (existingOwner && existingOwner !== plan.variantId) {
-      skippedPlans.push({ ...plan, reason: "duplicate_existing_sku" });
+      const skippedPlan = { ...plan, reason: "duplicate_existing_sku" };
+      skippedPlans.push(skippedPlan);
+      conflictPlans.push({ ...skippedPlan, conflictType: "duplicate_existing_sku" });
       continue;
     }
 
     safePlans.push(plan);
   }
+  writeReports({ conflictPlans, skippedPlans });
 
   console.log("\nDentech Pro JOTA SKU normalization");
   console.log("----------------------------------");
@@ -69,6 +79,8 @@ async function main() {
   console.log(`Skipped: ${skippedPlans.length}`);
   console.log(`Duplicate target conflicts: ${countReason(skippedPlans, "duplicate_target_in_batch")}`);
   console.log(`Existing SKU conflicts: ${countReason(skippedPlans, "duplicate_existing_sku")}`);
+  console.log(`Conflict report: ${CONFLICT_REPORT_PATH}`);
+  console.log(`Skipped report: ${SKIPPED_REPORT_PATH}`);
 
   printSamplePlans([...safePlans, ...skippedPlans]);
 
@@ -104,7 +116,7 @@ async function fetchVariants(supabase) {
   const { data, error } = await supabase
     .from("product_variants")
     .select(
-      "id,variant_code,manufacturer_ref,connection_type,diameter,product:products(product_name,brand,product_group_code)"
+      "id,product_id,variant_code,manufacturer_ref,connection_type,diameter,product:products(product_name,brand,product_group_code)"
     )
     .order("variant_code", { ascending: true })
     .limit(5000);
@@ -149,8 +161,14 @@ function buildSkuPlan(variant) {
     diameter,
     holder,
     model: modelInfo.model,
+    productId: variant.product_id ?? "",
     productName,
     reason,
+    sourceFieldsUsed: [
+      parsedRef.model ? "manufacturer_ref.model" : "product_name.model",
+      parsedRef.holder ? "manufacturer_ref.holder" : "connection_type",
+      parsedRef.diameter ? "manufacturer_ref.diameter" : "diameter",
+    ].join("|"),
     targetSku: reason ? "" : `JOT-${modelInfo.model}-${holder}-${diameter}`,
     variantId: variant.id,
   };
@@ -252,8 +270,108 @@ function printSamplePlans(plans) {
   console.log(`- 558 false diameter regression: ${falseDiameter.length ? "FOUND" : "none"}`);
 }
 
+function writeReports({ conflictPlans, skippedPlans }) {
+  fs.mkdirSync(REPORT_DIR, { recursive: true });
+  fs.writeFileSync(
+    CONFLICT_REPORT_PATH,
+    toCsv(
+      conflictPlans.map((plan) => toReportRow(plan, plan.conflictType)),
+      [
+        "target_sku",
+        "conflict_type",
+        "product_id",
+        "product_name",
+        "variant_id",
+        "current_sku",
+        "proposed_sku",
+        "model",
+        "shaft",
+        "diameter",
+        "source_fields_used",
+        "reason",
+        "recommended_fix",
+      ]
+    ),
+    "utf8"
+  );
+  fs.writeFileSync(
+    SKIPPED_REPORT_PATH,
+    toCsv(
+      skippedPlans.map((plan) => toReportRow(plan, plan.reason)),
+      [
+        "target_sku",
+        "conflict_type",
+        "product_id",
+        "product_name",
+        "variant_id",
+        "current_sku",
+        "proposed_sku",
+        "model",
+        "shaft",
+        "diameter",
+        "source_fields_used",
+        "reason",
+        "recommended_fix",
+      ]
+    ),
+    "utf8"
+  );
+}
+
+function toReportRow(plan, conflictType) {
+  return {
+    conflict_type: conflictType,
+    current_sku: plan.currentSku,
+    diameter: plan.diameter,
+    model: plan.model,
+    product_id: plan.productId,
+    product_name: plan.productName,
+    proposed_sku: plan.targetSku,
+    reason: plan.reason,
+    recommended_fix: getRecommendedFix(plan.reason),
+    shaft: plan.holder,
+    source_fields_used: plan.sourceFieldsUsed,
+    target_sku: plan.targetSku,
+    variant_id: plan.variantId,
+  };
+}
+
+function getRecommendedFix(reason) {
+  switch (reason) {
+    case "duplicate_target_in_batch":
+      return "Inspect same proposed SKU rows; confirm true duplicate variant or add a distinguishing source field before apply.";
+    case "duplicate_existing_sku":
+      return "Existing SKU already belongs to another variant; resolve manually before apply.";
+    case "missing_model":
+      return "Add manufacturer_ref or product model code before SKU normalization.";
+    case "missing_holder":
+      return "Confirm holder/shaft as FG, RA, HP, GFG, SGFG, FFG, or EFFG before apply.";
+    case "missing_safe_diameter":
+      return "Confirm explicit diameter/size; do not infer from model number.";
+    case "already_normalized":
+      return "No action needed.";
+    default:
+      return "Review manually before apply.";
+  }
+}
+
 function countReason(plans, reason) {
   return plans.filter((plan) => plan.reason === reason).length;
+}
+
+function toCsv(rows, headers) {
+  return [
+    headers.join(","),
+    ...rows.map((row) => headers.map((header) => csvEscape(row[header])).join(",")),
+  ].join("\n");
+}
+
+function csvEscape(value) {
+  const text = String(value ?? "");
+  if (/[",\n\r]/.test(text)) {
+    return `"${text.replaceAll('"', '""')}"`;
+  }
+  return text;
 }
 
 function normalizeSku(value) {
