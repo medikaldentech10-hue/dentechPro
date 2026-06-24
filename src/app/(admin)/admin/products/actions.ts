@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { refresh, revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { requireAdmin } from "@/lib/auth";
@@ -68,7 +68,7 @@ export async function updateProductAction(formData: FormData) {
     userId: adminProfile.id,
   });
 
-  revalidateProductPaths(productId);
+  revalidateProductPaths(productId, newProduct.product_group_code);
   redirect(`/admin/products/${productId}?status=product-updated`);
 }
 
@@ -111,7 +111,7 @@ export async function toggleProductActiveAction(formData: FormData) {
     userId: adminProfile.id,
   });
 
-  revalidateProductPaths(productId);
+  revalidateProductPaths(productId, newProduct.product_group_code);
   redirect(`/admin/products/${productId}?status=product-status-updated`);
 }
 
@@ -178,7 +178,7 @@ export async function updateVariantAction(formData: FormData) {
     userId: adminProfile.id,
   });
 
-  revalidateProductPaths(productId);
+  await revalidateProductPathsForVariant(productId);
   redirect(`/admin/products/${productId}?status=variant-updated`);
 }
 
@@ -222,7 +222,7 @@ export async function toggleVariantActiveAction(formData: FormData) {
     userId: adminProfile.id,
   });
 
-  revalidateProductPaths(productId);
+  await revalidateProductPathsForVariant(productId);
   redirect(`/admin/products/${productId}?status=variant-status-updated`);
 }
 
@@ -319,11 +319,30 @@ function summarizeChangedFields<T extends Record<string, unknown>>(
   return changes as Json;
 }
 
-function revalidateProductPaths(productId: string) {
+async function revalidateProductPathsForVariant(productId: string) {
+  const supabase = getSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("products")
+    .select("product_group_code")
+    .eq("id", productId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidateProductPaths(productId, data?.product_group_code ?? null);
+}
+
+function revalidateProductPaths(productId: string, productSlug?: string | null) {
   revalidatePath("/admin/products");
   revalidatePath(`/admin/products/${productId}`);
   revalidatePath("/products");
   revalidatePath(`/products/${productId}`);
+  if (productSlug) {
+    revalidatePath(`/products/${productSlug}`);
+  }
+  refresh();
 }
 
 function getRequiredString(formData: FormData, key: string) {

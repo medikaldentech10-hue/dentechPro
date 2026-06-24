@@ -4,10 +4,16 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "audit:images": "node scripts/audit-product-images.mjs",
+    "image:replace:apply": "node scripts/apply-product-image-replacements.mjs --apply",
+    "image:replace:dry": "node scripts/apply-product-image-replacements.mjs",
+    "prioritize:images": "node scripts/prioritize-product-images.mjs",
     "build": "next build",
     "import:ikas": "node scripts/import-products.mjs scripts/data/ikas-urunler.csv",
     "import:products": "node scripts/import-products.mjs",
     "start": "next start",
+    "sku:normalize:apply": "node scripts/normalize-jota-skus.mjs --apply",
+    "sku:normalize:dry": "node scripts/normalize-jota-skus.mjs",
     "lint": "eslint"
   },
   "dependencies": {

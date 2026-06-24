@@ -155,12 +155,14 @@ export default async function AdminProductDetailPage({
             </label>
             <div className="flex flex-col gap-2 sm:flex-row">
               <Button type="submit">Ürünü Kaydet</Button>
-              <ToggleProductForm
-                isActive={!product.isActive}
-                productId={product.id}
-              />
             </div>
           </form>
+          <div className="mt-3">
+            <ToggleProductForm
+              isActive={!product.isActive}
+              productId={product.id}
+            />
+          </div>
         </CardContent>
       </SurfaceCard>
 
@@ -290,13 +292,13 @@ function VariantEditor({
           </label>
           <div className="flex flex-col gap-2 sm:flex-row">
             <Button type="submit">Varyantı Kaydet</Button>
-            <ToggleVariantForm
-              isActive={!variant.is_active}
-              productId={productId}
-              variantId={variant.id}
-            />
           </div>
         </form>
+        <ToggleVariantForm
+          isActive={!variant.is_active}
+          productId={productId}
+          variantId={variant.id}
+        />
       </CardContent>
     </SurfaceCard>
   );

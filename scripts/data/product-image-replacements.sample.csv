@@ -1,0 +1,4 @@
+target_type,product_id,variant_id,family_key,current_image_url,new_image_path_or_url,notes
+product,REPLACE_PRODUCT_ID,,,https://example.com/current-product.webp,/images/products/jota-881-elmas-frez-family.webp,Replace one product image_url after transparent asset is reviewed.
+variant,,REPLACE_VARIANT_ID,,https://example.com/current-variant.webp,/images/products/jota-881-f-red.webp,Use only for visually distinct variant assets.
+family,,,jota-881,https://example.com/current-family.webp,/images/products/jota-881-elmas-frez-family.webp,Updates representative grouped family product only; does not update every variant.
