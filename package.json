@@ -12,6 +12,7 @@
     "import:ikas": "node scripts/import-products.mjs scripts/data/ikas-urunler.csv",
     "import:products": "node scripts/import-products.mjs",
     "start": "next start",
+    "sku:normalize:apply-safe-only": "node scripts/normalize-jota-skus.mjs --apply-safe-only",
     "sku:normalize:apply": "node scripts/normalize-jota-skus.mjs --apply",
     "sku:normalize:dry": "node scripts/normalize-jota-skus.mjs",
     "lint": "eslint"
