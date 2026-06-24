@@ -229,10 +229,20 @@ function parseManufacturerRef(value) {
     return {};
   }
 
+  const numericParts = parts.filter((part) => /^\d{3}$/.test(part));
+  const modelPart = parts.find((part, index) => {
+    if (!/^(?:ZIR|ZR|Z)?[0-9]{3,5}[A-Z]{0,2}$/.test(part)) {
+      return false;
+    }
+
+    const nextPart = parts[index + 1] ?? "";
+    return HOLDER_CODES.has(nextPart) || /^(?:ZIR|ZR|Z)[0-9]{3,5}[A-Z]{0,2}$/.test(part);
+  });
+
   return {
-    diameter: parts.find((part) => /^\d{3}$/.test(part)) ?? "",
+    diameter: numericParts.at(-1) ?? "",
     holder: parts.find((part) => HOLDER_CODES.has(part)) ?? "",
-    model: parts.find((part) => /^(?:ZIR|ZR|Z)?[0-9]{3,5}[A-Z]{0,2}$/.test(part)) ?? "",
+    model: modelPart ?? "",
   };
 }
 
@@ -468,20 +478,37 @@ function writeReports({
 
 function writePreApplyBackup(safePlans) {
   fs.mkdirSync(REPORT_DIR, { recursive: true });
+  const existingRows = fs.existsSync(PRE_APPLY_BACKUP_PATH)
+    ? parseCsv(fs.readFileSync(PRE_APPLY_BACKUP_PATH, "utf8"))
+    : [];
+  const rowsByVariantId = new Map(
+    existingRows
+      .filter((row) => row.variant_id)
+      .map((row) => [row.variant_id, row])
+  );
+
+  for (const plan of safePlans) {
+    if (rowsByVariantId.has(plan.variantId)) {
+      continue;
+    }
+
+    rowsByVariantId.set(plan.variantId, {
+      current_sku: plan.currentSku,
+      diameter: plan.diameter,
+      grit: plan.grit,
+      model: plan.model,
+      product_id: plan.productId,
+      product_name: plan.productName,
+      proposed_sku: plan.targetSku,
+      shaft: plan.shaft,
+      variant_id: plan.variantId,
+    });
+  }
+
   fs.writeFileSync(
     PRE_APPLY_BACKUP_PATH,
     toCsv(
-      safePlans.map((plan) => ({
-        current_sku: plan.currentSku,
-        diameter: plan.diameter,
-        grit: plan.grit,
-        model: plan.model,
-        product_id: plan.productId,
-        product_name: plan.productName,
-        proposed_sku: plan.targetSku,
-        shaft: plan.shaft,
-        variant_id: plan.variantId,
-      })),
+      [...rowsByVariantId.values()],
       [
         "variant_id",
         "product_id",
@@ -496,6 +523,52 @@ function writePreApplyBackup(safePlans) {
     ),
     "utf8"
   );
+}
+
+function parseCsv(contents) {
+  const [headerLine, ...lines] = contents.split(/\r?\n/).filter(Boolean);
+  if (!headerLine) {
+    return [];
+  }
+
+  const headers = parseCsvLine(headerLine);
+  return lines.map((line) => {
+    const values = parseCsvLine(line);
+    return Object.fromEntries(headers.map((header, index) => [header, values[index] ?? ""]));
+  });
+}
+
+function parseCsvLine(line) {
+  const values = [];
+  let current = "";
+  let quoted = false;
+
+  for (let index = 0; index < line.length; index += 1) {
+    const character = line[index];
+    const nextCharacter = line[index + 1];
+
+    if (character === '"' && quoted && nextCharacter === '"') {
+      current += '"';
+      index += 1;
+      continue;
+    }
+
+    if (character === '"') {
+      quoted = !quoted;
+      continue;
+    }
+
+    if (character === "," && !quoted) {
+      values.push(current);
+      current = "";
+      continue;
+    }
+
+    current += character;
+  }
+
+  values.push(current);
+  return values;
 }
 
 function toReportRow(plan, conflictType) {
