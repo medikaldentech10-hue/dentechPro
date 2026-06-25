@@ -11,18 +11,18 @@
 
 ## Dry-run summary
 
-- Variants checked: 321
+- Variants checked: 329
 - Safe proposed changes: 16
-- Skipped rows: 305
+- Skipped rows: 313
 - Remaining duplicate target conflicts: 0
 
 ## Skipped row summary
 
 - missing_holder: 47
 - missing_model: 76
-- duplicate_source_rows: 4
+- duplicate_source_rows: 10
 - seed_import_duplicate: 2
-- already_normalized: 174
+- already_normalized: 176
 - missing_safe_diameter: 2
 
 ## Conflict cause summary
@@ -42,6 +42,12 @@
 - Jota 801 Elmas Frez - Mavi Kuşak (Standard) Yuvarlak (Round) Genel Preparasyon Frezi / f94786d2-6ea6-41bb-9883-c26a0a58ee4b: d03dd80c-2b5d-4897-b6ef-85a7427e3e0f -> JOT-801-FG-014
 - Jota 801 Elmas Frez - Mavi Kuşak (Standard) Yuvarlak (Round) Genel Preparasyon Frezi / b7e9c8e8-9ce6-4a28-91e3-5fef5c3c1671: e30455b1-1090-49ba-a9a6-b29179ca3160 -> JOT-801-FG-008
 - Jota 801 Elmas Frez - Mavi Kuşak (Standard) Yuvarlak (Round) Genel Preparasyon Frezi / 5ebe090b-b3c0-4664-8492-88a1ec5ea8da: eea23e94-fe62-4226-97d6-e95ed2c20b00 -> JOT-801-FG-008
+- Jota 801 Elmas Frez - Mavi Kuşak (Standard) Yuvarlak (Round) Genel Preparasyon Frezi / d85f6387-769d-4b7b-8619-8f84698723b0: JOT-801XL-FG-014 -> JOT-801-FG-014
+- Jota 801 Elmas Frez - Mavi Kuşak (Standard) Yuvarlak (Round) Genel Preparasyon Frezi / 6726754d-24ff-408d-950b-04437b05c327: JOT-801XL-FG-018 -> JOT-801-FG-018
+- Jota 833EF Elmas Frez - Sarı Extra İnce Armut / Torpido Elmas Frez / 70b6337a-e80c-425d-bcb4-d9c2a9a9cf35: JOT-833-EFG-023 -> JOT-833-EFFG-023
+- Jota 830EF Elmas Frez - Sarı Extra İnce Alev (Flame) Elmas Frez / e81d267f-b278-4f0b-afb4-ef26cfa72a0b: JOT-83O-EFFG-018 -> JOT-830-EFFG-018
+- Jota 830EF Elmas Frez - Sarı Extra İnce Alev (Flame) Elmas Frez / f0e81071-c28c-4be2-aa58-69ef96ef10db: JOT-83O-EFFG-021 -> JOT-830-EFFG-021
+- Jota 830EF Elmas Frez - Sarı Extra İnce Alev (Flame) Elmas Frez / 16d83a4c-3d65-4fd1-864d-59dee797c819: JOT-83O-EFFG-023 -> JOT-830-EFFG-023
 
 ## Seed/import overlap examples
 

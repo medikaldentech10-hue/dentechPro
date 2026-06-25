@@ -50,6 +50,45 @@ The seed import is treated as the source of truth for the product and variant
 fields handled by `scripts/import-products.mjs`. Manual admin edits to those
 same fields can be overwritten when the import is re-run.
 
+## JOTA SKU Maintenance
+
+The authoritative SKU source for JOTA cleanup is
+`scripts/data/jota-sku-reference.csv` and the guarded matcher in
+`scripts/rewrite-jota-skus-from-reference.mjs`.
+
+Use:
+
+```bash
+npm run sku:rewrite:dry-reference
+npm run sku:rewrite:apply-safe-reference
+```
+
+Only run the apply command after the dry-run reports zero duplicate target
+conflicts, zero existing target conflicts, and a positive safe update count.
+Rows moved to manual review must stay untouched until reviewed.
+
+`npm run sku:normalize:dry` is now a legacy safety report only. It may still be
+useful for duplicate checks, but its apply command is disabled because it can
+suggest reverting reference-based polisher SKUs.
+
+## JOTA Batch 01 Missing Variant Workflow
+
+Batch 01 missing variants are planned from
+`scripts/reports/jota-missing-products-batch-01-preview.csv`. The batch insert
+workflow is intentionally conservative:
+
+```bash
+npm run products:jota-batch-01:dry
+npm run products:jota-batch-01:apply
+```
+
+The dry-run must show all 8 expected rows as `safe_to_insert=true` before apply.
+Apply creates only missing variant rows for existing product families, never
+overwrites existing products/variants, and inserts new rows as inactive with
+`price=null`, `stock_quantity=0`, and `stock_status=ask_for_stock`. Admin must
+complete price, stock, image review, and activation before these variants become
+visible in the public catalog.
+
 ## Vercel Deployment
 
 Set these environment variables in Vercel for Production and Preview:

@@ -290,6 +290,11 @@ function VariantEditor({
             />
             Aktif varyant
           </label>
+          {!variant.is_active ? (
+            <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-100">
+              Fiyat ve stok kontrol edilmeden aktif etmeyin.
+            </p>
+          ) : null}
           <div className="flex flex-col gap-2 sm:flex-row">
             <Button type="submit">Varyantı Kaydet</Button>
           </div>
