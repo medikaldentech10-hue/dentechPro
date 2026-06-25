@@ -12,8 +12,8 @@
 ## Dry-run summary
 
 - Variants checked: 321
-- Safe proposed changes: 0
-- Skipped rows: 321
+- Safe proposed changes: 16
+- Skipped rows: 305
 - Remaining duplicate target conflicts: 0
 
 ## Skipped row summary
@@ -21,8 +21,8 @@
 - missing_holder: 47
 - missing_model: 76
 - duplicate_source_rows: 4
-- seed_import_duplicate: 3
-- already_normalized: 189
+- seed_import_duplicate: 2
+- already_normalized: 174
 - missing_safe_diameter: 2
 
 ## Conflict cause summary
@@ -47,7 +47,6 @@
 
 - Jota 859L Elmas Frez - Mavi Kuşak (Standard) Extra Uzun İğne Genel Preparasyon Frezi / 1731abc0-669e-4d96-a313-cc111fd8473d: 6429000a-2371-498d-8404-6d9bb192a49e -> JOT-859L-FG-012
 - 852 Chamfer Elmas Frez / a953a6c0-9b0d-47ef-840b-2893bf4d0697: JOTA-852-FG-014 -> JOT-852-FG-014
-- 859L Uzun Alev Elmas Frez / 502a49cb-b3a2-4ae3-ac97-c3d2b71d3991: JOTA-859L-FG-012 -> JOT-859L-FG-012
 
 ## Apply readiness
 

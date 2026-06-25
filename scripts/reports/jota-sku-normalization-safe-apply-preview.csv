@@ -1,1 +1,17 @@
 variant_id,product_name,current_sku,proposed_sku,model,grit,shaft,diameter,source_fields_used,safe_to_apply,reason
+97e5b884-be9e-41f6-8859-9b05829b846e,Jota 9113M Universal Cilalama Ucu (Polisher),JOT-9113M-RA-POL,JOT-9113M-RA-050,9113M,,RA,050,product_name.model|connection_type|diameter,true,safe_to_apply
+a7d94f2c-938d-4bf7-93eb-ce4563ff3c8d,Jota 9150 Universal Cilalama Ucu (Polisher),JOT-9150-RA-POL,JOT-9150-RA-014,9150,,RA,014,product_name.model|connection_type|diameter,true,safe_to_apply
+22fb5461-92cd-4f01-b147-72de85d058ea,Jota 9501M Metal Cilalama Ucu (Polisher) - Step 2,JOT-9501M-RA-POL,JOT-9501M-RA-030,9501M,,RA,030,product_name.model|connection_type|diameter,true,safe_to_apply
+edfa5d17-0858-4565-987c-4874bc7f0182,Jota 9765M Kompozit Cilalama Ucu (Polisher) - Step 1,JOT-9765M-RA-POL,JOT-9765M-RA-055,9765M,,RA,055,product_name.model|connection_type|diameter,true,safe_to_apply
+136164c4-a5f6-44ca-ab86-def061e57083,Jota 9812M Seramik Cilalama Ucu (Polisher) - Step 2,JOT-9812M-RA-POL,JOT-9812M-RA-040,9812M,,RA,040,product_name.model|connection_type|diameter,true,safe_to_apply
+67777a4d-e280-4225-8f37-9d81ec1b422f,Jota 9813M Seramik Cilalama Ucu (Polisher) - Step 2,JOT-9813M-RA-POL,JOT-9813M-RA-060,9813M,,RA,060,product_name.model|connection_type|diameter,true,safe_to_apply
+099d1075-dff1-4875-b50a-f529d5b31a31,Jota 9825 Kompozit Cilalama Ucu (Polisher) - Step 1,JOT-9825-RA-POL,JOT-9825-RA-030,9825,,RA,030,product_name.model|connection_type|diameter,true,safe_to_apply
+f77a56db-acac-4dd3-95b5-459053e0325e,Jota 9826 Kompozit Cilalama Ucu (Polisher) - Step 1,JOT-9826-RA-POL,JOT-9826-RA-060,9826,,RA,060,product_name.model|connection_type|diameter,true,safe_to_apply
+3da68833-b154-4dd4-bdb1-40c2526eb387,Jota 9828 Kompozit Cilalama Ucu (Polisher) - Step 1,JOT-9828-RA-POL,JOT-9828-RA-040,9828,,RA,040,product_name.model|connection_type|diameter,true,safe_to_apply
+7683b39f-6878-4dc9-a1ab-b3934c896da8,Jota 9829 Kompozit Cilalama Ucu (Polisher) - Step 1,JOT-9829-RA-POL,JOT-9829-RA-014,9829,,RA,014,product_name.model|connection_type|diameter,true,safe_to_apply
+ca9a7862-94b5-4dc5-87e6-fb143fc4e1b9,Jota 9831 Kompozit Cilalama Ucu (Polisher) - Step 2,JOT-9831-RA-POL,JOT-9831-RA-030,9831,,RA,030,product_name.model|connection_type|diameter,true,safe_to_apply
+6ffc09c4-65d7-4ddc-98ec-e9106ee6faa4,Jota 9832 Kompozit Cilalama Ucu (Polisher) - Step 2,JOT-9832-RA-POL,JOT-9832-RA-060,9832,,RA,060,product_name.model|connection_type|diameter,true,safe_to_apply
+b25e435c-708d-4c77-95da-4a5588112181,Jota 9834 Kompozit Cilalama Ucu (Polisher) - Step 2,JOT-9834-RA-POL,JOT-9834-RA-040,9834,,RA,040,product_name.model|connection_type|diameter,true,safe_to_apply
+1223f305-4395-48b1-9875-e87511317c31,Jota 9837 Kompozit Cilalama Ucu (Polisher) - Step 2,JOT-9837-RA-POL,JOT-9837-RA-014,9837,,RA,014,product_name.model|connection_type|diameter,true,safe_to_apply
+79029996-af41-4b25-80c1-5b6ac36151ed,Jota ZIR9861M Zirkonya Cilalama Ucu (Polisher) - Step 1,JOT-ZIR9861M-RA-POL,JOT-ZIR9861M-RA-040,ZIR9861M,,RA,040,product_name.model|connection_type|diameter,true,safe_to_apply
+27d5a091-258b-46dc-86a9-5d9c06597b80,Jota ZIR9863M Zirkonya Cilalama Ucu (Polisher) - Step 1,JOT-ZIR9863M-RA-POL,JOT-ZIR9863M-RA-014,ZIR9863M,,RA,014,product_name.model|connection_type|diameter,true,safe_to_apply

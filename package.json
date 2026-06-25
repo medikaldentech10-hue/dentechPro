@@ -15,6 +15,8 @@
     "sku:normalize:apply-safe-only": "node scripts/normalize-jota-skus.mjs --apply-safe-only",
     "sku:normalize:apply": "node scripts/normalize-jota-skus.mjs --apply",
     "sku:normalize:dry": "node scripts/normalize-jota-skus.mjs",
+    "sku:rewrite:apply-safe-reference": "node scripts/rewrite-jota-skus-from-reference.mjs --apply-safe-reference",
+    "sku:rewrite:dry-reference": "node scripts/rewrite-jota-skus-from-reference.mjs",
     "lint": "eslint"
   },
   "dependencies": {
