@@ -315,12 +315,14 @@ export async function updateRequestPaymentInfo({
   method,
   note,
   reference,
+  requestNote,
   requestId,
 }: {
   adminProfile: Profile;
-  method: AdminPaymentMethod;
+  method: AdminPaymentMethod | null;
   note: string;
   reference: string;
+  requestNote: string | null;
   requestId: string;
 }) {
   const supabase = getSupabaseAdminClient();
@@ -347,7 +349,7 @@ export async function updateRequestPaymentInfo({
     .update({
       note: serializeDraftNote({
         paymentInfo: nextPaymentInfo,
-        requestNote: extractRequestNote(oldDraft.note),
+        requestNote,
       }),
     })
     .eq("id", requestId)

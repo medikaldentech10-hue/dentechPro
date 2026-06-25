@@ -84,36 +84,64 @@ export default async function AdminRequestDetailPage({
 }
 
 function RequestParties({ request }: { request: AdminRequestDetail }) {
+  const hasCustomer = Boolean(request.customer);
+
   return (
     <div className="grid gap-4 md:grid-cols-2">
       <SurfaceCard>
         <CardHeader>
-          <CardTitle>Müşteri Bilgisi</CardTitle>
+          <CardTitle>
+            {hasCustomer ? "Müşteri Bilgisi" : "Kayıtlı Kullanıcı Bilgisi"}
+          </CardTitle>
         </CardHeader>
         <CardContent className="grid gap-3 text-sm">
-          <Info label="Ad / Ünvan" value={request.customer?.name} />
-          <Info label="Firma" value={request.customer?.company_name} />
-          <Info label="Tip" value={request.customer?.customer_type} />
-          <Info label="Telefon" value={request.customer?.phone} />
-          <Info label="E-posta" value={request.customer?.email} />
-          <Info
-            label="Konum"
-            value={[request.customer?.city, request.customer?.district]
-              .filter(Boolean)
-              .join(" / ")}
-          />
+          {hasCustomer ? (
+            <>
+              <Info label="Ad / Ünvan" value={request.customer?.name} />
+              <Info label="Firma" value={request.customer?.company_name} />
+              <Info label="Tip" value={request.customer?.customer_type} />
+              <Info label="Telefon" value={request.customer?.phone} />
+              <Info label="E-posta" value={request.customer?.email} />
+              <Info
+                label="Konum"
+                value={[request.customer?.city, request.customer?.district]
+                  .filter(Boolean)
+                  .join(" / ")}
+              />
+            </>
+          ) : (
+            <>
+              <p className="rounded-lg border border-primary/15 bg-primary/10 px-3 py-2 text-xs font-medium text-primary">
+                Müşteri kaydı yok; bu talep kayıtlı uygulama kullanıcısından geldi.
+              </p>
+              <Info label="Ad Soyad" value={request.requester?.full_name} />
+              <Info label="E-posta" value={request.requester?.email} />
+              <Info label="Telefon" value={request.requester?.phone} />
+              <Info label="Rol" value={request.requester?.role} />
+            </>
+          )}
         </CardContent>
       </SurfaceCard>
 
       <SurfaceCard>
         <CardHeader>
-          <CardTitle>Talep Sahibi</CardTitle>
+          <CardTitle>{hasCustomer ? "Talep Sahibi" : "Talep Kaynağı"}</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-3 text-sm">
-          <Info label="Oluşturan" value={request.requester?.full_name} />
-          <Info label="E-posta" value={request.requester?.email} />
-          <Info label="Telefon" value={request.requester?.phone} />
-          <Info label="Rol" value={request.requester?.role} />
+          {hasCustomer ? (
+            <>
+              <Info label="Oluşturan" value={request.requester?.full_name} />
+              <Info label="E-posta" value={request.requester?.email} />
+              <Info label="Telefon" value={request.requester?.phone} />
+              <Info label="Rol" value={request.requester?.role} />
+            </>
+          ) : (
+            <>
+              <Info label="Kaynak" value={requestSourceLabel(request.source)} />
+              <Info label="Durum" value={requestStatusLabel(request.status)} />
+              <Info label="Oluşturma" value={formatDate(request.created_at)} />
+            </>
+          )}
           <Info label="Saha Temsilcisi" value={request.salesRep?.full_name} />
           <Info label="Temsilci E-posta" value={request.salesRep?.email} />
         </CardContent>
@@ -131,7 +159,7 @@ function PaymentSection({ request }: { request: AdminRequestDetail }) {
       <CardContent className="grid gap-5">
         <div className="grid gap-3 rounded-xl border border-border/70 bg-background/60 p-4 text-sm md:grid-cols-2">
           <Info
-            label="Yöntem"
+            label="Ödeme Yöntemi"
             value={paymentMethodLabel(request.paymentInfo.method)}
           />
           <Info label="Referans" value={request.paymentInfo.reference || null} />
@@ -162,9 +190,10 @@ function PaymentSection({ request }: { request: AdminRequestDetail }) {
               Ödeme Yöntemi
               <select
                 className="h-10 rounded-lg border border-input bg-background px-3 text-sm"
-                defaultValue={request.paymentInfo.method ?? "iban"}
+                defaultValue={request.paymentInfo.method ?? ""}
                 name="payment_method"
               >
+                <option value="">Belirtilmedi</option>
                 {adminPaymentMethods.map((method) => (
                   <option key={method} value={method}>
                     {paymentMethodLabel(method)}
@@ -191,6 +220,16 @@ function PaymentSection({ request }: { request: AdminRequestDetail }) {
               maxLength={1000}
               name="payment_note"
               placeholder="IBAN paylaşıldı, POS link gönderildi, ödeme bekleniyor..."
+            />
+          </label>
+          <label className="grid gap-2 text-sm font-medium">
+            Talep Notu
+            <textarea
+              className="min-h-24 rounded-lg border border-input bg-background px-3 py-2 text-sm"
+              defaultValue={request.requestNote ?? ""}
+              maxLength={1000}
+              name="request_note"
+              placeholder="Admin iç notu veya müşteriyle görüşme notu"
             />
           </label>
           <Button className="w-fit" type="submit">

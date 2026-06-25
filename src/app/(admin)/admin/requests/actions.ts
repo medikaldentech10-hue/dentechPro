@@ -78,11 +78,21 @@ export async function updateRequestStatusAction(formData: FormData) {
 export async function updateRequestPaymentInfoAction(formData: FormData) {
   const adminProfile = await requireAdmin();
   const requestId = getString(formData, "request_id");
-  const method = getString(formData, "payment_method");
+  const rawMethod = getString(formData, "payment_method");
   const note = getString(formData, "payment_note");
   const reference = getString(formData, "payment_reference");
+  const requestNote = getString(formData, "request_note");
+  let method: Parameters<typeof updateRequestPaymentInfo>[0]["method"] = null;
 
-  if (!requestId || !isAdminPaymentMethod(method)) {
+  if (rawMethod) {
+    if (!isAdminPaymentMethod(rawMethod)) {
+      throw new Error("Geçersiz ödeme bilgisi.");
+    }
+
+    method = rawMethod;
+  }
+
+  if (!requestId) {
     throw new Error("Geçersiz ödeme bilgisi.");
   }
 
@@ -94,11 +104,16 @@ export async function updateRequestPaymentInfoAction(formData: FormData) {
     throw new Error("Ödeme referansı en fazla 160 karakter olabilir.");
   }
 
+  if (requestNote.length > 1000) {
+    throw new Error("Talep notu en fazla 1000 karakter olabilir.");
+  }
+
   await updateRequestPaymentInfo({
     adminProfile,
     method,
     note,
     reference,
+    requestNote: requestNote || null,
     requestId,
   });
 

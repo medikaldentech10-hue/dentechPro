@@ -78,10 +78,18 @@ export default async function AdminCustomersPage({
           ) : (
             <div className="p-6">
               <EmptyState
-                actionHref="/admin/customers"
-                actionLabel="Filtreleri Temizle"
-                description="Seçili arama ile eşleşen müşteri bulunamadı."
-                title="Müşteri bulunamadı"
+                actionHref={filters.search ? "/admin/customers" : "/admin/users"}
+                actionLabel={filters.search ? "Filtreleri Temizle" : "Kullanıcıları Aç"}
+                description={
+                  filters.search
+                    ? "Seçili arama ile eşleşen manuel müşteri kaydı bulunamadı."
+                    : "Henüz manuel müşteri kaydı yok. Kayıtlı uygulama kullanıcıları için /admin/users ekranını kullanın."
+                }
+                title={
+                  filters.search
+                    ? "Müşteri bulunamadı"
+                    : "Manuel müşteri kaydı yok"
+                }
               />
             </div>
           )}

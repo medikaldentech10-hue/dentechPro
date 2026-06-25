@@ -13,6 +13,8 @@ import {
 } from "@/lib/admin-requests";
 
 const PAGE_MARGIN = 42;
+const FOOTER_Y = 796;
+const FOOTER_RESERVED_Y = 760;
 const FONT_PATH = path.join(
   process.cwd(),
   "node_modules",
@@ -90,16 +92,33 @@ function drawHeader(doc: PDFKit.PDFDocument, request: AdminRequestDetail) {
 
 function drawParties(doc: PDFKit.PDFDocument, request: AdminRequestDetail) {
   const y = PAGE_MARGIN + 106;
-  drawInfoBox(doc, "Müşteri Bilgileri", [
-    ["Firma / Klinik", request.customer?.company_name],
-    ["Ad / Ünvan", request.customer?.name],
-    ["Telefon", request.customer?.phone],
-    ["E-posta", request.customer?.email],
-    [
-      "Konum",
-      [request.customer?.city, request.customer?.district].filter(Boolean).join(" / "),
-    ],
-  ], PAGE_MARGIN, y, 245);
+  const customerRows: Array<[string, string | null | undefined]> = request.customer
+    ? [
+        ["Firma / Klinik", request.customer.company_name],
+        ["Ad / Ünvan", request.customer.name],
+        ["Telefon", request.customer.phone],
+        ["E-posta", request.customer.email],
+        [
+          "Konum",
+          [request.customer.city, request.customer.district].filter(Boolean).join(" / "),
+        ],
+      ]
+    : [
+        ["Kayıt Tipi", "Kayıtlı uygulama kullanıcısı"],
+        ["Ad Soyad", request.requester?.full_name],
+        ["Telefon", request.requester?.phone],
+        ["E-posta", request.requester?.email],
+        ["Rol", request.requester?.role],
+      ];
+
+  drawInfoBox(
+    doc,
+    request.customer ? "Müşteri Bilgileri" : "Kayıtlı Kullanıcı Bilgisi",
+    customerRows,
+    PAGE_MARGIN,
+    y,
+    245
+  );
 
   drawInfoBox(doc, "Talep Bilgileri", [
     ["Kaynak", requestSourceLabel(request.source)],
@@ -260,24 +279,35 @@ function drawPaymentInfo(doc: PDFKit.PDFDocument, request: AdminRequestDetail) {
     `Ödeme yöntemi: ${paymentMethodLabel(request.paymentInfo.method)}`,
     `Referans: ${request.paymentInfo.reference || "-"}`,
     `Ödeme notu: ${request.paymentInfo.note || "-"}`,
+    `Talep notu: ${request.requestNote || "-"}`,
   ];
+  const content = rows.join("\n");
+  const contentHeight = doc.heightOfString(content, {
+    lineGap: 4,
+    width: 483,
+  });
+  const boxHeight = Math.min(Math.max(92, contentHeight + 48), 190);
 
-  if (doc.y > 700) {
+  if (doc.y + boxHeight > FOOTER_RESERVED_Y) {
     doc.addPage();
   }
 
+  const y = doc.y;
+
   doc
-    .roundedRect(PAGE_MARGIN, doc.y, 511, 80, 10)
+    .roundedRect(PAGE_MARGIN, y, 511, boxHeight, 10)
     .fillAndStroke("#f9fafb", "#e5e7eb")
     .fillColor("#111827")
     .fontSize(11)
-    .text("Ödeme Bilgisi", PAGE_MARGIN + 14, doc.y + 12)
+    .text("Ödeme Bilgisi", PAGE_MARGIN + 14, y + 12)
     .fillColor("#4b5563")
     .fontSize(8.5)
-    .text(rows.join("\n"), PAGE_MARGIN + 14, doc.y + 30, {
+    .text(content, PAGE_MARGIN + 14, y + 30, {
       lineGap: 4,
       width: 483,
     });
+
+  doc.y = y + boxHeight + 10;
 }
 
 function addPageFooters(doc: PDFKit.PDFDocument) {
@@ -291,7 +321,7 @@ function addPageFooters(doc: PDFKit.PDFDocument) {
       .text(
         "Bu belge Dentech Pro üzerinden oluşturulmuştur.",
         PAGE_MARGIN,
-        796,
+        FOOTER_Y,
         { align: "center", width: 511 }
       );
   }
