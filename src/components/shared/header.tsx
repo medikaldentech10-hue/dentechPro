@@ -29,6 +29,7 @@ export function Header({ profile = null }: HeaderProps) {
             <Link
               key={item.href}
               href={item.href}
+              prefetch={item.href === "/products" ? true : undefined}
               aria-current={pathname === item.href ? "page" : undefined}
               className={cn(
                 "rounded-full px-1.5 py-1 transition hover:text-foreground",

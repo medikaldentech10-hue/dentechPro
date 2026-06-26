@@ -126,6 +126,7 @@ type ProductRowsResult = {
 
 type CatalogSearch = {
   diameterValues: number[];
+  exactSku: string | null;
   normalizedTerms: string[];
   productTerms: string[];
   raw: string;
@@ -231,12 +232,15 @@ async function getProductRows(
   const categoryId = normalizedCategory
     ? await getCategoryIdBySlug(normalizedCategory)
     : null;
+  const exactSku = search?.exactSku ?? null;
   const [matchingVariantProductIds, matchingCategoryIds, matchingProductIds] = search
-    ? await Promise.all([
-        getMatchingVariantProductIds(search),
-        getMatchingCategoryIds(search),
-        getMatchingProductIds(search, normalizedBrand),
-      ])
+    ? exactSku
+      ? [await getExactSkuVariantProductIds(exactSku), [], []]
+      : await Promise.all([
+          getMatchingVariantProductIds(search),
+          getMatchingCategoryIds(search),
+          getMatchingProductIds(search, normalizedBrand),
+        ])
     : [[], [], []];
   const searchCandidateProductIds = search
     ? uniqueStrings([
@@ -772,26 +776,20 @@ async function getCategoryIdBySlug(slug: string) {
 
 async function getMatchingVariantProductIds(search: CatalogSearch) {
   const supabase = getSupabaseAdminClient();
-  const variantSearch = isSkuLikeSearch(search.raw)
-    ? [
-        `variant_code.eq.${escapeLikePattern(search.raw.toLocaleUpperCase("tr-TR"))}`,
-        `manufacturer_ref.eq.${escapeLikePattern(search.raw.toLocaleUpperCase("tr-TR"))}`,
-        `variant_code.ilike.%${escapeLikePattern(search.raw)}%`,
-      ].join(",")
-    : [
-        ...search.variantTerms.flatMap((term) => {
-          const escapedTerm = escapeLikePattern(term);
-          const upperTerm = term.toLocaleUpperCase("tr-TR");
-          return [
-            `variant_code.ilike.%${escapedTerm}%`,
-            `manufacturer_ref.ilike.%${escapedTerm}%`,
-            `connection_type.eq.${upperTerm}`,
-            `color.ilike.%${escapedTerm}%`,
-            `grit.eq.${upperTerm}`,
-          ];
-        }),
-        ...search.diameterValues.map((diameter) => `diameter.eq.${diameter}`),
-      ].join(",");
+  const variantSearch = [
+    ...search.variantTerms.flatMap((term) => {
+      const escapedTerm = escapeLikePattern(term);
+      const upperTerm = term.toLocaleUpperCase("tr-TR");
+      return [
+        `variant_code.ilike.%${escapedTerm}%`,
+        `manufacturer_ref.ilike.%${escapedTerm}%`,
+        `connection_type.eq.${upperTerm}`,
+        `color.ilike.%${escapedTerm}%`,
+        `grit.eq.${upperTerm}`,
+      ];
+    }),
+    ...search.diameterValues.map((diameter) => `diameter.eq.${diameter}`),
+  ].join(",");
 
   if (!variantSearch) {
     return [];
@@ -803,6 +801,22 @@ async function getMatchingVariantProductIds(search: CatalogSearch) {
     .eq("is_active", true)
     .or(variantSearch)
     .limit(5000);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return [...new Set((data ?? []).map((row) => row.product_id))];
+}
+
+async function getExactSkuVariantProductIds(exactSku: string) {
+  const supabase = getSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("product_variants")
+    .select("product_id")
+    .eq("is_active", true)
+    .or(`variant_code.eq.${exactSku},manufacturer_ref.eq.${exactSku}`)
+    .limit(25);
 
   if (error) {
     throw new Error(error.message);
@@ -916,6 +930,7 @@ function getVariantName(row: CatalogVariantRow) {
 function buildCatalogSearch(rawQuery: string): CatalogSearch {
   const raw = rawQuery.trim();
   const normalizedRaw = normalizeSearchText(raw);
+  const exactSku = getExactSkuSearch(raw);
   const baseTerms = splitSearchTerms(normalizedRaw);
   const interpretedTerms = interpretCatalogQueryLocal(raw).flatMap(
     (criterion) => criterion.searchTerms
@@ -935,6 +950,7 @@ function buildCatalogSearch(rawQuery: string): CatalogSearch {
 
   return {
     diameterValues,
+    exactSku,
     normalizedTerms: expandedTerms.map(normalizeSearchText),
     productTerms: uniqueStrings(expandedTerms.filter((term) => !isHolderTerm(term))),
     raw,
@@ -948,14 +964,14 @@ function isHolderTerm(term: string) {
   return normalized === "FG" || normalized === "RA" || normalized === "HP";
 }
 
-function isSkuLikeSearch(value: string) {
+function getExactSkuSearch(value: string) {
   const normalized = value.trim().toLocaleUpperCase("tr-TR");
 
-  return (
-    normalized.startsWith("JOT-") ||
-    normalized.startsWith("JOTA-") ||
-    /^[A-Z]{2,}-?\d+[A-Z]*-[A-Z]+-?\d*/.test(normalized)
-  );
+  if (!/^(JOT|JOTA)-[A-Z0-9]+(?:-[A-Z0-9]+)+$/.test(normalized)) {
+    return null;
+  }
+
+  return normalized;
 }
 
 function getSearchSynonyms(term: string) {
@@ -1033,6 +1049,13 @@ function sortVariantsBySearchMatch(
 }
 
 function getVariantSearchScore(variant: CatalogVariantRow, search: CatalogSearch) {
+  const variantCode = variant.variant_code.toLocaleUpperCase("tr-TR");
+  const manufacturerRef = variant.manufacturer_ref?.toLocaleUpperCase("tr-TR");
+  const exactSkuScore =
+    search.exactSku &&
+    (variantCode === search.exactSku || manufacturerRef === search.exactSku)
+      ? 1000
+      : 0;
   const haystack = normalizeSearchText(
     [
       variant.variant_code,
@@ -1056,7 +1079,7 @@ function getVariantSearchScore(variant: CatalogVariantRow, search: CatalogSearch
     ? 2
     : 0;
 
-  return termScore + diameterScore;
+  return exactSkuScore + termScore + diameterScore;
 }
 
 const GROUPABLE_JOTA_SUFFIXES = new Set([

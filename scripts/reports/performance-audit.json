@@ -1,6 +1,6 @@
 {
   "baseUrl": "https://dentech-pro.vercel.app",
-  "generatedAt": "2026-06-26T09:26:33.840Z",
+  "generatedAt": "2026-06-26T14:48:08.616Z",
   "repeatCount": 3,
   "results": [
     {
@@ -12,28 +12,28 @@
       "redirectChain": [],
       "severity": "good",
       "status": 200,
-      "totalMs": 211,
+      "totalMs": 247,
       "runs": [
         {
           "contentLength": 62808,
           "error": null,
           "redirectChain": [],
           "status": 200,
-          "totalMs": 1024
+          "totalMs": 2177
         },
         {
           "contentLength": 62808,
           "error": null,
           "redirectChain": [],
           "status": 200,
-          "totalMs": 211
+          "totalMs": 247
         },
         {
           "contentLength": 62808,
           "error": null,
           "redirectChain": [],
           "status": 200,
-          "totalMs": 203
+          "totalMs": 214
         }
       ]
     },
@@ -46,28 +46,28 @@
       "redirectChain": [],
       "severity": "good",
       "status": 200,
-      "totalMs": 205,
+      "totalMs": 206,
       "runs": [
         {
           "contentLength": 23725,
           "error": null,
           "redirectChain": [],
           "status": 200,
-          "totalMs": 215
+          "totalMs": 238
         },
         {
           "contentLength": 23725,
           "error": null,
           "redirectChain": [],
           "status": 200,
-          "totalMs": 205
+          "totalMs": 206
         },
         {
           "contentLength": 23725,
           "error": null,
           "redirectChain": [],
           "status": 200,
-          "totalMs": 200
+          "totalMs": 197
         }
       ]
     },
@@ -80,21 +80,14 @@
       "redirectChain": [],
       "severity": "good",
       "status": 200,
-      "totalMs": 201,
+      "totalMs": 209,
       "runs": [
         {
           "contentLength": 31757,
           "error": null,
           "redirectChain": [],
           "status": 200,
-          "totalMs": 218
-        },
-        {
-          "contentLength": 31757,
-          "error": null,
-          "redirectChain": [],
-          "status": 200,
-          "totalMs": 194
+          "totalMs": 237
         },
         {
           "contentLength": 31757,
@@ -102,6 +95,13 @@
           "redirectChain": [],
           "status": 200,
           "totalMs": 201
+        },
+        {
+          "contentLength": 31757,
+          "error": null,
+          "redirectChain": [],
+          "status": 200,
+          "totalMs": 209
         }
       ]
     },
@@ -114,28 +114,28 @@
       "redirectChain": [],
       "severity": "slow",
       "status": 200,
-      "totalMs": 2429,
+      "totalMs": 2220,
       "runs": [
         {
           "contentLength": 380869,
           "error": null,
           "redirectChain": [],
           "status": 200,
-          "totalMs": 3139
+          "totalMs": 2565
         },
         {
           "contentLength": 380869,
           "error": null,
           "redirectChain": [],
           "status": 200,
-          "totalMs": 1706
+          "totalMs": 2220
         },
         {
           "contentLength": 380869,
           "error": null,
           "redirectChain": [],
           "status": 200,
-          "totalMs": 2429
+          "totalMs": 1562
         }
       ]
     },
@@ -146,30 +146,30 @@
       "finalUrl": "https://dentech-pro.vercel.app/products?q=801",
       "path": "/products?q=801",
       "redirectChain": [],
-      "severity": "slow",
+      "severity": "watch",
       "status": 200,
-      "totalMs": 2236,
+      "totalMs": 1265,
       "runs": [
         {
           "contentLength": 226088,
           "error": null,
           "redirectChain": [],
           "status": 200,
-          "totalMs": 2224
+          "totalMs": 1249
         },
         {
           "contentLength": 226088,
           "error": null,
           "redirectChain": [],
           "status": 200,
-          "totalMs": 2236
+          "totalMs": 2080
         },
         {
           "contentLength": 226088,
           "error": null,
           "redirectChain": [],
           "status": 200,
-          "totalMs": 2284
+          "totalMs": 1265
         }
       ]
     },
@@ -182,28 +182,28 @@
       "redirectChain": [],
       "severity": "slow",
       "status": 200,
-      "totalMs": 2209,
+      "totalMs": 2317,
       "runs": [
         {
           "contentLength": 385533,
           "error": null,
           "redirectChain": [],
           "status": 200,
-          "totalMs": 1783
+          "totalMs": 2317
         },
         {
           "contentLength": 385533,
           "error": null,
           "redirectChain": [],
           "status": 200,
-          "totalMs": 2209
+          "totalMs": 2269
         },
         {
           "contentLength": 385533,
           "error": null,
           "redirectChain": [],
           "status": 200,
-          "totalMs": 2312
+          "totalMs": 2409
         }
       ]
     },
@@ -216,28 +216,28 @@
       "redirectChain": [],
       "severity": "slow",
       "status": 200,
-      "totalMs": 2351,
+      "totalMs": 1705,
       "runs": [
         {
           "contentLength": 355592,
           "error": null,
           "redirectChain": [],
           "status": 200,
-          "totalMs": 2351
+          "totalMs": 1765
         },
         {
           "contentLength": 355592,
           "error": null,
           "redirectChain": [],
           "status": 200,
-          "totalMs": 2376
+          "totalMs": 1700
         },
         {
           "contentLength": 355592,
           "error": null,
           "redirectChain": [],
           "status": 200,
-          "totalMs": 1909
+          "totalMs": 1705
         }
       ]
     },
@@ -248,64 +248,64 @@
       "finalUrl": "https://dentech-pro.vercel.app/products?q=arkansas",
       "path": "/products?q=arkansas",
       "redirectChain": [],
-      "severity": "slow",
+      "severity": "watch",
       "status": 200,
-      "totalMs": 1791,
+      "totalMs": 983,
       "runs": [
         {
           "contentLength": 123210,
           "error": null,
           "redirectChain": [],
           "status": 200,
-          "totalMs": 1621
+          "totalMs": 978
         },
         {
           "contentLength": 123210,
           "error": null,
           "redirectChain": [],
           "status": 200,
-          "totalMs": 1791
+          "totalMs": 2739
         },
         {
           "contentLength": 123210,
           "error": null,
           "redirectChain": [],
           "status": 200,
-          "totalMs": 2244
+          "totalMs": 983
         }
       ]
     },
     {
       "access": "public",
-      "contentLength": 385564,
+      "contentLength": 402040,
       "error": null,
       "finalUrl": "https://dentech-pro.vercel.app/products?q=JOT-859L-FG-014",
       "path": "/products?q=JOT-859L-FG-014",
       "redirectChain": [],
       "severity": "slow",
       "status": 200,
-      "totalMs": 1970,
+      "totalMs": 2990,
       "runs": [
         {
-          "contentLength": 385564,
+          "contentLength": 402040,
           "error": null,
           "redirectChain": [],
           "status": 200,
-          "totalMs": 1964
+          "totalMs": 4048
         },
         {
-          "contentLength": 385564,
+          "contentLength": 402040,
           "error": null,
           "redirectChain": [],
           "status": 200,
-          "totalMs": 2016
+          "totalMs": 2990
         },
         {
-          "contentLength": 385564,
+          "contentLength": 402040,
           "error": null,
           "redirectChain": [],
           "status": 200,
-          "totalMs": 1970
+          "totalMs": 2401
         }
       ]
     },
@@ -324,7 +324,7 @@
       ],
       "severity": "good",
       "status": 200,
-      "totalMs": 396,
+      "totalMs": 405,
       "runs": [
         {
           "contentLength": 23725,
@@ -337,7 +337,7 @@
             }
           ],
           "status": 200,
-          "totalMs": 567
+          "totalMs": 563
         },
         {
           "contentLength": 23725,
@@ -350,7 +350,7 @@
             }
           ],
           "status": 200,
-          "totalMs": 396
+          "totalMs": 401
         },
         {
           "contentLength": 23725,
@@ -363,7 +363,7 @@
             }
           ],
           "status": 200,
-          "totalMs": 394
+          "totalMs": 405
         }
       ]
     },
@@ -382,7 +382,7 @@
       ],
       "severity": "good",
       "status": 200,
-      "totalMs": 443,
+      "totalMs": 393,
       "runs": [
         {
           "contentLength": 23725,
@@ -395,7 +395,7 @@
             }
           ],
           "status": 200,
-          "totalMs": 769
+          "totalMs": 397
         },
         {
           "contentLength": 23725,
@@ -408,7 +408,7 @@
             }
           ],
           "status": 200,
-          "totalMs": 443
+          "totalMs": 385
         },
         {
           "contentLength": 23725,
@@ -421,7 +421,7 @@
             }
           ],
           "status": 200,
-          "totalMs": 390
+          "totalMs": 393
         }
       ]
     },
@@ -440,7 +440,7 @@
       ],
       "severity": "good",
       "status": 200,
-      "totalMs": 504,
+      "totalMs": 557,
       "runs": [
         {
           "contentLength": 23725,
@@ -453,7 +453,7 @@
             }
           ],
           "status": 200,
-          "totalMs": 615
+          "totalMs": 1278
         },
         {
           "contentLength": 23725,
@@ -466,7 +466,7 @@
             }
           ],
           "status": 200,
-          "totalMs": 504
+          "totalMs": 557
         },
         {
           "contentLength": 23725,
@@ -479,7 +479,7 @@
             }
           ],
           "status": 200,
-          "totalMs": 482
+          "totalMs": 483
         }
       ]
     },
@@ -498,7 +498,7 @@
       ],
       "severity": "good",
       "status": 200,
-      "totalMs": 530,
+      "totalMs": 476,
       "runs": [
         {
           "contentLength": 23725,
@@ -511,7 +511,7 @@
             }
           ],
           "status": 200,
-          "totalMs": 502
+          "totalMs": 483
         },
         {
           "contentLength": 23725,
@@ -524,7 +524,7 @@
             }
           ],
           "status": 200,
-          "totalMs": 530
+          "totalMs": 476
         },
         {
           "contentLength": 23725,
@@ -537,7 +537,7 @@
             }
           ],
           "status": 200,
-          "totalMs": 723
+          "totalMs": 454
         }
       ]
     },
@@ -556,7 +556,7 @@
       ],
       "severity": "good",
       "status": 200,
-      "totalMs": 591,
+      "totalMs": 476,
       "runs": [
         {
           "contentLength": 23725,
@@ -569,7 +569,7 @@
             }
           ],
           "status": 200,
-          "totalMs": 591
+          "totalMs": 476
         },
         {
           "contentLength": 23725,
@@ -582,7 +582,7 @@
             }
           ],
           "status": 200,
-          "totalMs": 532
+          "totalMs": 481
         },
         {
           "contentLength": 23725,
@@ -595,7 +595,7 @@
             }
           ],
           "status": 200,
-          "totalMs": 592
+          "totalMs": 469
         }
       ]
     },
@@ -614,7 +614,7 @@
       ],
       "severity": "good",
       "status": 200,
-      "totalMs": 494,
+      "totalMs": 479,
       "runs": [
         {
           "contentLength": 23725,
@@ -627,7 +627,7 @@
             }
           ],
           "status": 200,
-          "totalMs": 481
+          "totalMs": 484
         },
         {
           "contentLength": 23725,
@@ -640,7 +640,7 @@
             }
           ],
           "status": 200,
-          "totalMs": 556
+          "totalMs": 476
         },
         {
           "contentLength": 23725,
@@ -653,7 +653,7 @@
             }
           ],
           "status": 200,
-          "totalMs": 494
+          "totalMs": 479
         }
       ]
     },
@@ -672,7 +672,7 @@
       ],
       "severity": "good",
       "status": 200,
-      "totalMs": 604,
+      "totalMs": 397,
       "runs": [
         {
           "contentLength": 23725,
@@ -685,7 +685,7 @@
             }
           ],
           "status": 200,
-          "totalMs": 604
+          "totalMs": 541
         },
         {
           "contentLength": 23725,
@@ -698,7 +698,7 @@
             }
           ],
           "status": 200,
-          "totalMs": 837
+          "totalMs": 397
         },
         {
           "contentLength": 23725,
@@ -711,7 +711,7 @@
             }
           ],
           "status": 200,
-          "totalMs": 403
+          "totalMs": 381
         }
       ]
     },
@@ -730,7 +730,7 @@
       ],
       "severity": "good",
       "status": 200,
-      "totalMs": 503,
+      "totalMs": 500,
       "runs": [
         {
           "contentLength": 23725,
@@ -743,7 +743,7 @@
             }
           ],
           "status": 200,
-          "totalMs": 503
+          "totalMs": 407
         },
         {
           "contentLength": 23725,
@@ -756,7 +756,7 @@
             }
           ],
           "status": 200,
-          "totalMs": 399
+          "totalMs": 500
         },
         {
           "contentLength": 23725,
@@ -769,7 +769,7 @@
             }
           ],
           "status": 200,
-          "totalMs": 785
+          "totalMs": 556
         }
       ]
     }

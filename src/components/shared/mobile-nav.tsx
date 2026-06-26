@@ -78,6 +78,7 @@ export function MobileNav({
               <Link
                 key={item.href}
                 href={item.href}
+                prefetch={item.href === "/products" ? true : undefined}
                 aria-current={activeHref === item.href ? "page" : undefined}
                 className={cn(
                   "relative flex items-center gap-3 rounded-lg border border-transparent px-3 py-3 text-sm font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground",
