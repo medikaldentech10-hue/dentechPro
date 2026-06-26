@@ -231,17 +231,28 @@ async function getProductRows(
   const categoryId = normalizedCategory
     ? await getCategoryIdBySlug(normalizedCategory)
     : null;
-  const [matchingVariantProductIds, matchingCategoryIds] = search
+  const [matchingVariantProductIds, matchingCategoryIds, matchingProductIds] = search
     ? await Promise.all([
         getMatchingVariantProductIds(search),
         getMatchingCategoryIds(search),
+        getMatchingProductIds(search, normalizedBrand),
       ])
-    : [[], []];
+    : [[], [], []];
+  const searchCandidateProductIds = search
+    ? uniqueStrings([
+        ...matchingVariantProductIds,
+        ...matchingProductIds,
+      ])
+    : null;
   const priceFilteredProductIds = options.includeSensitiveVariantFields
     ? await getPriceFilteredProductIds(filters.minPrice, filters.maxPrice)
     : null;
 
   if (priceFilteredProductIds && priceFilteredProductIds.length === 0) {
+    return getEmptyRowsResult(page, pageSize);
+  }
+
+  if (search && searchCandidateProductIds?.length === 0 && matchingCategoryIds.length === 0) {
     return getEmptyRowsResult(page, pageSize);
   }
 
@@ -253,8 +264,7 @@ async function getProductRows(
     )
     .eq("is_active", true)
     .eq("brand", normalizedBrand)
-    .order("product_name", { ascending: true })
-    .limit(5000);
+    .order("product_name", { ascending: true });
 
   if (categoryId) {
     query = query.eq("category_id", categoryId);
@@ -266,6 +276,25 @@ async function getProductRows(
 
   if (priceFilteredProductIds) {
     query = query.in("id", priceFilteredProductIds);
+  }
+
+  if (search) {
+    const productIds = uniqueStrings([
+      ...(searchCandidateProductIds ?? []),
+      ...(matchingCategoryIds.length
+        ? await getProductIdsByCategoryIds(matchingCategoryIds, normalizedBrand)
+        : []),
+    ]);
+
+    if (!productIds.length) {
+      return getEmptyRowsResult(page, pageSize);
+    }
+
+    query = query.in("id", productIds).limit(500);
+  } else {
+    const rawFrom = (page - 1) * pageSize;
+    const rawTo = rawFrom + pageSize * 4 - 1;
+    query = query.range(rawFrom, rawTo);
   }
 
   const { count, data, error } = await query;
@@ -295,8 +324,8 @@ async function getProductRows(
       )
     : rows;
   const groupedRows = groupCatalogProductRows(rows, searchedRows);
-  const totalCount = groupedRows.length;
-  const from = (page - 1) * pageSize;
+  const totalCount = search ? groupedRows.length : (count ?? groupedRows.length);
+  const from = search ? (page - 1) * pageSize : 0;
   const to = from + pageSize;
   const paginatedRows = groupedRows.slice(from, to);
   const variantCount = paginatedRows.reduce(
@@ -743,20 +772,26 @@ async function getCategoryIdBySlug(slug: string) {
 
 async function getMatchingVariantProductIds(search: CatalogSearch) {
   const supabase = getSupabaseAdminClient();
-  const variantSearch = [
-    ...search.variantTerms.flatMap((term) => {
-      const escapedTerm = escapeLikePattern(term);
-      const upperTerm = term.toLocaleUpperCase("tr-TR");
-      return [
-        `variant_code.ilike.%${escapedTerm}%`,
-        `manufacturer_ref.ilike.%${escapedTerm}%`,
-        `connection_type.eq.${upperTerm}`,
-        `color.ilike.%${escapedTerm}%`,
-        `grit.eq.${upperTerm}`,
-      ];
-    }),
-    ...search.diameterValues.map((diameter) => `diameter.eq.${diameter}`),
-  ].join(",");
+  const variantSearch = isSkuLikeSearch(search.raw)
+    ? [
+        `variant_code.eq.${escapeLikePattern(search.raw.toLocaleUpperCase("tr-TR"))}`,
+        `manufacturer_ref.eq.${escapeLikePattern(search.raw.toLocaleUpperCase("tr-TR"))}`,
+        `variant_code.ilike.%${escapeLikePattern(search.raw)}%`,
+      ].join(",")
+    : [
+        ...search.variantTerms.flatMap((term) => {
+          const escapedTerm = escapeLikePattern(term);
+          const upperTerm = term.toLocaleUpperCase("tr-TR");
+          return [
+            `variant_code.ilike.%${escapedTerm}%`,
+            `manufacturer_ref.ilike.%${escapedTerm}%`,
+            `connection_type.eq.${upperTerm}`,
+            `color.ilike.%${escapedTerm}%`,
+            `grit.eq.${upperTerm}`,
+          ];
+        }),
+        ...search.diameterValues.map((diameter) => `diameter.eq.${diameter}`),
+      ].join(",");
 
   if (!variantSearch) {
     return [];
@@ -774,6 +809,60 @@ async function getMatchingVariantProductIds(search: CatalogSearch) {
   }
 
   return [...new Set((data ?? []).map((row) => row.product_id))];
+}
+
+async function getMatchingProductIds(search: CatalogSearch, brand: string) {
+  const supabase = getSupabaseAdminClient();
+  const productSearch = search.productTerms
+    .flatMap((term) => {
+      const escapedTerm = escapeLikePattern(term);
+      return [
+        `product_name.ilike.%${escapedTerm}%`,
+        `product_group_code.ilike.%${escapedTerm}%`,
+        `description.ilike.%${escapedTerm}%`,
+        `usage_area.ilike.%${escapedTerm}%`,
+      ];
+    })
+    .join(",");
+
+  if (!productSearch) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from("products")
+    .select("id")
+    .eq("is_active", true)
+    .eq("brand", brand)
+    .or(productSearch)
+    .limit(500);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return [...new Set((data ?? []).map((row) => row.id))];
+}
+
+async function getProductIdsByCategoryIds(categoryIds: string[], brand: string) {
+  if (!categoryIds.length) {
+    return [];
+  }
+
+  const supabase = getSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("products")
+    .select("id")
+    .eq("is_active", true)
+    .eq("brand", brand)
+    .in("category_id", categoryIds)
+    .limit(500);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return [...new Set((data ?? []).map((row) => row.id))];
 }
 
 async function getMatchingCategoryIds(search: CatalogSearch) {
@@ -857,6 +946,16 @@ function isHolderTerm(term: string) {
   const normalized = term.toLocaleUpperCase("tr-TR");
 
   return normalized === "FG" || normalized === "RA" || normalized === "HP";
+}
+
+function isSkuLikeSearch(value: string) {
+  const normalized = value.trim().toLocaleUpperCase("tr-TR");
+
+  return (
+    normalized.startsWith("JOT-") ||
+    normalized.startsWith("JOTA-") ||
+    /^[A-Z]{2,}-?\d+[A-Z]*-[A-Z]+-?\d*/.test(normalized)
+  );
 }
 
 function getSearchSynonyms(term: string) {

@@ -1,6 +1,7 @@
 {
   "baseUrl": "https://dentech-pro.vercel.app",
-  "generatedAt": "2026-06-26T09:03:42.825Z",
+  "generatedAt": "2026-06-26T09:26:33.840Z",
+  "repeatCount": 3,
   "results": [
     {
       "access": "public",
@@ -11,7 +12,30 @@
       "redirectChain": [],
       "severity": "good",
       "status": 200,
-      "totalMs": 468
+      "totalMs": 211,
+      "runs": [
+        {
+          "contentLength": 62808,
+          "error": null,
+          "redirectChain": [],
+          "status": 200,
+          "totalMs": 1024
+        },
+        {
+          "contentLength": 62808,
+          "error": null,
+          "redirectChain": [],
+          "status": 200,
+          "totalMs": 211
+        },
+        {
+          "contentLength": 62808,
+          "error": null,
+          "redirectChain": [],
+          "status": 200,
+          "totalMs": 203
+        }
+      ]
     },
     {
       "access": "public",
@@ -22,7 +46,30 @@
       "redirectChain": [],
       "severity": "good",
       "status": 200,
-      "totalMs": 221
+      "totalMs": 205,
+      "runs": [
+        {
+          "contentLength": 23725,
+          "error": null,
+          "redirectChain": [],
+          "status": 200,
+          "totalMs": 215
+        },
+        {
+          "contentLength": 23725,
+          "error": null,
+          "redirectChain": [],
+          "status": 200,
+          "totalMs": 205
+        },
+        {
+          "contentLength": 23725,
+          "error": null,
+          "redirectChain": [],
+          "status": 200,
+          "totalMs": 200
+        }
+      ]
     },
     {
       "access": "public",
@@ -33,7 +80,30 @@
       "redirectChain": [],
       "severity": "good",
       "status": 200,
-      "totalMs": 276
+      "totalMs": 201,
+      "runs": [
+        {
+          "contentLength": 31757,
+          "error": null,
+          "redirectChain": [],
+          "status": 200,
+          "totalMs": 218
+        },
+        {
+          "contentLength": 31757,
+          "error": null,
+          "redirectChain": [],
+          "status": 200,
+          "totalMs": 194
+        },
+        {
+          "contentLength": 31757,
+          "error": null,
+          "redirectChain": [],
+          "status": 200,
+          "totalMs": 201
+        }
+      ]
     },
     {
       "access": "public",
@@ -44,7 +114,30 @@
       "redirectChain": [],
       "severity": "slow",
       "status": 200,
-      "totalMs": 2252
+      "totalMs": 2429,
+      "runs": [
+        {
+          "contentLength": 380869,
+          "error": null,
+          "redirectChain": [],
+          "status": 200,
+          "totalMs": 3139
+        },
+        {
+          "contentLength": 380869,
+          "error": null,
+          "redirectChain": [],
+          "status": 200,
+          "totalMs": 1706
+        },
+        {
+          "contentLength": 380869,
+          "error": null,
+          "redirectChain": [],
+          "status": 200,
+          "totalMs": 2429
+        }
+      ]
     },
     {
       "access": "public",
@@ -53,9 +146,32 @@
       "finalUrl": "https://dentech-pro.vercel.app/products?q=801",
       "path": "/products?q=801",
       "redirectChain": [],
-      "severity": "critical",
+      "severity": "slow",
       "status": 200,
-      "totalMs": 3066
+      "totalMs": 2236,
+      "runs": [
+        {
+          "contentLength": 226088,
+          "error": null,
+          "redirectChain": [],
+          "status": 200,
+          "totalMs": 2224
+        },
+        {
+          "contentLength": 226088,
+          "error": null,
+          "redirectChain": [],
+          "status": 200,
+          "totalMs": 2236
+        },
+        {
+          "contentLength": 226088,
+          "error": null,
+          "redirectChain": [],
+          "status": 200,
+          "totalMs": 2284
+        }
+      ]
     },
     {
       "access": "public",
@@ -66,7 +182,30 @@
       "redirectChain": [],
       "severity": "slow",
       "status": 200,
-      "totalMs": 2617
+      "totalMs": 2209,
+      "runs": [
+        {
+          "contentLength": 385533,
+          "error": null,
+          "redirectChain": [],
+          "status": 200,
+          "totalMs": 1783
+        },
+        {
+          "contentLength": 385533,
+          "error": null,
+          "redirectChain": [],
+          "status": 200,
+          "totalMs": 2209
+        },
+        {
+          "contentLength": 385533,
+          "error": null,
+          "redirectChain": [],
+          "status": 200,
+          "totalMs": 2312
+        }
+      ]
     },
     {
       "access": "public",
@@ -77,7 +216,98 @@
       "redirectChain": [],
       "severity": "slow",
       "status": 200,
-      "totalMs": 2570
+      "totalMs": 2351,
+      "runs": [
+        {
+          "contentLength": 355592,
+          "error": null,
+          "redirectChain": [],
+          "status": 200,
+          "totalMs": 2351
+        },
+        {
+          "contentLength": 355592,
+          "error": null,
+          "redirectChain": [],
+          "status": 200,
+          "totalMs": 2376
+        },
+        {
+          "contentLength": 355592,
+          "error": null,
+          "redirectChain": [],
+          "status": 200,
+          "totalMs": 1909
+        }
+      ]
+    },
+    {
+      "access": "public",
+      "contentLength": 123210,
+      "error": null,
+      "finalUrl": "https://dentech-pro.vercel.app/products?q=arkansas",
+      "path": "/products?q=arkansas",
+      "redirectChain": [],
+      "severity": "slow",
+      "status": 200,
+      "totalMs": 1791,
+      "runs": [
+        {
+          "contentLength": 123210,
+          "error": null,
+          "redirectChain": [],
+          "status": 200,
+          "totalMs": 1621
+        },
+        {
+          "contentLength": 123210,
+          "error": null,
+          "redirectChain": [],
+          "status": 200,
+          "totalMs": 1791
+        },
+        {
+          "contentLength": 123210,
+          "error": null,
+          "redirectChain": [],
+          "status": 200,
+          "totalMs": 2244
+        }
+      ]
+    },
+    {
+      "access": "public",
+      "contentLength": 385564,
+      "error": null,
+      "finalUrl": "https://dentech-pro.vercel.app/products?q=JOT-859L-FG-014",
+      "path": "/products?q=JOT-859L-FG-014",
+      "redirectChain": [],
+      "severity": "slow",
+      "status": 200,
+      "totalMs": 1970,
+      "runs": [
+        {
+          "contentLength": 385564,
+          "error": null,
+          "redirectChain": [],
+          "status": 200,
+          "totalMs": 1964
+        },
+        {
+          "contentLength": 385564,
+          "error": null,
+          "redirectChain": [],
+          "status": 200,
+          "totalMs": 2016
+        },
+        {
+          "contentLength": 385564,
+          "error": null,
+          "redirectChain": [],
+          "status": 200,
+          "totalMs": 1970
+        }
+      ]
     },
     {
       "access": "protected",
@@ -94,7 +324,48 @@
       ],
       "severity": "good",
       "status": 200,
-      "totalMs": 482
+      "totalMs": 396,
+      "runs": [
+        {
+          "contentLength": 23725,
+          "error": null,
+          "redirectChain": [
+            {
+              "from": "https://dentech-pro.vercel.app/request",
+              "status": 307,
+              "to": "https://dentech-pro.vercel.app/login"
+            }
+          ],
+          "status": 200,
+          "totalMs": 567
+        },
+        {
+          "contentLength": 23725,
+          "error": null,
+          "redirectChain": [
+            {
+              "from": "https://dentech-pro.vercel.app/request",
+              "status": 307,
+              "to": "https://dentech-pro.vercel.app/login"
+            }
+          ],
+          "status": 200,
+          "totalMs": 396
+        },
+        {
+          "contentLength": 23725,
+          "error": null,
+          "redirectChain": [
+            {
+              "from": "https://dentech-pro.vercel.app/request",
+              "status": 307,
+              "to": "https://dentech-pro.vercel.app/login"
+            }
+          ],
+          "status": 200,
+          "totalMs": 394
+        }
+      ]
     },
     {
       "access": "protected",
@@ -111,7 +382,48 @@
       ],
       "severity": "good",
       "status": 200,
-      "totalMs": 391
+      "totalMs": 443,
+      "runs": [
+        {
+          "contentLength": 23725,
+          "error": null,
+          "redirectChain": [
+            {
+              "from": "https://dentech-pro.vercel.app/dashboard",
+              "status": 307,
+              "to": "https://dentech-pro.vercel.app/login"
+            }
+          ],
+          "status": 200,
+          "totalMs": 769
+        },
+        {
+          "contentLength": 23725,
+          "error": null,
+          "redirectChain": [
+            {
+              "from": "https://dentech-pro.vercel.app/dashboard",
+              "status": 307,
+              "to": "https://dentech-pro.vercel.app/login"
+            }
+          ],
+          "status": 200,
+          "totalMs": 443
+        },
+        {
+          "contentLength": 23725,
+          "error": null,
+          "redirectChain": [
+            {
+              "from": "https://dentech-pro.vercel.app/dashboard",
+              "status": 307,
+              "to": "https://dentech-pro.vercel.app/login"
+            }
+          ],
+          "status": 200,
+          "totalMs": 390
+        }
+      ]
     },
     {
       "access": "protected",
@@ -128,7 +440,48 @@
       ],
       "severity": "good",
       "status": 200,
-      "totalMs": 539
+      "totalMs": 504,
+      "runs": [
+        {
+          "contentLength": 23725,
+          "error": null,
+          "redirectChain": [
+            {
+              "from": "https://dentech-pro.vercel.app/admin",
+              "status": 307,
+              "to": "https://dentech-pro.vercel.app/login"
+            }
+          ],
+          "status": 200,
+          "totalMs": 615
+        },
+        {
+          "contentLength": 23725,
+          "error": null,
+          "redirectChain": [
+            {
+              "from": "https://dentech-pro.vercel.app/admin",
+              "status": 307,
+              "to": "https://dentech-pro.vercel.app/login"
+            }
+          ],
+          "status": 200,
+          "totalMs": 504
+        },
+        {
+          "contentLength": 23725,
+          "error": null,
+          "redirectChain": [
+            {
+              "from": "https://dentech-pro.vercel.app/admin",
+              "status": 307,
+              "to": "https://dentech-pro.vercel.app/login"
+            }
+          ],
+          "status": 200,
+          "totalMs": 482
+        }
+      ]
     },
     {
       "access": "protected",
@@ -145,7 +498,48 @@
       ],
       "severity": "good",
       "status": 200,
-      "totalMs": 473
+      "totalMs": 530,
+      "runs": [
+        {
+          "contentLength": 23725,
+          "error": null,
+          "redirectChain": [
+            {
+              "from": "https://dentech-pro.vercel.app/admin/products",
+              "status": 307,
+              "to": "https://dentech-pro.vercel.app/login"
+            }
+          ],
+          "status": 200,
+          "totalMs": 502
+        },
+        {
+          "contentLength": 23725,
+          "error": null,
+          "redirectChain": [
+            {
+              "from": "https://dentech-pro.vercel.app/admin/products",
+              "status": 307,
+              "to": "https://dentech-pro.vercel.app/login"
+            }
+          ],
+          "status": 200,
+          "totalMs": 530
+        },
+        {
+          "contentLength": 23725,
+          "error": null,
+          "redirectChain": [
+            {
+              "from": "https://dentech-pro.vercel.app/admin/products",
+              "status": 307,
+              "to": "https://dentech-pro.vercel.app/login"
+            }
+          ],
+          "status": 200,
+          "totalMs": 723
+        }
+      ]
     },
     {
       "access": "protected",
@@ -162,7 +556,48 @@
       ],
       "severity": "good",
       "status": 200,
-      "totalMs": 500
+      "totalMs": 591,
+      "runs": [
+        {
+          "contentLength": 23725,
+          "error": null,
+          "redirectChain": [
+            {
+              "from": "https://dentech-pro.vercel.app/admin/users",
+              "status": 307,
+              "to": "https://dentech-pro.vercel.app/login"
+            }
+          ],
+          "status": 200,
+          "totalMs": 591
+        },
+        {
+          "contentLength": 23725,
+          "error": null,
+          "redirectChain": [
+            {
+              "from": "https://dentech-pro.vercel.app/admin/users",
+              "status": 307,
+              "to": "https://dentech-pro.vercel.app/login"
+            }
+          ],
+          "status": 200,
+          "totalMs": 532
+        },
+        {
+          "contentLength": 23725,
+          "error": null,
+          "redirectChain": [
+            {
+              "from": "https://dentech-pro.vercel.app/admin/users",
+              "status": 307,
+              "to": "https://dentech-pro.vercel.app/login"
+            }
+          ],
+          "status": 200,
+          "totalMs": 592
+        }
+      ]
     },
     {
       "access": "protected",
@@ -179,7 +614,48 @@
       ],
       "severity": "good",
       "status": 200,
-      "totalMs": 470
+      "totalMs": 494,
+      "runs": [
+        {
+          "contentLength": 23725,
+          "error": null,
+          "redirectChain": [
+            {
+              "from": "https://dentech-pro.vercel.app/admin/requests",
+              "status": 307,
+              "to": "https://dentech-pro.vercel.app/login"
+            }
+          ],
+          "status": 200,
+          "totalMs": 481
+        },
+        {
+          "contentLength": 23725,
+          "error": null,
+          "redirectChain": [
+            {
+              "from": "https://dentech-pro.vercel.app/admin/requests",
+              "status": 307,
+              "to": "https://dentech-pro.vercel.app/login"
+            }
+          ],
+          "status": 200,
+          "totalMs": 556
+        },
+        {
+          "contentLength": 23725,
+          "error": null,
+          "redirectChain": [
+            {
+              "from": "https://dentech-pro.vercel.app/admin/requests",
+              "status": 307,
+              "to": "https://dentech-pro.vercel.app/login"
+            }
+          ],
+          "status": 200,
+          "totalMs": 494
+        }
+      ]
     },
     {
       "access": "protected",
@@ -196,7 +672,48 @@
       ],
       "severity": "good",
       "status": 200,
-      "totalMs": 459
+      "totalMs": 604,
+      "runs": [
+        {
+          "contentLength": 23725,
+          "error": null,
+          "redirectChain": [
+            {
+              "from": "https://dentech-pro.vercel.app/admin/customers",
+              "status": 307,
+              "to": "https://dentech-pro.vercel.app/login"
+            }
+          ],
+          "status": 200,
+          "totalMs": 604
+        },
+        {
+          "contentLength": 23725,
+          "error": null,
+          "redirectChain": [
+            {
+              "from": "https://dentech-pro.vercel.app/admin/customers",
+              "status": 307,
+              "to": "https://dentech-pro.vercel.app/login"
+            }
+          ],
+          "status": 200,
+          "totalMs": 837
+        },
+        {
+          "contentLength": 23725,
+          "error": null,
+          "redirectChain": [
+            {
+              "from": "https://dentech-pro.vercel.app/admin/customers",
+              "status": 307,
+              "to": "https://dentech-pro.vercel.app/login"
+            }
+          ],
+          "status": 200,
+          "totalMs": 403
+        }
+      ]
     },
     {
       "access": "protected",
@@ -213,7 +730,48 @@
       ],
       "severity": "good",
       "status": 200,
-      "totalMs": 522
+      "totalMs": 503,
+      "runs": [
+        {
+          "contentLength": 23725,
+          "error": null,
+          "redirectChain": [
+            {
+              "from": "https://dentech-pro.vercel.app/admin/search-logs",
+              "status": 307,
+              "to": "https://dentech-pro.vercel.app/login"
+            }
+          ],
+          "status": 200,
+          "totalMs": 503
+        },
+        {
+          "contentLength": 23725,
+          "error": null,
+          "redirectChain": [
+            {
+              "from": "https://dentech-pro.vercel.app/admin/search-logs",
+              "status": 307,
+              "to": "https://dentech-pro.vercel.app/login"
+            }
+          ],
+          "status": 200,
+          "totalMs": 399
+        },
+        {
+          "contentLength": 23725,
+          "error": null,
+          "redirectChain": [
+            {
+              "from": "https://dentech-pro.vercel.app/admin/search-logs",
+              "status": 307,
+              "to": "https://dentech-pro.vercel.app/login"
+            }
+          ],
+          "status": 200,
+          "totalMs": 785
+        }
+      ]
     }
   ]
 }

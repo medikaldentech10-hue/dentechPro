@@ -5,6 +5,10 @@ const DEFAULT_BASE_URL = "https://dentech-pro.vercel.app";
 const baseUrl = (process.env.PERFORMANCE_AUDIT_BASE_URL ?? DEFAULT_BASE_URL)
   .replace(/\/$/, "");
 const authCookie = process.env.PERFORMANCE_AUDIT_COOKIE;
+const repeatCount = Math.max(
+  1,
+  Number.parseInt(process.env.PERFORMANCE_AUDIT_REPEATS ?? "3", 10) || 3
+);
 const reportDir = new URL("./reports/", import.meta.url);
 
 const routes = [
@@ -15,6 +19,8 @@ const routes = [
   { path: "/products?q=801", access: "public" },
   { path: "/products?q=JOT-801-FG-010", access: "public" },
   { path: "/products?q=polisher", access: "public" },
+  { path: "/products?q=arkansas", access: "public" },
+  { path: "/products?q=JOT-859L-FG-014", access: "public" },
   { path: "/request", access: "protected" },
   { path: "/dashboard", access: "protected", auth: true },
   { path: "/admin", access: "protected", auth: true },
@@ -30,6 +36,15 @@ function severity(ms) {
   if (ms < 1500) return "watch";
   if (ms < 3000) return "slow";
   return "critical";
+}
+
+function median(values) {
+  const sorted = [...values].sort((a, b) => a - b);
+  const middle = Math.floor(sorted.length / 2);
+
+  return sorted.length % 2
+    ? sorted[middle]
+    : Math.round((sorted[middle - 1] + sorted[middle]) / 2);
 }
 
 function absoluteUrl(pathOrUrl) {
@@ -104,6 +119,32 @@ async function fetchWithRedirects(route) {
   };
 }
 
+async function measureRoute(route) {
+  const runs = [];
+
+  for (let index = 0; index < repeatCount; index += 1) {
+    runs.push(await fetchWithRedirects(route));
+  }
+
+  const medianMs = median(runs.map((run) => run.totalMs));
+  const representative =
+    runs.find((run) => run.totalMs === medianMs) ??
+    runs.sort((left, right) => Math.abs(left.totalMs - medianMs) - Math.abs(right.totalMs - medianMs))[0];
+
+  return {
+    ...representative,
+    runs: runs.map((run) => ({
+      contentLength: run.contentLength,
+      error: run.error,
+      redirectChain: run.redirectChain,
+      status: run.status,
+      totalMs: run.totalMs,
+    })),
+    severity: severity(medianMs),
+    totalMs: medianMs,
+  };
+}
+
 function formatBytes(value) {
   if (value === null || Number.isNaN(value)) return "-";
   if (value < 1024) return `${value} B`;
@@ -127,6 +168,7 @@ function createMarkdown(results) {
     `Generated at: ${generatedAt}`,
     `Base URL: ${baseUrl}`,
     `Authenticated routes tested with cookie: ${authCookie ? "yes" : "no"}`,
+    `Runs per route: ${repeatCount}`,
     "",
     "## Severity thresholds",
     "",
@@ -137,23 +179,27 @@ function createMarkdown(results) {
     "",
     "## Slowest routes",
     "",
-    "| Route | Status | Time | Severity | Redirects |",
-    "| --- | ---: | ---: | --- | --- |",
+    "| Route | Status | Median | Runs | Severity | Redirects |",
+    "| --- | ---: | ---: | --- | --- | --- |",
     ...slowest.map(
       (result) =>
-        `| ${result.path} | ${result.status || "-"} | ${result.totalMs}ms | ${result.severity} | ${formatRedirects(result.redirectChain)} |`
+        `| ${result.path} | ${result.status || "-"} | ${result.totalMs}ms | ${formatRuns(result.runs)} | ${result.severity} | ${formatRedirects(result.redirectChain)} |`
     ),
     "",
     "## Full route timings",
     "",
-    "| Route | Access | Status | Time | Severity | Length | Redirects | Error |",
-    "| --- | --- | ---: | ---: | --- | ---: | --- | --- |",
+    "| Route | Access | Status | Median | Runs | Severity | Length | Redirects | Error |",
+    "| --- | --- | ---: | ---: | --- | --- | ---: | --- | --- |",
     ...results.map(
       (result) =>
-        `| ${result.path} | ${result.access} | ${result.status || "-"} | ${result.totalMs}ms | ${result.severity} | ${formatBytes(result.contentLength)} | ${formatRedirects(result.redirectChain)} | ${result.error ?? ""} |`
+        `| ${result.path} | ${result.access} | ${result.status || "-"} | ${result.totalMs}ms | ${formatRuns(result.runs)} | ${result.severity} | ${formatBytes(result.contentLength)} | ${formatRedirects(result.redirectChain)} | ${result.error ?? ""} |`
     ),
     "",
   ].join("\n");
+}
+
+function formatRuns(runs) {
+  return runs.map((run) => `${run.totalMs}ms`).join(", ");
 }
 
 async function main() {
@@ -161,15 +207,17 @@ async function main() {
 
   for (const route of routes) {
     process.stdout.write(`Measuring ${route.path} ... `);
-    const result = await fetchWithRedirects(route);
+    const result = await measureRoute(route);
     results.push(result);
-    process.stdout.write(`${result.totalMs}ms ${result.status || result.error}\n`);
+    process.stdout.write(
+      `${result.totalMs}ms median (${formatRuns(result.runs)}) ${result.status || result.error}\n`
+    );
   }
 
   await mkdir(reportDir, { recursive: true });
   await writeFile(
     new URL("performance-audit.json", reportDir),
-    `${JSON.stringify({ baseUrl, generatedAt: new Date().toISOString(), results }, null, 2)}\n`
+    `${JSON.stringify({ baseUrl, generatedAt: new Date().toISOString(), repeatCount, results }, null, 2)}\n`
   );
   await writeFile(
     new URL("performance-audit.md", reportDir),
