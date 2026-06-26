@@ -1,0 +1,219 @@
+{
+  "baseUrl": "https://dentech-pro.vercel.app",
+  "generatedAt": "2026-06-26T09:03:42.825Z",
+  "results": [
+    {
+      "access": "public",
+      "contentLength": 62808,
+      "error": null,
+      "finalUrl": "https://dentech-pro.vercel.app/",
+      "path": "/",
+      "redirectChain": [],
+      "severity": "good",
+      "status": 200,
+      "totalMs": 468
+    },
+    {
+      "access": "public",
+      "contentLength": 23725,
+      "error": null,
+      "finalUrl": "https://dentech-pro.vercel.app/login",
+      "path": "/login",
+      "redirectChain": [],
+      "severity": "good",
+      "status": 200,
+      "totalMs": 221
+    },
+    {
+      "access": "public",
+      "contentLength": 31757,
+      "error": null,
+      "finalUrl": "https://dentech-pro.vercel.app/register",
+      "path": "/register",
+      "redirectChain": [],
+      "severity": "good",
+      "status": 200,
+      "totalMs": 276
+    },
+    {
+      "access": "public",
+      "contentLength": 380869,
+      "error": null,
+      "finalUrl": "https://dentech-pro.vercel.app/products",
+      "path": "/products",
+      "redirectChain": [],
+      "severity": "slow",
+      "status": 200,
+      "totalMs": 2252
+    },
+    {
+      "access": "public",
+      "contentLength": 226088,
+      "error": null,
+      "finalUrl": "https://dentech-pro.vercel.app/products?q=801",
+      "path": "/products?q=801",
+      "redirectChain": [],
+      "severity": "critical",
+      "status": 200,
+      "totalMs": 3066
+    },
+    {
+      "access": "public",
+      "contentLength": 385533,
+      "error": null,
+      "finalUrl": "https://dentech-pro.vercel.app/products?q=JOT-801-FG-010",
+      "path": "/products?q=JOT-801-FG-010",
+      "redirectChain": [],
+      "severity": "slow",
+      "status": 200,
+      "totalMs": 2617
+    },
+    {
+      "access": "public",
+      "contentLength": 355592,
+      "error": null,
+      "finalUrl": "https://dentech-pro.vercel.app/products?q=polisher",
+      "path": "/products?q=polisher",
+      "redirectChain": [],
+      "severity": "slow",
+      "status": 200,
+      "totalMs": 2570
+    },
+    {
+      "access": "protected",
+      "contentLength": 23725,
+      "error": null,
+      "finalUrl": "https://dentech-pro.vercel.app/login",
+      "path": "/request",
+      "redirectChain": [
+        {
+          "from": "https://dentech-pro.vercel.app/request",
+          "status": 307,
+          "to": "https://dentech-pro.vercel.app/login"
+        }
+      ],
+      "severity": "good",
+      "status": 200,
+      "totalMs": 482
+    },
+    {
+      "access": "protected",
+      "contentLength": 23725,
+      "error": null,
+      "finalUrl": "https://dentech-pro.vercel.app/login",
+      "path": "/dashboard",
+      "redirectChain": [
+        {
+          "from": "https://dentech-pro.vercel.app/dashboard",
+          "status": 307,
+          "to": "https://dentech-pro.vercel.app/login"
+        }
+      ],
+      "severity": "good",
+      "status": 200,
+      "totalMs": 391
+    },
+    {
+      "access": "protected",
+      "contentLength": 23725,
+      "error": null,
+      "finalUrl": "https://dentech-pro.vercel.app/login",
+      "path": "/admin",
+      "redirectChain": [
+        {
+          "from": "https://dentech-pro.vercel.app/admin",
+          "status": 307,
+          "to": "https://dentech-pro.vercel.app/login"
+        }
+      ],
+      "severity": "good",
+      "status": 200,
+      "totalMs": 539
+    },
+    {
+      "access": "protected",
+      "contentLength": 23725,
+      "error": null,
+      "finalUrl": "https://dentech-pro.vercel.app/login",
+      "path": "/admin/products",
+      "redirectChain": [
+        {
+          "from": "https://dentech-pro.vercel.app/admin/products",
+          "status": 307,
+          "to": "https://dentech-pro.vercel.app/login"
+        }
+      ],
+      "severity": "good",
+      "status": 200,
+      "totalMs": 473
+    },
+    {
+      "access": "protected",
+      "contentLength": 23725,
+      "error": null,
+      "finalUrl": "https://dentech-pro.vercel.app/login",
+      "path": "/admin/users",
+      "redirectChain": [
+        {
+          "from": "https://dentech-pro.vercel.app/admin/users",
+          "status": 307,
+          "to": "https://dentech-pro.vercel.app/login"
+        }
+      ],
+      "severity": "good",
+      "status": 200,
+      "totalMs": 500
+    },
+    {
+      "access": "protected",
+      "contentLength": 23725,
+      "error": null,
+      "finalUrl": "https://dentech-pro.vercel.app/login",
+      "path": "/admin/requests",
+      "redirectChain": [
+        {
+          "from": "https://dentech-pro.vercel.app/admin/requests",
+          "status": 307,
+          "to": "https://dentech-pro.vercel.app/login"
+        }
+      ],
+      "severity": "good",
+      "status": 200,
+      "totalMs": 470
+    },
+    {
+      "access": "protected",
+      "contentLength": 23725,
+      "error": null,
+      "finalUrl": "https://dentech-pro.vercel.app/login",
+      "path": "/admin/customers",
+      "redirectChain": [
+        {
+          "from": "https://dentech-pro.vercel.app/admin/customers",
+          "status": 307,
+          "to": "https://dentech-pro.vercel.app/login"
+        }
+      ],
+      "severity": "good",
+      "status": 200,
+      "totalMs": 459
+    },
+    {
+      "access": "protected",
+      "contentLength": 23725,
+      "error": null,
+      "finalUrl": "https://dentech-pro.vercel.app/login",
+      "path": "/admin/search-logs",
+      "redirectChain": [
+        {
+          "from": "https://dentech-pro.vercel.app/admin/search-logs",
+          "status": 307,
+          "to": "https://dentech-pro.vercel.app/login"
+        }
+      ],
+      "severity": "good",
+      "status": 200,
+      "totalMs": 522
+    }
+  ]
+}

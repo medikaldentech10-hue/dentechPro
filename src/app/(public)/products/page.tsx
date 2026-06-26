@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { after } from "next/server";
 import { Search } from "lucide-react";
 
 import { FilterDrawer } from "@/components/products/filter-drawer";
@@ -67,10 +68,12 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
     getCatalogUsageAreas(),
     getPricedProductsForProfile(profile, filters),
   ]);
-  await recordCatalogSearch({
-    profile,
-    query: params.q,
-    resultCount: productResult.totalCount,
+  after(async () => {
+    await recordCatalogSearch({
+      profile,
+      query: params.q,
+      resultCount: productResult.totalCount,
+    });
   });
   const products = productResult.products;
   const priceVisibility = hasPriceAccess
