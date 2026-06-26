@@ -124,6 +124,9 @@ type ProductRowsResult = {
   totalPages: number;
 };
 
+const PRODUCT_DETAIL_SELECT =
+  "id,brand,category_id,description,image_url,is_active,product_group_code,product_name,usage_area,category:categories(id,name,slug,sort_order),variants:product_variants(id,product_id,variant_code,manufacturer_ref,connection_type,color,currency,diameter,grit,image_url,is_active,package_quantity,price,stock_quantity,stock_status)";
+
 type CatalogSearch = {
   diameterValues: number[];
   exactSku: string | null;
@@ -412,7 +415,7 @@ async function getProductRowById(productId: string) {
 
   let query = supabase
     .from("products")
-    .select("*,category:categories(*),variants:product_variants(*)")
+    .select(PRODUCT_DETAIL_SELECT)
     .eq("is_active", true);
 
   query = isUuid(productId)

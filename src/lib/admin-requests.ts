@@ -11,8 +11,24 @@ type ItemRow = Database["public"]["Tables"]["order_items"]["Row"];
 type ProductRow = Database["public"]["Tables"]["products"]["Row"];
 type VariantRow = Database["public"]["Tables"]["product_variants"]["Row"];
 type AuditLogRow = Database["public"]["Tables"]["audit_logs"]["Row"];
+type AdminRequestCustomer = Pick<
+  CustomerRow,
+  | "assigned_sales_rep_id"
+  | "city"
+  | "company_name"
+  | "customer_type"
+  | "district"
+  | "email"
+  | "id"
+  | "name"
+  | "phone"
+>;
 
 const PAYMENT_NOTE_MARKER = "\n\n---DENTECH_ADMIN_PAYMENT---\n";
+const ADMIN_REQUEST_DRAFT_COLUMNS =
+  "id,created_by_user_id,customer_id,discount_total,note,source,status,subtotal,total,created_at,updated_at";
+const ADMIN_REQUEST_ITEM_COLUMNS =
+  "id,order_draft_id,variant_id,quantity,unit_price,line_total,created_at,updated_at";
 
 export type AdminPaymentMethod = "iban" | "pos_link" | "cash" | "other";
 
@@ -48,7 +64,7 @@ export const adminRequestStatuses: AdminRequestStatus[] = [
 ];
 
 export type AdminRequestListItem = DraftRow & {
-  customer: CustomerRow | null;
+  customer: AdminRequestCustomer | null;
   itemCount: number;
   requester: Profile | null;
 };
@@ -71,7 +87,7 @@ export type AdminRequestLine = ItemRow & {
 };
 
 export type AdminRequestDetail = DraftRow & {
-  customer: CustomerRow | null;
+  customer: AdminRequestCustomer | null;
   items: AdminRequestLine[];
   paymentInfo: AdminPaymentInfo;
   requestNote: string | null;
@@ -80,7 +96,12 @@ export type AdminRequestDetail = DraftRow & {
 };
 
 type ItemQueryRow = ItemRow & {
-  variant: (VariantRow & { product: ProductRow | null }) | null;
+  variant: (Pick<
+    VariantRow,
+    "currency" | "manufacturer_ref" | "variant_code"
+  > & {
+    product: Pick<ProductRow, "id" | "product_group_code" | "product_name"> | null;
+  }) | null;
 };
 
 type StockMovement = {
@@ -204,7 +225,8 @@ export async function getAdminRequestList(
   const supabase = getSupabaseAdminClient();
   let query = supabase
     .from("order_drafts")
-    .select("*");
+    .select(ADMIN_REQUEST_DRAFT_COLUMNS)
+    .limit(100);
 
   if (filters.status && filters.status !== "all") {
     if (filters.status === "submitted") {
@@ -267,7 +289,7 @@ export async function getAdminRequestDetail(
   const supabase = getSupabaseAdminClient();
   const { data: draft, error } = await supabase
     .from("order_drafts")
-    .select("*")
+    .select(ADMIN_REQUEST_DRAFT_COLUMNS)
     .eq("id", draftId)
     .maybeSingle();
 
@@ -294,7 +316,9 @@ export async function getAdminRequestDetail(
 
   const salesRepId = customer?.assigned_sales_rep_id ?? null;
   const salesRep = salesRepId
-    ? (await getProfilesByIds([salesRepId])).get(salesRepId) ?? null
+    ? profilesById.get(salesRepId) ??
+      (await getProfilesByIds([salesRepId])).get(salesRepId) ??
+      null
     : requester?.role === "sales_rep"
       ? requester
       : null;
@@ -600,7 +624,9 @@ async function getDraftItems(draftId: string): Promise<AdminRequestLine[]> {
   const supabase = getSupabaseAdminClient();
   const { data, error } = await supabase
     .from("order_items")
-    .select("*,variant:product_variants(*,product:products(*))")
+    .select(
+      `${ADMIN_REQUEST_ITEM_COLUMNS},variant:product_variants(currency,manufacturer_ref,variant_code,product:products(id,product_group_code,product_name))`
+    )
     .eq("order_draft_id", draftId)
     .order("created_at", { ascending: true });
 
@@ -632,7 +658,7 @@ async function getStockItems(draftId: string): Promise<StockItemRow[]> {
   const { data, error } = await supabase
     .from("order_items")
     .select(
-      "*,variant:product_variants(id,is_active,stock_quantity,stock_status,variant_code)"
+      `${ADMIN_REQUEST_ITEM_COLUMNS},variant:product_variants(id,is_active,stock_quantity,stock_status,variant_code)`
     )
     .eq("order_draft_id", draftId)
     .order("created_at", { ascending: true });
@@ -648,7 +674,7 @@ async function getLastStockDecreaseMovements(draftId: string) {
   const supabase = getSupabaseAdminClient();
   const { data, error } = await supabase
     .from("audit_logs")
-    .select("*")
+    .select("new_value")
     .eq("entity_type", "order_draft")
     .eq("entity_id", draftId)
     .eq("action", "order_draft_stock_decreased")
@@ -716,7 +742,7 @@ async function getItemCounts(draftIds: string[]) {
 async function getCustomersByIds(ids: Array<string | null>) {
   const supabase = getSupabaseAdminClient();
   const customerIds = uniqueStrings(ids);
-  const customers = new Map<string, CustomerRow>();
+  const customers = new Map<string, AdminRequestCustomer>();
 
   if (!customerIds.length) {
     return customers;
@@ -724,7 +750,9 @@ async function getCustomersByIds(ids: Array<string | null>) {
 
   const { data, error } = await supabase
     .from("customers")
-    .select("*")
+    .select(
+      "id,assigned_sales_rep_id,city,company_name,customer_type,district,email,name,phone"
+    )
     .in("id", customerIds);
 
   if (error) {
@@ -749,7 +777,9 @@ async function getProfilesByIds(ids: Array<string | null>) {
 
   const { data, error } = await supabase
     .from("profiles")
-    .select("*")
+    .select(
+      "id,email,full_name,is_active,phone,role,user_type,verification_status,can_view_prices,created_at,updated_at"
+    )
     .in("id", profileIds);
 
   if (error) {
@@ -801,7 +831,9 @@ function endOfDayIso(value: string) {
   return `${value}T23:59:59.999Z`;
 }
 
-function parseStockMovements(auditLog: AuditLogRow | null): StockMovement[] {
+function parseStockMovements(
+  auditLog: Pick<AuditLogRow, "new_value"> | null
+): StockMovement[] {
   const value = auditLog?.new_value;
 
   if (!value || typeof value !== "object" || Array.isArray(value)) {

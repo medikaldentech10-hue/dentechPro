@@ -92,7 +92,9 @@ async function getLatestRequests(): Promise<AdminDashboardRequest[]> {
   const supabase = getSupabaseAdminClient();
   const { data, error } = await supabase
     .from("order_drafts")
-    .select("*")
+    .select(
+      "id,customer_id,created_by_user_id,discount_total,note,source,status,subtotal,total,created_at,updated_at"
+    )
     .order("created_at", { ascending: false })
     .limit(5);
 
@@ -134,7 +136,9 @@ async function getLatestPendingUsers() {
   const supabase = getSupabaseAdminClient();
   const { data, error } = await supabase
     .from("profiles")
-    .select("*")
+    .select(
+      "id,email,full_name,is_active,phone,role,user_type,verification_status,can_view_prices,created_at,updated_at"
+    )
     .or("verification_status.eq.pending,role.eq.pending_user")
     .order("created_at", { ascending: false })
     .limit(5);

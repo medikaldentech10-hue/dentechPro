@@ -1,5 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { Buffer } from "node:buffer";
+import { readFile } from "node:fs/promises";
+import { createClient } from "@supabase/supabase-js";
 
 const DEFAULT_BASE_URL = "https://dentech-pro.vercel.app";
 const baseUrl = (process.env.PERFORMANCE_AUDIT_BASE_URL ?? DEFAULT_BASE_URL)
@@ -11,7 +13,7 @@ const repeatCount = Math.max(
 );
 const reportDir = new URL("./reports/", import.meta.url);
 
-const routes = [
+const staticRoutes = [
   { path: "/", access: "public" },
   { path: "/login", access: "public" },
   { path: "/register", access: "public" },
@@ -30,6 +32,105 @@ const routes = [
   { path: "/admin/customers", access: "protected", auth: true },
   { path: "/admin/search-logs", access: "protected", auth: true },
 ];
+
+async function getRoutes() {
+  const discoveredRoutes = await discoverDetailRoutes();
+  return mergeRoutes(staticRoutes, discoveredRoutes);
+}
+
+function mergeRoutes(baseRoutes, discoveredRoutes) {
+  const seen = new Set();
+  return [...baseRoutes, ...discoveredRoutes].filter((route) => {
+    if (seen.has(route.path)) {
+      return false;
+    }
+
+    seen.add(route.path);
+    return true;
+  });
+}
+
+async function discoverDetailRoutes() {
+  const env = await loadLocalEnv();
+  const supabaseUrl =
+    process.env.NEXT_PUBLIC_SUPABASE_URL ?? env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey =
+    process.env.SUPABASE_SERVICE_ROLE_KEY ?? env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!supabaseUrl || !serviceRoleKey) {
+    return [];
+  }
+
+  const supabase = createClient(supabaseUrl, serviceRoleKey, {
+    auth: { persistSession: false },
+  });
+  const [productResult, requestResult] = await Promise.all([
+    supabase
+      .from("products")
+      .select("id")
+      .eq("is_active", true)
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from("order_drafts")
+      .select("id,created_by_user_id")
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ]);
+
+  const routes = [];
+
+  if (productResult.data?.id) {
+    routes.push({
+      access: "public",
+      label: "real product detail",
+      path: `/products/${productResult.data.id}`,
+    });
+  }
+
+  if (requestResult.data?.id) {
+    routes.push({
+      access: "protected",
+      auth: true,
+      label: "real admin request detail",
+      path: `/admin/requests/${requestResult.data.id}`,
+    });
+  }
+
+  if (requestResult.data?.created_by_user_id) {
+    routes.push({
+      access: "protected",
+      auth: true,
+      label: "user request history",
+      path: "/request",
+    });
+  }
+
+  return routes;
+}
+
+async function loadLocalEnv() {
+  const env = {};
+
+  try {
+    const content = await readFile(new URL("../.env.local", import.meta.url), "utf8");
+    for (const line of content.split(/\r?\n/)) {
+      const match = line.match(/^\s*([^#][^=]+)=(.*)$/);
+
+      if (!match) {
+        continue;
+      }
+
+      env[match[1].trim()] = match[2].trim();
+    }
+  } catch {
+    // Optional: production audits can rely on process env only.
+  }
+
+  return env;
+}
 
 function severity(ms) {
   if (ms < 800) return "good";
@@ -203,6 +304,7 @@ function formatRuns(runs) {
 }
 
 async function main() {
+  const routes = await getRoutes();
   const results = [];
 
   for (const route of routes) {

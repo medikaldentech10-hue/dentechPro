@@ -37,6 +37,9 @@ type AdminProductDetailRow = ProductRow & {
   variants: VariantRow[];
 };
 
+const ADMIN_PRODUCT_DETAIL_SELECT =
+  "id,brand,category_id,description,image_url,is_active,material_tags,procedure_tags,product_group_code,product_name,target_user_type,updated_at,usage_area,category:categories(id,name,slug,sort_order),variants:product_variants(id,product_id,variant_code,manufacturer_ref,connection_type,price,currency,stock_quantity,stock_status,package_quantity,diameter,length,grit,color,uts_no,image_url,is_active,created_at,updated_at)";
+
 export type AdminProductFilters = {
   active?: "active" | "inactive" | "all";
   brand?: string;
@@ -86,7 +89,7 @@ export async function getAdminCategories() {
   const supabase = getSupabaseAdminClient();
   const { data, error } = await supabase
     .from("categories")
-    .select("*")
+    .select("id,name,slug,sort_order,status")
     .order("sort_order", { ascending: true });
 
   if (error) {
@@ -192,7 +195,7 @@ export async function getAdminProductDetail(productId: string) {
   const supabase = getSupabaseAdminClient();
   const { data, error } = await supabase
     .from("products")
-    .select("*,category:categories(*),variants:product_variants(*)")
+    .select(ADMIN_PRODUCT_DETAIL_SELECT)
     .eq("id", productId)
     .maybeSingle();
 

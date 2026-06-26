@@ -35,10 +35,22 @@ export type RequestHistoryFilters = {
 };
 
 type DraftItemQueryRow = OrderItemRow & {
-  variant: VariantRow & {
-    product: ProductRow | null;
+  variant: Pick<
+    VariantRow,
+    | "currency"
+    | "is_active"
+    | "manufacturer_ref"
+    | "stock_quantity"
+    | "variant_code"
+  > & {
+    product: Pick<ProductRow, "id" | "product_group_code" | "product_name"> | null;
   };
 };
+
+const REQUEST_DRAFT_COLUMNS =
+  "id,created_by_user_id,customer_id,discount_total,note,source,status,subtotal,total,created_at,updated_at";
+const REQUEST_ITEM_COLUMNS =
+  "id,order_draft_id,variant_id,quantity,unit_price,line_total,created_at,updated_at";
 
 export function canCreateOrderRequest(profile: Profile | null) {
   return Boolean(
@@ -70,7 +82,7 @@ export async function getUserRequestHistory(
   const supabase = getSupabaseAdminClient();
   let query = supabase
     .from("order_drafts")
-    .select("*")
+    .select(REQUEST_DRAFT_COLUMNS)
     .eq("created_by_user_id", profile.id)
     .neq("status", "draft")
     .order("updated_at", { ascending: false })
@@ -343,7 +355,7 @@ async function getOrCreateDraft(profile: Profile) {
       source: isSalesRep(profile) ? "sales" : isAdmin(profile) ? "admin" : "web",
       status: "draft",
     })
-    .select("*")
+    .select(REQUEST_DRAFT_COLUMNS)
     .single();
 
   if (error) {
@@ -357,7 +369,7 @@ async function findDraft(userId: string) {
   const supabase = getSupabaseAdminClient();
   const { data, error } = await supabase
     .from("order_drafts")
-    .select("*")
+    .select(REQUEST_DRAFT_COLUMNS)
     .eq("created_by_user_id", userId)
     .eq("status", "draft")
     .order("updated_at", { ascending: false })
@@ -375,7 +387,9 @@ async function hydrateDraft(draft: OrderDraftRow): Promise<RequestDraft> {
   const supabase = getSupabaseAdminClient();
   const { data, error } = await supabase
     .from("order_items")
-    .select("*,variant:product_variants(*,product:products(*))")
+    .select(
+      `${REQUEST_ITEM_COLUMNS},variant:product_variants(currency,is_active,manufacturer_ref,stock_quantity,variant_code,product:products(id,product_group_code,product_name))`
+    )
     .eq("order_draft_id", draft.id)
     .order("created_at", { ascending: true });
 
@@ -407,7 +421,9 @@ async function getVariantForDraft(variantId: string) {
   const supabase = getSupabaseAdminClient();
   const { data, error } = await supabase
     .from("product_variants")
-    .select("*,product:products(*)")
+    .select(
+      "id,product_id,variant_code,is_active,price,product:products(id,is_active)"
+    )
     .eq("id", variantId)
     .single();
 
@@ -422,7 +438,9 @@ async function getOwnedDraftItem(userId: string, itemId: string) {
   const supabase = getSupabaseAdminClient();
   const { data, error } = await supabase
     .from("order_items")
-    .select("*,draft:order_drafts(*)")
+    .select(
+      `${REQUEST_ITEM_COLUMNS},draft:order_drafts(id,created_by_user_id,status)`
+    )
     .eq("id", itemId)
     .single();
 
