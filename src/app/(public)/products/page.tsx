@@ -13,7 +13,9 @@ import { canViewPrices, getCurrentProfile, isAdmin, isSalesRep } from "@/lib/aut
 import {
   getCatalogCategories,
   getCatalogUsageAreas,
+  getCachedPublicFirstPageProducts,
   getPricedProductsForProfile,
+  getPublicProducts,
   interpretCatalogQuery,
   type ProductFilters,
 } from "@/lib/products";
@@ -63,10 +65,24 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
     usage: params.usage,
   };
   const hasPriceAccess = canViewPrices(profile);
+  const hasActiveFilters = Boolean(
+    params.q ||
+      params.category ||
+      params.usage ||
+      params.min_price ||
+      params.max_price ||
+      (params.brand && params.brand !== "JOTA")
+  );
+  const isFirstPublicCatalogPage =
+    !hasPriceAccess && !hasActiveFilters && (!params.page || params.page === "1");
   const [categories, usageAreas, productResult] = await Promise.all([
     getCatalogCategories(),
     getCatalogUsageAreas(),
-    getPricedProductsForProfile(profile, filters),
+    hasPriceAccess
+      ? getPricedProductsForProfile(profile, filters)
+      : isFirstPublicCatalogPage
+        ? getCachedPublicFirstPageProducts(filters)
+        : getPublicProducts(filters),
   ]);
   after(async () => {
     await recordCatalogSearch({
@@ -81,14 +97,6 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
     : profile
       ? "pending"
       : "public";
-  const hasActiveFilters = Boolean(
-    params.q ||
-      params.category ||
-      params.usage ||
-      params.min_price ||
-      params.max_price ||
-      (params.brand && params.brand !== "JOTA")
-  );
   const activeFilterLabels = [
     params.q ? `Arama: ${params.q}` : null,
     params.category

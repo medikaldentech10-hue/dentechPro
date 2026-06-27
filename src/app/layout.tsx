@@ -7,7 +7,13 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Dentech Pro",
   description:
-    "DENTech Medikal için B2B dental ürün arama, saha satış ve talep platformu.",
+    "DENTech Medikal için B2B dental ürün arama ve talep yönetimi.",
+  icons: {
+    icon: [
+      { url: "/favicon.ico" },
+      { url: "/brand/dentech-favicon.svg", type: "image/svg+xml" },
+    ],
+  },
 };
 
 export default function RootLayout({

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Lock } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 
 import { PremiumCard } from "@/components/premium/premium-card";
 import { StatusBadge } from "@/components/shared/status-badge";
@@ -21,33 +21,43 @@ export function CategoryCard({
   href = "#",
   meta = "Yakında",
 }: CategoryCardProps) {
+  const isActive = status === "active";
   const content = (
     <PremiumCard
       className={cn(
-        "min-h-44 overflow-hidden rounded-2xl bg-card/86",
-        status === "coming-soon" &&
-          "opacity-70 hover:translate-y-0 hover:border-border/70 hover:shadow-[0_16px_55px_rgb(15_23_42/0.07)] dark:hover:shadow-[0_18px_65px_rgb(0_0_0/0.22)]"
+        "min-h-44 overflow-hidden rounded-2xl bg-card/88",
+        !isActive &&
+          "opacity-78 hover:translate-y-0 hover:border-border/70 hover:shadow-[0_16px_55px_rgb(15_23_42/0.07)] dark:hover:shadow-[0_18px_65px_rgb(0_0_0/0.22)]"
       )}
     >
       <CardContent className="flex h-full flex-col justify-between gap-8 p-5">
         <div className="flex items-start justify-between gap-3">
           <StatusBadge
-            label={status === "active" ? meta : "Yakında"}
-            tone={status === "active" ? "success" : "muted"}
+            label={isActive ? meta : "Yakında"}
+            tone={isActive ? "success" : "muted"}
           />
-          <span className="flex size-9 items-center justify-center rounded-xl border border-primary/15 bg-primary/10 text-primary shadow-sm">
-            {status === "active" ? <ArrowRight /> : <Lock />}
-          </span>
+          {isActive ? (
+            <span className="flex size-9 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary shadow-sm">
+              <ArrowRight className="size-4" />
+            </span>
+          ) : null}
         </div>
-        <div className="flex flex-col gap-2">
-          <h3 className="text-lg font-semibold tracking-normal">{title}</h3>
-          <p className="text-sm leading-6 text-muted-foreground">{description}</p>
+        <div className="flex flex-col gap-3">
+          <div>
+            <h3 className="text-lg font-semibold tracking-normal">{title}</h3>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              {description}
+            </p>
+          </div>
+          {isActive ? (
+            <span className="text-sm font-semibold text-primary">Kataloğa Git</span>
+          ) : null}
         </div>
       </CardContent>
     </PremiumCard>
   );
 
-  if (status === "coming-soon") {
+  if (!isActive) {
     return content;
   }
 

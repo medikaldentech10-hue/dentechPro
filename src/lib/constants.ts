@@ -29,8 +29,9 @@ export type PriceVisibility = "public" | "pending" | "approved";
 
 export const publicNav = [
   { href: "/products", label: "Katalog" },
-  { href: "/usage", label: "Kullanım Alanları" },
-  { href: "/login", label: "Giriş Yap" },
+  { href: "/#kategoriler", label: "Kategoriler" },
+  { href: "/nasil-calisir", label: "Nasıl Çalışır" },
+  { href: "/#iletisim", label: "İletişim" },
 ];
 
 export const dashboardNav = [

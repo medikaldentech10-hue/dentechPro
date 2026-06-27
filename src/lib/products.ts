@@ -1,5 +1,7 @@
 ﻿import "server-only";
 
+import { unstable_cache } from "next/cache";
+
 import { canViewPrices } from "@/lib/auth";
 import { interpretCatalogQueryLocal } from "@/lib/search-interpretation";
 import { getSupabaseAdminClient } from "@/lib/supabase/server";
@@ -185,6 +187,15 @@ export async function getPublicProducts(filters: ProductFilters = {}) {
   const result = await getProductRows(filters);
   return mapProductListResult(result, toPublicProduct);
 }
+
+export const getCachedPublicFirstPageProducts = unstable_cache(
+  async (filters: ProductFilters = {}) => getPublicProducts(filters),
+  ["public-products-first-page"],
+  {
+    revalidate: 60,
+    tags: ["public-products"],
+  }
+);
 
 export async function getPublicProductById(productId: string) {
   const row = await getProductRowById(productId);
