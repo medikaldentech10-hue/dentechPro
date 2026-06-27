@@ -44,6 +44,9 @@ export function MobileNav({
 }: MobileNavProps) {
   const pathname = usePathname();
   const authState = getHeaderAuthState(profile);
+  const accountLabel =
+    profile?.full_name?.trim() ||
+    (authState.isAuthenticated ? "Hesabım" : authState.label);
   const navItems: MobileNavItem[] =
     providedNavItems ?? publicNav.filter((item) => item.href !== "/login");
   const activeHref = getActiveHref(navItems, pathname);
@@ -115,7 +118,7 @@ export function MobileNav({
                 "mt-3 justify-center"
               )}
             >
-              {authState.label}
+              {accountLabel}
             </Link>
           </nav>
         </SheetContent>

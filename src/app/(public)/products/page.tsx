@@ -244,7 +244,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
                     </span>
                     {interpretedCriteria.map((criterion) => (
                       <span
-                        className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-primary"
+                        className="rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary"
                         key={`${criterion.type}-${criterion.value}`}
                       >
                         {criterion.label}

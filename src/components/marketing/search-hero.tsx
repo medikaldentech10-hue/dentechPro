@@ -1,114 +1,149 @@
 import Link from "next/link";
-import { ClipboardCheck, EyeOff, Search } from "lucide-react";
+import { Box, CheckCircle2, Headphones, Search, Zap } from "lucide-react";
 
-import { GlassCard } from "@/components/premium/glass-card";
 import { buttonVariants } from "@/components/ui/button";
-import { CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { getHeaderAuthState } from "@/lib/auth-ui";
-import type { Profile } from "@/lib/types/auth";
 import { cn } from "@/lib/utils";
-
-type SearchHeroProps = {
-  profile?: Profile | null;
-};
 
 const examples = ["JOT-801-FG-010", "014 FG", "Zirkonya polisaj", "Arkansas"];
 
 const benefits = [
   {
-    title: "Akıllı ürün arama",
-    description: "SKU, çap, uç tipi veya kullanım alanına göre hızlı arama.",
-    icon: Search,
+    title: "Onaylı Hesap Fiyatları",
+    description: "Size özel fiyatlarınızı görün, güvenli şekilde talep oluşturun.",
+    icon: CheckCircle2,
   },
   {
-    title: "Onaylı hesaplara özel fiyatlar",
-    description: "Fiyatlar yalnızca onaylı kullanıcı hesaplarında görüntülenir.",
-    icon: EyeOff,
+    title: "Geniş Ürün Yelpazesi",
+    description: "Klinik ve laboratuvar için ürünleri tek platformda inceleyin.",
+    icon: Box,
   },
   {
-    title: "Hızlı talep süreci",
-    description: "Ürünleri listenize ekleyin, talebinizi DENTech ekibine iletin.",
-    icon: ClipboardCheck,
+    title: "Hızlı Talep",
+    description: "Ürünleri bulun, talebinizi iletin, ekibimiz dönüş yapsın.",
+    icon: Zap,
+  },
+  {
+    title: "Uzman Destek",
+    description: "Ürün, kullanım ve sipariş süreçlerinde ekibimiz yanınızda.",
+    icon: Headphones,
   },
 ];
 
-export function SearchHero({ profile = null }: SearchHeroProps) {
-  const authState = getHeaderAuthState(profile);
-
+export function SearchHero() {
   return (
-    <section className="mx-auto flex w-full max-w-[1200px] flex-col items-center gap-8 px-4 py-12 text-center md:px-6 md:py-18">
-      <div className="flex max-w-3xl flex-col items-center gap-5">
-        <h1 className="text-4xl font-semibold tracking-normal text-foreground md:text-6xl">
+    <section className="relative mx-auto flex w-full max-w-[1440px] flex-col items-center overflow-hidden px-4 pb-12 pt-10 text-center md:px-8 md:pb-14 md:pt-14">
+      <HeroInstrumentCluster side="left" />
+      <HeroInstrumentCluster side="right" />
+
+      <div className="relative z-10 flex w-full max-w-4xl flex-col items-center">
+        <h1 className="max-w-4xl text-4xl font-semibold tracking-normal text-slate-950 md:text-6xl dark:text-slate-50">
           Dental ürünleri daha hızlı bulun.
         </h1>
-        <p className="max-w-2xl text-base leading-7 text-muted-foreground md:text-lg">
-          JOTA frezlerden klinik ve laboratuvar çözümlerine kadar ürünleri
-          inceleyin, onaylı hesabınızla fiyatları görüntüleyin ve talebinizi
-          hızlıca iletin.
+        <p className="mt-5 max-w-2xl text-base leading-7 text-slate-600 md:text-lg dark:text-slate-300">
+          JOTA frezler, klinik ve laboratuvar çözümleri, onaylı hesap
+          fiyatlarıyla. Aradığınız ürünü hızlıca bulun, talebinizi oluşturun.
         </p>
+
+        <form
+          action="/products"
+          className="mt-7 flex w-full max-w-3xl flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_16px_50px_rgb(15_23_42/0.08)] sm:flex-row dark:border-white/10 dark:bg-slate-950/80"
+        >
+          <div className="flex min-h-16 flex-1 items-center gap-3 px-5">
+            <Search className="size-5 text-slate-500" />
+            <Input
+              className="h-12 border-0 bg-transparent px-0 text-base shadow-none focus-visible:ring-0"
+              name="q"
+              placeholder="Ürün adı, kodu veya kategori yazın..."
+            />
+          </div>
+          <button
+            type="submit"
+            className={cn(
+              buttonVariants(),
+              "m-1.5 h-[3.25rem] rounded-lg px-8 text-sm font-semibold sm:h-auto"
+            )}
+          >
+            Ürün Ara
+          </button>
+        </form>
+
+        <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+          <span className="mr-1 text-xs text-muted-foreground">Örnek aramalar:</span>
+          {examples.map((example) => (
+            <Link
+              className="rounded-full border border-[var(--primary-border)] bg-white px-3.5 py-1.5 text-xs font-medium text-primary shadow-sm transition hover:bg-[var(--primary-soft)] dark:bg-slate-950/70"
+              href={`/products?q=${encodeURIComponent(example)}`}
+              key={example}
+            >
+              {example}
+            </Link>
+          ))}
+        </div>
       </div>
 
-      <GlassCard className="w-full max-w-4xl border-primary/20 bg-white/82 shadow-[0_24px_80px_rgb(15_23_42/0.08)]">
-        <CardContent className="p-2.5">
-          <form action="/products" className="flex flex-col gap-2 sm:flex-row">
-            <div className="flex min-h-16 flex-1 items-center gap-3 rounded-xl border border-[var(--primary-border)] bg-white px-4 shadow-inner shadow-foreground/5 dark:bg-background/70">
-              <Search className="text-primary" />
-              <Input
-                className="h-12 border-0 bg-transparent px-0 text-base shadow-none focus-visible:ring-0"
-                name="q"
-                placeholder="Ürün adı, SKU, çap, uç tipi veya kullanım alanı ara..."
-              />
-            </div>
-            <button
-              type="submit"
-              className={cn(buttonVariants(), "h-16 px-6 text-sm font-semibold")}
-            >
-              Ürün Ara
-            </button>
-          </form>
-          <div className="flex flex-wrap gap-2 px-1 pb-1 pt-3">
-            {examples.map((example) => (
-              <Link
-                className="rounded-full border border-[var(--primary-border)] bg-[var(--primary-soft)] px-3 py-1.5 text-xs font-medium text-primary transition hover:border-primary"
-                href={`/products?q=${encodeURIComponent(example)}`}
-                key={example}
-              >
-                {example}
-              </Link>
-            ))}
-          </div>
-        </CardContent>
-      </GlassCard>
-
-      <div className="grid w-full max-w-3xl gap-3 text-left sm:grid-cols-3">
+      <div className="relative z-10 mt-10 grid w-full max-w-[1200px] gap-4 text-left sm:grid-cols-2 lg:grid-cols-4">
         {benefits.map(({ description, icon: Icon, title }) => (
           <div
+            className="rounded-xl border border-slate-200/80 bg-white/86 p-5 shadow-[0_14px_44px_rgb(15_23_42/0.07)] backdrop-blur dark:border-white/10 dark:bg-slate-950/72"
             key={title}
-            className="rounded-xl border border-border/70 bg-card/78 p-4 shadow-sm backdrop-blur"
           >
-            <div className="mb-3 flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
-              <Icon className="size-4" />
+            <div className="flex items-start gap-4">
+              <span className="flex size-11 shrink-0 items-center justify-center rounded-xl text-primary">
+                <Icon className="size-8 stroke-[1.75]" />
+              </span>
+              <div>
+                <h2 className="text-sm font-semibold text-slate-950 dark:text-slate-50">
+                  {title}
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                  {description}
+                </p>
+              </div>
             </div>
-            <p className="font-medium text-foreground">{title}</p>
-            <p className="mt-1 text-sm leading-6 text-muted-foreground">
-              {description}
-            </p>
           </div>
         ))}
       </div>
-
-      <div className="flex flex-wrap items-center justify-center gap-3">
-        <Link href="/products" className={cn(buttonVariants())}>
-          Kataloğu İncele
-        </Link>
-        <Link
-          href={authState.href}
-          className={cn(buttonVariants({ variant: "outline" }))}
-        >
-          {authState.label}
-        </Link>
-      </div>
     </section>
+  );
+}
+
+function HeroInstrumentCluster({ side }: { side: "left" | "right" }) {
+  const isLeft = side === "left";
+
+  return (
+    <div
+      aria-hidden="true"
+      className={cn(
+        "pointer-events-none absolute top-8 hidden h-[310px] w-[300px] opacity-80 lg:block",
+        isLeft ? "left-0" : "right-0"
+      )}
+    >
+      {isLeft ? (
+        <div className="absolute bottom-0 left-10 flex items-end gap-5">
+          {[190, 235, 165].map((height, index) => (
+            <span
+              className="relative block w-5 rounded-full bg-gradient-to-b from-slate-400 via-slate-200 to-slate-500 shadow-[0_18px_35px_rgb(15_23_42/0.12)]"
+              key={height}
+              style={{ height }}
+            >
+              <span className="absolute -top-10 left-1/2 h-14 w-7 -translate-x-1/2 rounded-t-full bg-[repeating-linear-gradient(120deg,#707780_0_2px,#cbd5e1_2px_5px)]" />
+              <span
+                className={cn(
+                  "absolute bottom-16 left-1/2 h-2.5 w-8 -translate-x-1/2 rounded-full",
+                  index === 0 ? "bg-primary" : index === 1 ? "bg-slate-300" : "bg-blue-700"
+                )}
+              />
+            </span>
+          ))}
+        </div>
+      ) : (
+        <div className="absolute right-0 top-20 h-44 w-72 rotate-[-10deg] rounded-full border-[10px] border-slate-300/80 bg-gradient-to-br from-white to-slate-100 shadow-[0_18px_45px_rgb(15_23_42/0.12)]">
+          <span className="absolute -bottom-10 left-1/2 h-16 w-5 -translate-x-1/2 rotate-45 rounded-full bg-slate-300" />
+          <span className="absolute -bottom-20 left-[58%] h-24 w-7 rotate-45 rounded-full bg-gradient-to-b from-slate-100 to-slate-300" />
+        </div>
+      )}
+      <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-background to-transparent" />
+    </div>
   );
 }

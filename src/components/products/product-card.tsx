@@ -209,7 +209,7 @@ function ProductAction({
         </summary>
         <div className="mt-2 max-h-72 overflow-y-auto rounded-2xl border border-white/55 bg-white/92 p-2 shadow-[0_14px_38px_rgb(15_23_42/0.14)] backdrop-blur-2xl dark:border-white/10 dark:bg-slate-950/92">
           <p className="px-2 pb-2 text-xs font-semibold text-slate-600 dark:text-slate-300">
-            Varyant seÃ§in
+            Varyant seçin
           </p>
           <div className="flex flex-col gap-2">
             {pricedVariants.map((item) => (
@@ -553,10 +553,10 @@ function normalizeColorLabel(value: string) {
   const normalized = normalizeText(value);
 
   if (normalized.includes("black") || normalized.includes("siyah")) return "Siyah";
-  if (normalized.includes("green") || normalized.includes("yesil")) return "YeÅŸil";
+  if (normalized.includes("green") || normalized.includes("yesil")) return "Yeşil";
   if (normalized.includes("blue") || normalized.includes("mavi")) return "Mavi";
-  if (normalized.includes("red") || normalized.includes("kirmizi")) return "KÄ±rmÄ±zÄ±";
-  if (normalized.includes("yellow") || normalized.includes("sari")) return "SarÄ±";
+  if (normalized.includes("red") || normalized.includes("kirmizi")) return "Kırmızı";
+  if (normalized.includes("yellow") || normalized.includes("sari")) return "Sarı";
 
   return value.toUpperCase().match(/\b(XC|C|M|F|SF|UF|SG)\b/)?.[1] ?? null;
 }

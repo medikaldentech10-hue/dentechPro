@@ -1,86 +1,80 @@
-import Link from "next/link";
+import { Box, ClipboardList, Headphones, Search } from "lucide-react";
 
 import { CategoryCard } from "@/components/marketing/category-card";
 import { SearchHero } from "@/components/marketing/search-hero";
 import { GradientBackground } from "@/components/premium/gradient-background";
-import { buttonVariants } from "@/components/ui/button";
-import { getCurrentProfile } from "@/lib/auth";
-import { cn } from "@/lib/utils";
 
 const categories = [
   {
-    title: "JOTA Frezler",
-    description: "Elmas, karbit, taş, disk ve cilalama ürünleri",
+    title: "Frezler",
+    description: "JOTA frez kataloğu",
     status: "active" as const,
     href: "/products",
-    meta: "302 varyant",
+    visual: "bur" as const,
   },
   {
-    title: "Ölçü Materyalleri",
-    description: "Ölçü ve klinik yardımcı ürünleri",
+    title: "Polisaj Ürünleri",
     status: "coming-soon" as const,
+    visual: "polish" as const,
   },
   {
-    title: "Klinik Cihazları",
-    description: "Klinik operasyon ekipmanları",
+    title: "Endodonti",
     status: "coming-soon" as const,
+    visual: "endo" as const,
   },
   {
-    title: "Pedodonti Ürünleri",
-    description: "Çocuk diş hekimliği ürün ailesi",
+    title: "Laboratuvar",
     status: "coming-soon" as const,
+    visual: "lab" as const,
   },
   {
-    title: "Laboratuvar Ürünleri",
-    description: "Dental laboratuvar çözümleri",
+    title: "Sarf Malzemeleri",
     status: "coming-soon" as const,
+    visual: "supply" as const,
   },
   {
-    title: "Veteriner Dental Ürünler",
-    description: "Veteriner dental uygulamalar",
+    title: "Cihaz ve Ekipman",
     status: "coming-soon" as const,
+    visual: "device" as const,
   },
 ];
 
 const steps = [
   {
-    title: "Hesap oluşturun",
-    description: "Klinik, laboratuvar veya veteriner hesabınızla kayıt olun.",
+    title: "Ürün Ara",
+    description: "Ürün adı, kodu veya kategori ile aradığınız ürünü bulun.",
+    icon: Search,
   },
   {
-    title: "Onay sürecini tamamlayın",
-    description: "DENTech ekibi hesabınızı kontrol ederek uygun rol ile onaylar.",
+    title: "Talep Oluştur",
+    description: "Ürünleri listenize ekleyin ve talebinizi oluşturun.",
+    icon: ClipboardList,
   },
   {
-    title: "Ürünleri inceleyin",
-    description: "SKU, çap, kategori veya kullanım alanına göre ürünleri bulun.",
+    title: "Onay & Teklif",
+    description: "Ekibimiz talebinizi inceler, size hızlıca dönüş sağlar.",
+    icon: Headphones,
   },
   {
-    title: "Talebinizi iletin",
-    description: "Ürünleri talep listenize ekleyin ve ekibimize gönderin.",
+    title: "Sipariş & Teslimat",
+    description: "Onay sonrası siparişiniz hazırlanır ve gönderilir.",
+    icon: Box,
   },
 ];
 
-export default async function HomePage() {
-  const profile = await getCurrentProfile();
-
+export default function HomePage() {
   return (
-    <GradientBackground className="pb-16">
-      <SearchHero profile={profile} />
+    <GradientBackground className="pb-0">
+      <SearchHero />
 
       <section
-        className="mx-auto flex w-full max-w-[1200px] flex-col gap-5 px-4 md:px-6"
+        className="mx-auto flex w-full max-w-[1440px] flex-col gap-4 px-4 md:px-8"
         id="kategoriler"
       >
-        <div className="max-w-2xl">
-          <h2 className="text-2xl font-semibold tracking-normal text-foreground">
-            Ürün Kategorileri
-          </h2>
-          <p className="mt-3 text-sm leading-6 text-muted-foreground">
-            İhtiyacınıza uygun ürün grubunu seçerek kataloğu inceleyin.
-          </p>
-        </div>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <h2 className="text-center text-2xl font-semibold tracking-normal text-slate-950 dark:text-slate-50">
+          Kategoriler
+        </h2>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           {categories.map((category) => (
             <CategoryCard key={category.title} {...category} />
           ))}
@@ -88,38 +82,32 @@ export default async function HomePage() {
       </section>
 
       <section
-        className="mx-auto mt-16 flex w-full max-w-[1200px] flex-col gap-6 px-4 md:px-6"
+        className="mx-auto mt-10 flex w-full max-w-[1440px] flex-col gap-6 px-4 pb-12 md:px-8"
         id="nasil-calisir"
       >
-        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div className="max-w-2xl">
-            <h2 className="text-2xl font-semibold tracking-normal text-foreground">
-              Nasıl Çalışır?
-            </h2>
-            <p className="mt-3 text-sm leading-6 text-muted-foreground">
-              Hesap onayından talep göndermeye kadar süreç kısa ve takip edilebilir.
-            </p>
-          </div>
-          <Link
-            href="/nasil-calisir"
-            className={cn(buttonVariants({ variant: "outline" }), "self-start")}
-          >
-            Nasıl Çalışır?
-          </Link>
-        </div>
-        <div className="grid gap-3 md:grid-cols-4">
-          {steps.map((step, index) => (
-            <div
-              className="rounded-2xl border border-border/70 bg-card/78 p-5 shadow-sm backdrop-blur"
-              key={step.title}
-            >
-              <span className="mb-5 flex size-9 items-center justify-center rounded-full border border-[var(--primary-border)] bg-[var(--primary-soft)] text-sm font-semibold text-primary">
-                {index + 1}
+        <h2 className="text-center text-2xl font-semibold tracking-normal text-slate-950 dark:text-slate-50">
+          Nasıl Çalışır?
+        </h2>
+        <div className="grid gap-5 md:grid-cols-4">
+          {steps.map(({ description, icon: Icon, title }, index) => (
+            <div className="relative flex items-start gap-4" key={title}>
+              {index < steps.length - 1 ? (
+                <span className="absolute left-[4.5rem] top-9 hidden h-px w-[calc(100%-4rem)] border-t border-dashed border-primary/55 md:block" />
+              ) : null}
+              <span className="relative z-10 flex size-16 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-primary shadow-sm dark:border-white/10 dark:bg-slate-950">
+                <Icon className="size-7 stroke-[1.75]" />
               </span>
-              <h3 className="font-semibold text-foreground">{step.title}</h3>
-              <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                {step.description}
-              </p>
+              <div className="pt-1 text-left">
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl font-semibold text-primary">{index + 1}</span>
+                  <h3 className="font-semibold text-slate-950 dark:text-slate-50">
+                    {title}
+                  </h3>
+                </div>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                  {description}
+                </p>
+              </div>
             </div>
           ))}
         </div>

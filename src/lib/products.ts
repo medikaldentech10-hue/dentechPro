@@ -606,7 +606,7 @@ function toPublicProduct(row: ProductQueryRow): PublicCatalogProduct {
     id: row.id,
     imageUrl: row.image_url,
     name: row.product_name,
-    status: row.usage_area ?? "JOTA Ã¼rÃ¼n kataloÄŸu",
+    status: row.usage_area ?? "JOTA ürün kataloğu",
     usageArea: row.usage_area,
     variantCount: row.variants.length,
     variants: row.variants.map(toPublicVariant),
@@ -928,7 +928,7 @@ function getVariantName(row: CatalogVariantRow) {
     row.grit,
   ]
     .filter(Boolean)
-    .join(" Â· ");
+    .join(" · ");
 
   if (label) {
     return label;
@@ -938,7 +938,7 @@ function getVariantName(row: CatalogVariantRow) {
     return row.manufacturer_ref;
   }
 
-  return isUuid(row.variant_code) ? "Varyant seÃ§eneÄŸi" : row.variant_code;
+  return isUuid(row.variant_code) ? "Varyant seçeneği" : row.variant_code;
 }
 
 function buildCatalogSearch(rawQuery: string): CatalogSearch {

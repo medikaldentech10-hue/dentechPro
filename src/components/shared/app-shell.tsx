@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { BackgroundGlow } from "@/components/premium/background-glow";
 import { signOutAction } from "@/app/(public)/auth-actions";
+import { Footer } from "@/components/shared/footer";
 import { Header } from "@/components/shared/header";
 import { MobileNav } from "@/components/shared/mobile-nav";
 import { Sidebar } from "@/components/shared/sidebar";
@@ -40,6 +41,7 @@ export function AppShell({
       <div className="min-h-dvh">
         <Header profile={profile} />
         <main>{children}</main>
+        <Footer />
       </div>
     );
   }
