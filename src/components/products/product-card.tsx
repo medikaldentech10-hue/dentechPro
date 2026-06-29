@@ -59,7 +59,7 @@ export function ProductCard({
       />
 
       <div className="pointer-events-none relative z-10 flex flex-1 flex-col p-1.5 pb-1 sm:p-3 sm:pb-1.5">
-        <div className="relative aspect-[4/3] overflow-hidden rounded-[1rem] bg-[radial-gradient(circle_at_28%_18%,rgb(211_250_229/0.9),transparent_35%),radial-gradient(circle_at_76%_70%,rgb(20_118_82/0.16),transparent_38%),linear-gradient(145deg,rgb(255_255_255),rgb(244_248_247))] shadow-[inset_0_0_0_1px_rgb(255_255_255/0.8),inset_0_-46px_90px_rgb(15_23_42/0.055)] sm:aspect-square sm:rounded-[1.45rem] dark:bg-[radial-gradient(circle_at_28%_18%,rgb(20_118_82/0.18),transparent_35%),linear-gradient(145deg,rgb(248_250_252),rgb(226_232_240))]">
+        <div className="relative aspect-[4/3] overflow-hidden rounded-[1rem] bg-[radial-gradient(circle_at_28%_18%,rgb(211_250_229/0.7),transparent_36%),radial-gradient(circle_at_76%_70%,rgb(20_118_82/0.12),transparent_40%),linear-gradient(145deg,rgb(255_255_255),rgb(244_248_247))] shadow-[inset_0_0_0_1px_rgb(255_255_255/0.76),inset_0_-30px_60px_rgb(15_23_42/0.04)] sm:aspect-square sm:rounded-[1.45rem] dark:bg-[radial-gradient(circle_at_28%_18%,rgb(20_118_82/0.16),transparent_36%),linear-gradient(145deg,rgb(248_250_252),rgb(226_232_240))]">
           <div className="pointer-events-none absolute inset-x-6 top-4 z-0 h-px bg-gradient-to-r from-transparent via-white/95 to-transparent" />
           <div className="pointer-events-none absolute -right-10 -top-8 z-0 size-36 rounded-full bg-primary/12 blur-3xl" />
           <div className="pointer-events-none absolute -bottom-14 -left-12 z-0 size-36 rounded-full bg-cyan-100/55 blur-3xl" />
@@ -76,9 +76,9 @@ export function ProductCard({
             />
           </div>
 
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-24 bg-gradient-to-t from-white/58 via-white/18 to-transparent sm:h-28" />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-20 bg-gradient-to-t from-white/48 via-white/14 to-transparent sm:h-28" />
 
-          <div className="absolute inset-x-2 bottom-2 z-20 rounded-xl border border-white/70 bg-gradient-to-br from-white/72 via-white/48 to-white/30 p-2 shadow-[0_10px_26px_rgb(15_23_42/0.12)] backdrop-blur-2xl backdrop-saturate-150 sm:inset-x-3 sm:bottom-3 sm:rounded-[1.15rem] sm:p-2.5 sm:shadow-[0_14px_36px_rgb(15_23_42/0.14)]">
+          <div className="absolute inset-x-1.5 bottom-1.5 z-20 rounded-lg border border-white/65 bg-gradient-to-br from-white/62 via-white/38 to-white/18 p-1.5 shadow-[0_8px_20px_rgb(15_23_42/0.1)] backdrop-blur-2xl backdrop-saturate-150 sm:inset-x-3 sm:bottom-3 sm:rounded-[1.15rem] sm:p-2.5 sm:shadow-[0_14px_36px_rgb(15_23_42/0.14)]">
             <div className="mb-1 flex items-center justify-between gap-2 sm:mb-1.5">
               <span className="rounded-full border border-primary/15 bg-primary/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-primary sm:px-2.5 sm:py-1 sm:text-[10px] sm:tracking-[0.18em]">
                 {catalogProduct.brand}
@@ -89,16 +89,16 @@ export function ProductCard({
                 </span>
               ) : null}
             </div>
-            <CardTitle className="line-clamp-2 text-[0.78rem] font-semibold leading-tight text-slate-950 min-[360px]:text-[0.82rem] sm:text-[0.95rem] sm:leading-[1.18]">
+            <CardTitle className="line-clamp-2 text-[0.76rem] font-semibold leading-tight text-slate-950 min-[360px]:text-[0.8rem] sm:text-[0.95rem] sm:leading-[1.18]">
               {displayTitle}
             </CardTitle>
 
             {variantBadges.length ? (
-              <div className="mt-1.5 flex min-h-5 min-w-0 flex-wrap items-center gap-1 text-[10px] text-slate-500 sm:mt-2 sm:min-h-6 sm:gap-1.5 sm:text-[11px]">
+              <div className="mt-1 flex min-h-5 min-w-0 flex-wrap items-center gap-1 text-[10px] text-slate-500 sm:mt-2 sm:min-h-6 sm:gap-1.5 sm:text-[11px]">
                 {variantBadges.map((badge, index) => (
                   <VariantBadgeLink
                     badge={badge}
-                    className={index > 1 ? "hidden sm:inline-flex" : undefined}
+                    className={index > 0 ? "hidden sm:inline-flex" : undefined}
                     key={`${badge.label}-${badge.href}`}
                   />
                 ))}
@@ -111,13 +111,25 @@ export function ProductCard({
       <CardContent className="relative z-20 mt-auto px-2 pb-2 pt-0 sm:px-3.5 sm:pb-3.5">
         <div className="flex flex-col gap-1.5 rounded-xl border border-white/28 bg-white/34 p-1.5 shadow-[0_8px_24px_rgb(15_23_42/0.045)] backdrop-blur-xl sm:gap-2 sm:rounded-[1.15rem] sm:p-2 dark:border-white/8 dark:bg-slate-950/42">
           <PriceState visibility={priceVisibility} variant={primaryVariant} />
-          <ProductAction
-            adminMode={adminMode}
-            priceVisibility={priceVisibility}
-            salesMode={salesMode}
-            variant={primaryVariant}
-            variants={catalogProduct.variants}
-          />
+          {priceVisibility === "approved" ? (
+            <ProductAction
+              adminMode={adminMode}
+              priceVisibility={priceVisibility}
+              salesMode={salesMode}
+              variant={primaryVariant}
+              variants={catalogProduct.variants}
+            />
+          ) : (
+            <div className="hidden sm:block">
+              <ProductAction
+                adminMode={adminMode}
+                priceVisibility={priceVisibility}
+                salesMode={salesMode}
+                variant={primaryVariant}
+                variants={catalogProduct.variants}
+              />
+            </div>
+          )}
         </div>
       </CardContent>
     </PremiumCard>

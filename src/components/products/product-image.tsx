@@ -19,7 +19,7 @@ export function ProductImage({ alt, fallback, src }: ProductImageProps) {
     // eslint-disable-next-line @next/next/no-img-element
     <img
       alt={alt}
-      className="relative z-0 h-[96%] w-[96%] object-contain drop-shadow-[0_22px_26px_rgb(15_23_42/0.14)] transition duration-300 group-hover/card:scale-[1.03]"
+      className="relative z-0 h-full w-full object-contain drop-shadow-[0_18px_22px_rgb(15_23_42/0.12)] transition duration-300 group-hover/card:scale-[1.03] sm:h-[96%] sm:w-[96%]"
       loading="lazy"
       onError={() => setFailed(true)}
       src={src}
