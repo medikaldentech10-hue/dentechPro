@@ -28,13 +28,13 @@ export function CategoryCard({
       )}
     >
       <CategoryVisual visual={visual} />
-      <div className="flex min-w-0 flex-1 items-center justify-between gap-3 pl-4">
-        <div className="min-w-0 text-left">
-          <h3 className="truncate text-sm font-semibold text-slate-950 dark:text-slate-50">
+      <div className="flex min-w-0 flex-1 items-center justify-between gap-2 pl-3">
+        <div className="min-w-0 flex-1 text-left">
+          <h3 className="line-clamp-2 text-sm font-semibold leading-5 text-slate-950 dark:text-slate-50">
             {title}
           </h3>
           {description ? (
-            <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
+            <p className="mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground">
               {description}
             </p>
           ) : null}
@@ -60,7 +60,7 @@ export function CategoryCard({
 
 function CategoryVisual({ visual }: { visual: NonNullable<CategoryCardProps["visual"]> }) {
   return (
-    <div className="relative h-16 w-24 shrink-0 overflow-hidden rounded-lg bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
+    <div className="relative h-16 w-20 shrink-0 overflow-hidden rounded-lg bg-gradient-to-br from-slate-50 to-slate-100 sm:w-24 dark:from-slate-900 dark:to-slate-800">
       {visual === "bur" ? (
         <span className="absolute left-4 top-7 h-3 w-20 -rotate-6 rounded-full bg-gradient-to-r from-slate-300 via-slate-500 to-slate-200">
           <span className="absolute right-2 top-1/2 h-5 w-8 -translate-y-1/2 rounded-full bg-[repeating-linear-gradient(120deg,#64748b_0_2px,#dbe3ea_2px_5px)]" />

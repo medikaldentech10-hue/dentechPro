@@ -74,7 +74,7 @@ export default function HomePage() {
         <h2 className="text-center text-2xl font-semibold tracking-normal text-slate-950 dark:text-slate-50">
           Kategoriler
         </h2>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {categories.map((category) => (
             <CategoryCard key={category.title} {...category} />
           ))}

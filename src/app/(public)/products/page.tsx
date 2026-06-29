@@ -283,11 +283,12 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
               hasNextPage={productResult.hasNextPage}
               hasPreviousPage={productResult.hasPreviousPage}
               params={params}
+              totalPages={productResult.totalPages}
             />
           </div>
           {products.length ? (
             <>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 sm:gap-4 lg:grid-cols-2 xl:grid-cols-3">
                 {products.map((product) => (
                   <ProductCard
                     adminMode={isAdmin(profile)}
@@ -304,6 +305,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
                   hasNextPage={productResult.hasNextPage}
                   hasPreviousPage={productResult.hasPreviousPage}
                   params={params}
+                  totalPages={productResult.totalPages}
                 />
               </div>
             </>
@@ -326,43 +328,97 @@ function PaginationLinks({
   hasNextPage,
   hasPreviousPage,
   params,
+  totalPages,
 }: {
   currentPage: number;
   hasNextPage: boolean;
   hasPreviousPage: boolean;
   params: ProductsSearchParams;
+  totalPages: number;
 }) {
-  if (!hasPreviousPage && !hasNextPage) {
+  if (totalPages <= 1 && !hasPreviousPage && !hasNextPage) {
     return null;
   }
 
+  const safeTotalPages = Math.max(1, totalPages);
+  const safeCurrentPage = clampPage(currentPage, safeTotalPages);
+  const visiblePages = getVisiblePages(safeCurrentPage, safeTotalPages);
+
   return (
-    <div className="flex gap-2">
-      {hasPreviousPage ? (
+    <nav
+      aria-label="Sayfalama"
+      className="flex flex-wrap items-center justify-end gap-2"
+    >
+      {hasPreviousPage && safeCurrentPage > 1 ? (
         <Link
-          className={buttonVariants({ variant: "outline" })}
-          href={getPageHref(params, currentPage - 1)}
+          className={cn(buttonVariants({ variant: "outline" }), "h-9 px-3 text-xs sm:text-sm")}
+          href={getPageHref(params, safeCurrentPage - 1, safeTotalPages)}
         >
           Önceki
         </Link>
       ) : null}
-      {hasNextPage ? (
+      <div className="flex items-center gap-1">
+        {visiblePages.map((page, index) => {
+          const previousPage = visiblePages[index - 1];
+          const hasGap = previousPage ? page - previousPage > 1 : false;
+
+          return (
+            <span className="flex items-center gap-1" key={page}>
+              {hasGap ? (
+                <span className="px-1 text-xs text-muted-foreground" aria-hidden="true">
+                  ...
+                </span>
+              ) : null}
+              <Link
+                aria-current={page === safeCurrentPage ? "page" : undefined}
+                className={cn(
+                  buttonVariants({
+                    variant: page === safeCurrentPage ? "default" : "outline",
+                  }),
+                  "size-9 px-0 text-xs sm:text-sm"
+                )}
+                href={getPageHref(params, page, safeTotalPages)}
+              >
+                {page}
+              </Link>
+            </span>
+          );
+        })}
+      </div>
+      {hasNextPage && safeCurrentPage < safeTotalPages ? (
         <Link
-          className={buttonVariants({ variant: "outline" })}
-          href={getPageHref(params, currentPage + 1)}
+          className={cn(buttonVariants({ variant: "outline" }), "h-9 px-3 text-xs sm:text-sm")}
+          href={getPageHref(params, safeCurrentPage + 1, safeTotalPages)}
         >
           Sonraki
         </Link>
       ) : null}
-    </div>
+      <form className="flex items-center gap-1" action="/products">
+        <PreservedSearchParamInputs params={params} />
+        <Input
+          aria-label="Sayfa numarası"
+          className="h-9 w-16 px-2 text-center text-sm"
+          defaultValue={safeCurrentPage}
+          max={safeTotalPages}
+          min={1}
+          name="page"
+          type="number"
+        />
+        <Button className="h-9 px-3 text-xs sm:text-sm" type="submit" variant="outline">
+          Git
+        </Button>
+      </form>
+    </nav>
   );
 }
 
 function getPageHref(
   params: ProductsSearchParams,
-  page: number
+  page: number,
+  totalPages?: number
 ) {
   const nextParams = new URLSearchParams();
+  const safePage = totalPages ? clampPage(page, totalPages) : Math.max(1, page);
 
   if (params.q) nextParams.set("q", params.q);
   if (params.brand) nextParams.set("brand", params.brand);
@@ -370,7 +426,46 @@ function getPageHref(
   if (params.usage) nextParams.set("usage", params.usage);
   if (params.min_price) nextParams.set("min_price", params.min_price);
   if (params.max_price) nextParams.set("max_price", params.max_price);
-  nextParams.set("page", String(page));
+  nextParams.set("page", String(safePage));
 
   return `/products?${nextParams.toString()}`;
+}
+
+function PreservedSearchParamInputs({ params }: { params: ProductsSearchParams }) {
+  return (
+    <>
+      {params.q ? <input name="q" type="hidden" value={params.q} /> : null}
+      {params.brand ? <input name="brand" type="hidden" value={params.brand} /> : null}
+      {params.category ? (
+        <input name="category" type="hidden" value={params.category} />
+      ) : null}
+      {params.usage ? <input name="usage" type="hidden" value={params.usage} /> : null}
+      {params.min_price ? (
+        <input name="min_price" type="hidden" value={params.min_price} />
+      ) : null}
+      {params.max_price ? (
+        <input name="max_price" type="hidden" value={params.max_price} />
+      ) : null}
+    </>
+  );
+}
+
+function getVisiblePages(currentPage: number, totalPages: number) {
+  const pages = new Set<number>([1, totalPages]);
+
+  for (let page = currentPage - 2; page <= currentPage + 2; page += 1) {
+    if (page >= 1 && page <= totalPages) {
+      pages.add(page);
+    }
+  }
+
+  return Array.from(pages).sort((a, b) => a - b);
+}
+
+function clampPage(page: number, totalPages: number) {
+  if (!Number.isFinite(page)) {
+    return 1;
+  }
+
+  return Math.min(Math.max(1, Math.floor(page)), Math.max(1, totalPages));
 }
