@@ -6,6 +6,7 @@ import { PremiumCard } from "@/components/premium/premium-card";
 import { Button } from "@/components/ui/button";
 import { CardContent, CardTitle } from "@/components/ui/card";
 import type { PriceVisibility } from "@/lib/constants";
+import { cn } from "@/lib/utils";
 import type {
   PricedCatalogProduct,
   PricedCatalogVariant,
@@ -50,24 +51,24 @@ export function ProductCard({
   const variantBadges = getVariantBadges(catalogProduct, detailHref);
 
   return (
-    <PremiumCard className="group/card relative h-full overflow-hidden rounded-[1.7rem] border-white/20 bg-white/38 shadow-[0_18px_56px_rgb(15_23_42/0.07)] ring-1 ring-black/[0.01] backdrop-blur-2xl transition duration-300 hover:-translate-y-1 hover:bg-white/54 hover:shadow-[0_26px_78px_rgb(20_118_82/0.15)] dark:border-white/8 dark:bg-slate-950/42 dark:ring-white/[0.025]">
+    <PremiumCard className="group/card relative h-full overflow-hidden rounded-2xl border-white/20 bg-white/38 shadow-[0_14px_40px_rgb(15_23_42/0.06)] ring-1 ring-black/[0.01] backdrop-blur-2xl transition duration-300 hover:-translate-y-1 hover:bg-white/54 hover:shadow-[0_26px_78px_rgb(20_118_82/0.15)] sm:rounded-[1.7rem] sm:shadow-[0_18px_56px_rgb(15_23_42/0.07)] dark:border-white/8 dark:bg-slate-950/42 dark:ring-white/[0.025]">
       <Link
-        aria-label={`${catalogProduct.name} detayini ac`}
-        className="absolute inset-0 z-0 rounded-[1.7rem] outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+        aria-label={`${catalogProduct.name} detayını aç`}
+        className="absolute inset-0 z-0 rounded-2xl outline-none focus-visible:ring-3 focus-visible:ring-ring/50 sm:rounded-[1.7rem]"
         href={detailHref}
       />
 
-      <div className="pointer-events-none relative z-10 flex flex-1 flex-col p-2.5 pb-1 sm:p-3 sm:pb-1.5">
-        <div className="relative aspect-square overflow-hidden rounded-[1.45rem] bg-[radial-gradient(circle_at_28%_18%,rgb(211_250_229/0.9),transparent_35%),radial-gradient(circle_at_76%_70%,rgb(20_118_82/0.16),transparent_38%),linear-gradient(145deg,rgb(255_255_255),rgb(244_248_247))] shadow-[inset_0_0_0_1px_rgb(255_255_255/0.8),inset_0_-46px_90px_rgb(15_23_42/0.055)] dark:bg-[radial-gradient(circle_at_28%_18%,rgb(20_118_82/0.18),transparent_35%),linear-gradient(145deg,rgb(248_250_252),rgb(226_232_240))]">
+      <div className="pointer-events-none relative z-10 flex flex-1 flex-col p-1.5 pb-1 sm:p-3 sm:pb-1.5">
+        <div className="relative aspect-[4/3] overflow-hidden rounded-[1rem] bg-[radial-gradient(circle_at_28%_18%,rgb(211_250_229/0.9),transparent_35%),radial-gradient(circle_at_76%_70%,rgb(20_118_82/0.16),transparent_38%),linear-gradient(145deg,rgb(255_255_255),rgb(244_248_247))] shadow-[inset_0_0_0_1px_rgb(255_255_255/0.8),inset_0_-46px_90px_rgb(15_23_42/0.055)] sm:aspect-square sm:rounded-[1.45rem] dark:bg-[radial-gradient(circle_at_28%_18%,rgb(20_118_82/0.18),transparent_35%),linear-gradient(145deg,rgb(248_250_252),rgb(226_232_240))]">
           <div className="pointer-events-none absolute inset-x-6 top-4 z-0 h-px bg-gradient-to-r from-transparent via-white/95 to-transparent" />
           <div className="pointer-events-none absolute -right-10 -top-8 z-0 size-36 rounded-full bg-primary/12 blur-3xl" />
           <div className="pointer-events-none absolute -bottom-14 -left-12 z-0 size-36 rounded-full bg-cyan-100/55 blur-3xl" />
 
-          <div className="absolute inset-2 z-0 flex items-center justify-center sm:inset-2.5">
+          <div className="absolute inset-1.5 z-0 flex items-center justify-center sm:inset-2.5">
             <ProductImage
               alt={catalogProduct.name}
               fallback={
-                <div className="flex h-full w-full items-center justify-center rounded-2xl bg-white/42 text-3xl font-semibold text-primary backdrop-blur">
+                <div className="flex h-full w-full items-center justify-center rounded-xl bg-white/42 text-2xl font-semibold text-primary backdrop-blur sm:rounded-2xl sm:text-3xl">
                   {primaryVariant?.connectionType ?? catalogProduct.brand}
                 </div>
               }
@@ -75,27 +76,31 @@ export function ProductCard({
             />
           </div>
 
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-28 bg-gradient-to-t from-white/58 via-white/18 to-transparent" />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-24 bg-gradient-to-t from-white/58 via-white/18 to-transparent sm:h-28" />
 
-          <div className="absolute inset-x-3 bottom-3 z-20 rounded-[1.15rem] border border-white/70 bg-gradient-to-br from-white/68 via-white/44 to-white/28 p-2.5 shadow-[0_14px_36px_rgb(15_23_42/0.14)] backdrop-blur-2xl backdrop-saturate-150">
-            <div className="mb-1.5 flex items-center justify-between gap-2">
-              <span className="rounded-full border border-primary/15 bg-primary/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">
+          <div className="absolute inset-x-2 bottom-2 z-20 rounded-xl border border-white/70 bg-gradient-to-br from-white/72 via-white/48 to-white/30 p-2 shadow-[0_10px_26px_rgb(15_23_42/0.12)] backdrop-blur-2xl backdrop-saturate-150 sm:inset-x-3 sm:bottom-3 sm:rounded-[1.15rem] sm:p-2.5 sm:shadow-[0_14px_36px_rgb(15_23_42/0.14)]">
+            <div className="mb-1 flex items-center justify-between gap-2 sm:mb-1.5">
+              <span className="rounded-full border border-primary/15 bg-primary/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-primary sm:px-2.5 sm:py-1 sm:text-[10px] sm:tracking-[0.18em]">
                 {catalogProduct.brand}
               </span>
               {variantBadges.length ? (
-                <span className="text-[10px] font-medium text-slate-500">
+                <span className="hidden text-[10px] font-medium text-slate-500 sm:inline">
                   Varyantlar
                 </span>
               ) : null}
             </div>
-            <CardTitle className="line-clamp-2 text-[0.9rem] font-semibold leading-[1.18] text-slate-950 sm:text-[0.95rem]">
+            <CardTitle className="line-clamp-2 text-[0.78rem] font-semibold leading-tight text-slate-950 min-[360px]:text-[0.82rem] sm:text-[0.95rem] sm:leading-[1.18]">
               {displayTitle}
             </CardTitle>
 
             {variantBadges.length ? (
-              <div className="mt-2 flex min-h-6 min-w-0 flex-wrap items-center gap-1.5 text-[11px] text-slate-500">
-                {variantBadges.map((badge) => (
-                  <VariantBadgeLink badge={badge} key={`${badge.label}-${badge.href}`} />
+              <div className="mt-1.5 flex min-h-5 min-w-0 flex-wrap items-center gap-1 text-[10px] text-slate-500 sm:mt-2 sm:min-h-6 sm:gap-1.5 sm:text-[11px]">
+                {variantBadges.map((badge, index) => (
+                  <VariantBadgeLink
+                    badge={badge}
+                    className={index > 1 ? "hidden sm:inline-flex" : undefined}
+                    key={`${badge.label}-${badge.href}`}
+                  />
                 ))}
               </div>
             ) : null}
@@ -103,8 +108,8 @@ export function ProductCard({
         </div>
       </div>
 
-      <CardContent className="relative z-20 mt-auto px-3.5 pb-3.5 pt-0">
-        <div className="flex flex-col gap-2 rounded-[1.15rem] border border-white/28 bg-white/34 p-2 shadow-[0_8px_24px_rgb(15_23_42/0.045)] backdrop-blur-xl dark:border-white/8 dark:bg-slate-950/42">
+      <CardContent className="relative z-20 mt-auto px-2 pb-2 pt-0 sm:px-3.5 sm:pb-3.5">
+        <div className="flex flex-col gap-1.5 rounded-xl border border-white/28 bg-white/34 p-1.5 shadow-[0_8px_24px_rgb(15_23_42/0.045)] backdrop-blur-xl sm:gap-2 sm:rounded-[1.15rem] sm:p-2 dark:border-white/8 dark:bg-slate-950/42">
           <PriceState visibility={priceVisibility} variant={primaryVariant} />
           <ProductAction
             adminMode={adminMode}
@@ -119,15 +124,23 @@ export function ProductCard({
   );
 }
 
-function VariantBadgeLink({ badge }: { badge: VariantBadge }) {
+function VariantBadgeLink({
+  badge,
+  className,
+}: {
+  badge: VariantBadge;
+  className?: string;
+}) {
   return (
     <Link
-      className={[
+      className={cn(
         "pointer-events-auto relative z-20 inline-flex min-h-6 items-center gap-1.5 rounded-full border px-2.5 py-0.5 font-semibold shadow-sm backdrop-blur transition",
         badge.tone === "holder"
           ? "border-primary/20 bg-primary/10 text-primary hover:bg-primary/15"
           : "border-slate-200/80 bg-white/72 text-slate-900 hover:border-primary/25 hover:bg-primary/10",
-      ].join(" ")}
+        "min-h-5 px-2 text-[10px] sm:min-h-6 sm:px-2.5 sm:text-[11px]",
+        className
+      )}
       href={badge.href}
     >
       <span>{badge.label}</span>
@@ -154,7 +167,7 @@ function PriceState({
 }) {
   if (visibility === "approved" && variant && "price" in variant) {
     return (
-      <p className="px-1 text-[0.95rem] font-semibold text-foreground">
+      <p className="px-1 text-[0.82rem] font-semibold text-foreground sm:text-[0.95rem]">
         {formatPrice(variant.price, variant.currency)}
       </p>
     );
@@ -162,8 +175,8 @@ function PriceState({
 
   if (visibility === "pending") {
     return (
-      <p className="rounded-full border border-primary/15 bg-primary/10 px-3 py-2 text-center text-xs font-medium text-primary">
-        Fiyat icin hesap onayi bekleniyor
+      <p className="rounded-full border border-primary/15 bg-primary/10 px-2 py-1.5 text-center text-[11px] font-medium leading-4 text-primary sm:px-3 sm:py-2 sm:text-xs">
+        Fiyat için hesap onayı bekleniyor
       </p>
     );
   }
@@ -191,7 +204,7 @@ function ProductAction({
 }) {
   if (priceVisibility !== "approved" || !variant || !("stockQuantity" in variant)) {
     return (
-      <Button className="w-full rounded-full text-xs font-semibold shadow-sm" disabled>
+      <Button className="h-8 w-full rounded-full px-2 text-[11px] font-semibold leading-4 shadow-sm sm:h-10 sm:text-xs" disabled>
         {getActionLabel({ adminMode, priceVisibility, salesMode })}
       </Button>
     );
@@ -230,7 +243,7 @@ function ProductAction({
         disabled
           ? !variant.isActive
             ? "Pasif varyant"
-            : "Stok bilgisi icin iletisime gecin"
+            : "Stok bilgisi için iletişime geçin"
           : undefined
       }
       submitLabel="Ekle"
@@ -271,7 +284,7 @@ function VariantRequestOption({
       <AddToRequestForm
         disabled={disabled}
         disabledReason={
-          !variant.isActive ? "Pasif varyant" : "Stok bilgisi icin iletisime gecin"
+          !variant.isActive ? "Pasif varyant" : "Stok bilgisi için iletişime geçin"
         }
         submitLabel={salesMode ? "Ekle" : "Ekle"}
         variantId={variant.id}
@@ -290,11 +303,11 @@ function getActionLabel({
   salesMode: boolean;
 }) {
   if (priceVisibility === "public") {
-    return "Stok bilgisi icin iletisime gecin";
+    return "Stok bilgisi için iletişime geçin";
   }
 
   if (priceVisibility === "pending") {
-    return "Hesap onayi bekleniyor";
+    return "Hesap onayı bekleniyor";
   }
 
   if (adminMode || salesMode) {
@@ -306,7 +319,7 @@ function getActionLabel({
 
 function formatPrice(price: number | null, currency: string) {
   if (price === null) {
-    return "Fiyat tanimlanmadi";
+    return "Fiyat tanımlanmadı";
   }
 
   return `${new Intl.NumberFormat("tr-TR", {
