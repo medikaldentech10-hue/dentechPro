@@ -114,17 +114,7 @@ export function ProductCard({
               variant={primaryVariant}
               variants={catalogProduct.variants}
             />
-          ) : (
-            <div className="hidden sm:block">
-              <ProductAction
-                adminMode={adminMode}
-                priceVisibility={priceVisibility}
-                salesMode={salesMode}
-                variant={primaryVariant}
-                variants={catalogProduct.variants}
-              />
-            </div>
-          )}
+          ) : null}
         </div>
       </CardContent>
     </PremiumCard>
