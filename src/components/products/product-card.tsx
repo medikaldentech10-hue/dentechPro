@@ -78,7 +78,7 @@ export function ProductCard({
 
           <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-20 bg-gradient-to-t from-white/48 via-white/14 to-transparent sm:h-28" />
 
-          <div className="absolute inset-x-1.5 bottom-1.5 z-20 rounded-lg border border-white/65 bg-gradient-to-br from-white/62 via-white/38 to-white/18 p-1.5 shadow-[0_8px_20px_rgb(15_23_42/0.1)] backdrop-blur-2xl backdrop-saturate-150 sm:inset-x-3 sm:bottom-3 sm:rounded-[1.15rem] sm:p-2.5 sm:shadow-[0_14px_36px_rgb(15_23_42/0.14)]">
+          <div className="absolute inset-x-1.5 bottom-1.5 z-20 hidden rounded-lg border border-white/65 bg-gradient-to-br from-white/62 via-white/38 to-white/18 p-1.5 shadow-[0_8px_20px_rgb(15_23_42/0.1)] backdrop-blur-2xl backdrop-saturate-150 sm:inset-x-3 sm:bottom-3 sm:block sm:rounded-[1.15rem] sm:p-2.5 sm:shadow-[0_14px_36px_rgb(15_23_42/0.14)]">
             <div className="mb-1 flex items-center justify-between gap-2 sm:mb-1.5">
               <span className="rounded-full border border-primary/15 bg-primary/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-primary sm:px-2.5 sm:py-1 sm:text-[10px] sm:tracking-[0.18em]">
                 {catalogProduct.brand}
@@ -105,6 +105,30 @@ export function ProductCard({
               </div>
             ) : null}
           </div>
+        </div>
+        <div className="mt-2 rounded-2xl border border-border/50 bg-background/75 p-2 shadow-[0_8px_20px_rgb(15_23_42/0.04)] sm:hidden">
+          <div className="mb-1 flex items-center justify-between gap-2">
+            <span className="rounded-full border border-primary/15 bg-primary/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-primary">
+              {catalogProduct.brand}
+            </span>
+            {variantBadges.length ? (
+              <span className="text-[10px] font-medium text-slate-500">Varyantlar</span>
+            ) : null}
+          </div>
+          <CardTitle className="line-clamp-2 text-[0.85rem] font-semibold leading-5 text-slate-950">
+            {displayTitle}
+          </CardTitle>
+          {variantBadges.length ? (
+            <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1 text-[10px] text-slate-500">
+              {variantBadges.map((badge, index) => (
+                <VariantBadgeLink
+                  badge={badge}
+                  className={index > 1 ? "hidden" : undefined}
+                  key={`${badge.label}-${badge.href}`}
+                />
+              ))}
+            </div>
+          ) : null}
         </div>
       </div>
 
