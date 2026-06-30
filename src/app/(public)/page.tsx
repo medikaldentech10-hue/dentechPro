@@ -1,5 +1,4 @@
 import { Box, ClipboardList, Headphones, Search } from "lucide-react";
-import { SpeedInsights } from "@vercel/speed-insights/next"
 import { CategoryCard } from "@/components/marketing/category-card";
 import { SearchHero } from "@/components/marketing/search-hero";
 import { GradientBackground } from "@/components/premium/gradient-background";
