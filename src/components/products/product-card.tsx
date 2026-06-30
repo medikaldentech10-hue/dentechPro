@@ -48,10 +48,12 @@ export function ProductCard({
   const primaryVariant = catalogProduct.variants[0] ?? null;
   const detailHref = `/products/${catalogProduct.id}`;
   const displayTitle = getDisplayTitle(catalogProduct.name, catalogProduct.brand);
+  const categoryLabel = catalogProduct.category?.name ?? null;
+  const skuSummary = getSkuSummary(primaryVariant);
   const variantBadges = getVariantBadges(catalogProduct, detailHref);
 
   return (
-    <PremiumCard className="group/card relative h-full overflow-hidden rounded-2xl border-white/20 bg-white/38 shadow-[0_14px_40px_rgb(15_23_42/0.06)] ring-1 ring-black/[0.01] backdrop-blur-2xl transition duration-300 hover:-translate-y-1 hover:bg-white/54 hover:shadow-[0_26px_78px_rgb(20_118_82/0.15)] sm:rounded-[1.7rem] sm:shadow-[0_18px_56px_rgb(15_23_42/0.07)] dark:border-white/8 dark:bg-slate-950/42 dark:ring-white/[0.025]">
+    <PremiumCard className="group/card relative h-full overflow-hidden rounded-2xl border border-white/25 bg-white/46 shadow-[0_14px_34px_rgb(15_23_42/0.06)] ring-1 ring-black/[0.015] backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:border-primary/20 hover:bg-white/62 hover:shadow-[0_24px_64px_rgb(15_23_42/0.12)] sm:rounded-[1.7rem] sm:bg-white/40 sm:shadow-[0_18px_56px_rgb(15_23_42/0.07)] dark:border-white/8 dark:bg-slate-950/42 dark:ring-white/[0.025]">
       <Link
         aria-label={`${catalogProduct.name} detayını aç`}
         className="absolute inset-0 z-0 rounded-2xl outline-none focus-visible:ring-3 focus-visible:ring-ring/50 sm:rounded-[1.7rem]"
@@ -59,7 +61,7 @@ export function ProductCard({
       />
 
       <div className="pointer-events-none relative z-10 flex flex-1 flex-col p-1.5 pb-1 sm:p-3 sm:pb-1.5">
-        <div className="relative aspect-[4/3] overflow-hidden rounded-[1rem] bg-[radial-gradient(circle_at_28%_18%,rgb(211_250_229/0.7),transparent_36%),radial-gradient(circle_at_76%_70%,rgb(20_118_82/0.12),transparent_40%),linear-gradient(145deg,rgb(255_255_255),rgb(244_248_247))] shadow-[inset_0_0_0_1px_rgb(255_255_255/0.76),inset_0_-30px_60px_rgb(15_23_42/0.04)] sm:aspect-square sm:rounded-[1.45rem] dark:bg-[radial-gradient(circle_at_28%_18%,rgb(20_118_82/0.16),transparent_36%),linear-gradient(145deg,rgb(248_250_252),rgb(226_232_240))]">
+        <div className="relative aspect-[4/3] overflow-hidden rounded-[1rem] bg-[radial-gradient(circle_at_28%_18%,rgb(211_250_229/0.7),transparent_36%),radial-gradient(circle_at_76%_70%,rgb(20_118_82/0.12),transparent_40%),linear-gradient(145deg,rgb(255_255_255),rgb(244_248_247))] shadow-[inset_0_0_0_1px_rgb(255_255_255/0.76),inset_0_-30px_60px_rgb(15_23_42/0.04)] sm:aspect-[1/1.04] sm:rounded-[1.45rem] xl:aspect-square dark:bg-[radial-gradient(circle_at_28%_18%,rgb(20_118_82/0.16),transparent_36%),linear-gradient(145deg,rgb(248_250_252),rgb(226_232_240))]">
           <div className="pointer-events-none absolute inset-x-6 top-4 z-0 h-px bg-gradient-to-r from-transparent via-white/95 to-transparent" />
           <div className="pointer-events-none absolute -right-10 -top-8 z-0 size-36 rounded-full bg-primary/12 blur-3xl" />
           <div className="pointer-events-none absolute -bottom-14 -left-12 z-0 size-36 rounded-full bg-cyan-100/55 blur-3xl" />
@@ -78,62 +80,31 @@ export function ProductCard({
 
           <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-20 bg-gradient-to-t from-white/48 via-white/14 to-transparent sm:h-28" />
 
-          <div className="absolute inset-x-1.5 bottom-1.5 z-20 hidden rounded-lg border border-white/65 bg-gradient-to-br from-white/62 via-white/38 to-white/18 p-1.5 shadow-[0_8px_20px_rgb(15_23_42/0.1)] backdrop-blur-2xl backdrop-saturate-150 sm:inset-x-3 sm:bottom-3 sm:block sm:rounded-[1.15rem] sm:p-2.5 sm:shadow-[0_14px_36px_rgb(15_23_42/0.14)]">
-            <div className="mb-1 flex items-center justify-between gap-2 sm:mb-1.5">
-              <span className="rounded-full border border-primary/15 bg-primary/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-primary sm:px-2.5 sm:py-1 sm:text-[10px] sm:tracking-[0.18em]">
-                {catalogProduct.brand}
-              </span>
-              {variantBadges.length ? (
-                <span className="hidden text-[10px] font-medium text-slate-500 sm:inline">
-                  Varyantlar
-                </span>
-              ) : null}
-            </div>
-            <CardTitle className="line-clamp-2 text-[0.76rem] font-semibold leading-tight text-slate-950 min-[360px]:text-[0.8rem] sm:text-[0.95rem] sm:leading-[1.18]">
-              {displayTitle}
-            </CardTitle>
-
-            {variantBadges.length ? (
-              <div className="mt-1 flex min-h-5 min-w-0 flex-wrap items-center gap-1 text-[10px] text-slate-500 sm:mt-2 sm:min-h-6 sm:gap-1.5 sm:text-[11px]">
-                {variantBadges.map((badge, index) => (
-                  <VariantBadgeLink
-                    badge={badge}
-                    className={index > 0 ? "hidden sm:inline-flex" : undefined}
-                    key={`${badge.label}-${badge.href}`}
-                  />
-                ))}
-              </div>
-            ) : null}
+          <div className="absolute inset-x-1.5 bottom-1.5 z-20 hidden rounded-xl border border-white/70 bg-gradient-to-br from-white/78 via-white/52 to-white/30 p-2 shadow-[0_10px_28px_rgb(15_23_42/0.12)] backdrop-blur-2xl backdrop-saturate-150 sm:inset-x-3 sm:bottom-3 sm:block sm:rounded-[1.15rem] sm:p-3 sm:shadow-[0_14px_36px_rgb(15_23_42/0.14)]">
+            <ProductCardInfo
+              brandLabel={catalogProduct.brand}
+              categoryLabel={categoryLabel}
+              displayTitle={displayTitle}
+              skuSummary={skuSummary}
+              variantBadges={variantBadges}
+              variantLimit={3}
+            />
           </div>
         </div>
-        <div className="mt-2 rounded-2xl border border-border/50 bg-background/75 p-2 shadow-[0_8px_20px_rgb(15_23_42/0.04)] sm:hidden">
-          <div className="mb-1 flex items-center justify-between gap-2">
-            <span className="rounded-full border border-primary/15 bg-primary/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-primary">
-              {catalogProduct.brand}
-            </span>
-            {variantBadges.length ? (
-              <span className="text-[10px] font-medium text-slate-500">Varyantlar</span>
-            ) : null}
-          </div>
-          <CardTitle className="line-clamp-2 text-[0.85rem] font-semibold leading-5 text-slate-950">
-            {displayTitle}
-          </CardTitle>
-          {variantBadges.length ? (
-            <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1 text-[10px] text-slate-500">
-              {variantBadges.map((badge, index) => (
-                <VariantBadgeLink
-                  badge={badge}
-                  className={index > 1 ? "hidden" : undefined}
-                  key={`${badge.label}-${badge.href}`}
-                />
-              ))}
-            </div>
-          ) : null}
+        <div className="mt-2 rounded-2xl border border-border/50 bg-background/78 p-2 shadow-[0_8px_20px_rgb(15_23_42/0.04)] sm:hidden">
+          <ProductCardInfo
+            brandLabel={catalogProduct.brand}
+            categoryLabel={categoryLabel}
+            displayTitle={displayTitle}
+            skuSummary={skuSummary}
+            variantBadges={variantBadges}
+            variantLimit={2}
+          />
         </div>
       </div>
 
       <CardContent className="relative z-20 mt-auto px-2 pb-2 pt-0 sm:px-3.5 sm:pb-3.5">
-        <div className="flex flex-col gap-1.5 rounded-xl border border-white/28 bg-white/34 p-1.5 shadow-[0_8px_24px_rgb(15_23_42/0.045)] backdrop-blur-xl sm:gap-2 sm:rounded-[1.15rem] sm:p-2 dark:border-white/8 dark:bg-slate-950/42">
+        <div className="flex min-h-[4.6rem] flex-col justify-center gap-1.5 rounded-xl border border-white/30 bg-white/42 p-1.5 shadow-[0_8px_24px_rgb(15_23_42/0.045)] backdrop-blur-xl sm:min-h-[5.6rem] sm:gap-2 sm:rounded-[1.15rem] sm:p-2.5 dark:border-white/8 dark:bg-slate-950/42">
           <PriceState visibility={priceVisibility} variant={primaryVariant} />
           {priceVisibility === "approved" ? (
             <ProductAction
@@ -157,6 +128,63 @@ export function ProductCard({
         </div>
       </CardContent>
     </PremiumCard>
+  );
+}
+
+function ProductCardInfo({
+  brandLabel,
+  categoryLabel,
+  displayTitle,
+  skuSummary,
+  variantBadges,
+  variantLimit,
+}: {
+  brandLabel: string;
+  categoryLabel: string | null;
+  displayTitle: string;
+  skuSummary: string | null;
+  variantBadges: VariantBadge[];
+  variantLimit: number;
+}) {
+  return (
+    <>
+      <div className="mb-1 flex items-center justify-between gap-2 sm:mb-1.5">
+        <div className="flex min-w-0 items-center gap-1.5">
+          <span className="rounded-full border border-primary/15 bg-primary/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-primary sm:px-2.5 sm:py-1 sm:text-[10px] sm:tracking-[0.18em]">
+            {brandLabel}
+          </span>
+          {categoryLabel ? (
+            <span className="truncate text-[10px] font-medium text-slate-500 sm:text-[11px]">
+              {categoryLabel}
+            </span>
+          ) : null}
+        </div>
+        {variantBadges.length ? (
+          <span className="shrink-0 text-[10px] font-medium text-slate-500">
+            Varyantlar
+          </span>
+        ) : null}
+      </div>
+      <CardTitle className="line-clamp-2 min-h-[2.5rem] text-[0.82rem] font-semibold leading-5 text-slate-950 sm:min-h-[2.8rem] sm:text-[0.98rem] sm:leading-[1.22]">
+        {displayTitle}
+      </CardTitle>
+      {skuSummary ? (
+        <p className="mt-1 truncate text-[10px] font-medium uppercase tracking-[0.08em] text-slate-500 sm:text-[11px]">
+          {skuSummary}
+        </p>
+      ) : null}
+      {variantBadges.length ? (
+        <div className="mt-1 flex min-h-5 min-w-0 flex-wrap items-center gap-1 text-[10px] text-slate-500 sm:mt-2 sm:min-h-6 sm:gap-1.5 sm:text-[11px]">
+          {variantBadges.map((badge, index) => (
+            <VariantBadgeLink
+              badge={badge}
+              className={index >= variantLimit ? "hidden" : undefined}
+              key={`${badge.label}-${badge.href}`}
+            />
+          ))}
+        </div>
+      ) : null}
+    </>
   );
 }
 
@@ -542,6 +570,20 @@ function getVariantOptionLabel(variant: PublicCatalogVariant | PricedCatalogVari
     : null;
 
   return ref ?? code ?? variant.name;
+}
+
+function getSkuSummary(variant: PublicCatalogVariant | PricedCatalogVariant | null) {
+  if (!variant) {
+    return null;
+  }
+
+  const manufacturerRef =
+    variant.manufacturerRef && !isUuidLike(variant.manufacturerRef)
+      ? variant.manufacturerRef
+      : null;
+  const code = !isUuidLike(variant.code) ? variant.code : null;
+
+  return manufacturerRef ?? code;
 }
 
 function getVariantLabels(variant: PublicCatalogVariant | PricedCatalogVariant) {
