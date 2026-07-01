@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { ChevronDown, ClipboardList, UserCircle } from "lucide-react";
 
+import {
+  CommandSearch,
+  CommandSearchTrigger,
+} from "@/components/search/command-search";
 import { signOutAction } from "@/app/(public)/auth-actions";
 import { Logo } from "@/components/shared/logo";
 import { MobileNav } from "@/components/shared/mobile-nav";
@@ -36,6 +40,7 @@ export function Header({ profile = null }: HeaderProps) {
         </nav>
 
         <div className="hidden items-center justify-end gap-3 md:flex">
+          <CommandSearchTrigger />
           <Link
             aria-label="Talep listem"
             className={cn(
@@ -57,10 +62,12 @@ export function Header({ profile = null }: HeaderProps) {
           />
         </div>
 
-        <div className="md:hidden">
+        <div className="flex items-center justify-end gap-2 md:hidden">
+          <CommandSearchTrigger mobile />
           <MobileNav profile={profile} />
         </div>
       </div>
+      <CommandSearch />
     </header>
   );
 }
