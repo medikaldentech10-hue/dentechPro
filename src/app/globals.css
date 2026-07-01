@@ -164,3 +164,120 @@
     box-shadow: 0 24px 80px rgb(0 0 0 / 0.28);
   }
 }
+
+@layer components {
+  .product-description-html {
+    @apply overflow-hidden rounded-2xl border border-border/70 bg-background/88 text-sm leading-7 text-foreground/88 shadow-sm;
+  }
+
+  .product-description-html > * + * {
+    @apply border-t border-border/55;
+  }
+
+  .product-description-html > div,
+  .product-description-html > section,
+  .product-description-html > article {
+    @apply px-4 py-4 sm:px-5;
+  }
+
+  .product-description-html > p,
+  .product-description-html > ul,
+  .product-description-html > ol,
+  .product-description-html > table,
+  .product-description-html > h1,
+  .product-description-html > h2,
+  .product-description-html > h3,
+  .product-description-html > h4 {
+    @apply px-4 py-4 sm:px-5;
+  }
+
+  .product-description-html :where(h1, h2, h3, h4) {
+    @apply mb-2 text-balance font-semibold tracking-normal text-foreground;
+  }
+
+  .product-description-html :where(h1) {
+    @apply text-xl;
+  }
+
+  .product-description-html :where(h2) {
+    @apply text-lg;
+  }
+
+  .product-description-html :where(h3) {
+    @apply text-base;
+  }
+
+  .product-description-html :where(h4) {
+    @apply text-sm uppercase tracking-[0.08em] text-muted-foreground;
+  }
+
+  .product-description-html :where(p) {
+    @apply my-0 text-sm leading-7 text-foreground/88;
+  }
+
+  .product-description-html :where(p + p, p + ul, p + ol, ul + p, ol + p, table + p) {
+    @apply mt-3;
+  }
+
+  .product-description-html :where(ul, ol) {
+    @apply ml-0 space-y-1.5 pl-5 text-sm text-foreground/88;
+  }
+
+  .product-description-html :where(li)::marker {
+    color: var(--primary);
+  }
+
+  .product-description-html :where(strong, b) {
+    @apply font-semibold text-foreground;
+  }
+
+  .product-description-html :where(em, i) {
+    @apply italic text-foreground/80;
+  }
+
+  .product-description-html :where(a) {
+    @apply font-medium text-primary underline underline-offset-4 transition-colors hover:text-[var(--primary-hover)];
+  }
+
+  .product-description-html :where(img) {
+    @apply my-3 block h-auto max-w-full rounded-xl border border-border/60 bg-white object-contain shadow-sm;
+  }
+
+  .product-description-html :where(table) {
+    @apply my-3 block w-full overflow-x-auto rounded-xl border border-border/70 bg-card/96;
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+
+  .product-description-html :where(tbody, thead) {
+    @apply table w-full;
+  }
+
+  .product-description-html :where(tr) {
+    @apply border-b border-border/55;
+  }
+
+  .product-description-html :where(tr:last-child) {
+    @apply border-b-0;
+  }
+
+  .product-description-html :where(th, td) {
+    @apply px-3 py-2.5 text-left align-top text-sm;
+  }
+
+  .product-description-html :where(th) {
+    @apply bg-primary/8 font-semibold text-foreground;
+  }
+
+  .product-description-html :where(td) {
+    @apply text-foreground/80;
+  }
+
+  .product-description-html :where(div) {
+    min-width: 0;
+  }
+
+  .product-description-html :where(div > div) {
+    @apply rounded-none;
+  }
+}
