@@ -16,33 +16,33 @@ import { cn } from "@/lib/utils";
 
 const processSteps = [
   {
-    title: "Hesabınızı oluşturun",
+    title: "Profesyonel hesabınızı oluşturun",
     description:
-      "Klinik, laboratuvar veya veteriner hesabınızla kayıt olun ve temel kurum bilgilerinizi paylaşın.",
+      "Klinik, laboratuvar veya ilgili profesyonel kullanıcı bilgilerinizle kayıt olun.",
     icon: UserPlus,
   },
   {
-    title: "Onay sürecini tamamlayın",
+    title: "Hesap bilgileriniz değerlendirilsin",
     description:
-      "DENTech ekibi hesabınızı kontrol eder ve uygun kullanıcı rolüyle manuel olarak onaylar.",
+      "DENTech Medikal ekibi, kullanıcı tipinizi ve profesyonel kullanım kapsamınızı kontrol ederek hesabınızı uygun rolle tanımlar.",
     icon: ShieldCheck,
   },
   {
     title: "Ürünleri inceleyin",
     description:
-      "Ürün adı, SKU, kategori veya kullanım alanına göre katalogda arama yapın ve varyantları karşılaştırın.",
+      "Ürün adı, SKU, kategori veya kullanım alanına göre katalogda arama yapın; ürün ve varyant bilgilerini karşılaştırın.",
     icon: Search,
   },
   {
-    title: "Talep listenizi oluşturun",
+    title: "Talep listenizi hazırlayın",
     description:
-      "İlgilendiğiniz ürünleri talep listenize ekleyin, miktarları gözden geçirin ve B2B talebinizi hazırlayın.",
+      "İlgilendiğiniz ürünleri talep listenize ekleyin ve ihtiyaç duyduğunuz miktarları gözden geçirin.",
     icon: ClipboardList,
   },
   {
-    title: "DENTech ekibi size dönüş yapsın",
+    title: "Ekibimiz sizinle iletişime geçsin",
     description:
-      "Talebiniz incelenir; stok, fiyat ve süreç bilgisi için ekibimiz sizinle iletişime geçer.",
+      "Talebiniz incelendikten sonra stok, uygun varyant ve ticari detaylar için DENTech Medikal ekibi sizinle iletişime geçer.",
     icon: BadgeCheck,
   },
 ];
@@ -51,58 +51,58 @@ const userTypes = [
   {
     title: "Klinikler",
     description:
-      "Günlük tedavi akışında kullanılan ürünleri inceleyin, uygun varyantları seçin ve talebinizi iletin.",
+      "Tedavi akışında kullanılan ürünleri inceleyebilir, uygun varyantları seçebilir ve taleplerinizi DENTech Medikal ekibine iletebilirsiniz.",
     icon: Building2,
   },
   {
     title: "Laboratuvarlar",
     description:
-      "Laboratuvar süreçlerine uygun ürünleri tek katalogda gözden geçirin ve ekibimizle operasyonel ihtiyaçlarınızı netleştirin.",
+      "Laboratuvar süreçlerine uygun ürün gruplarını tek katalogda değerlendirebilir ve operasyonel ihtiyaçlarınızı netleştirebilirsiniz.",
     icon: FlaskConical,
   },
   {
     title: "Veteriner Hekimler",
     description:
-      "Veteriner dental ürün grupları kademeli olarak genişlerken uygun ürünler için katalog ve talep akışını takip edin.",
+      "Veteriner dental ürün kapsamı genişledikçe uygun ürünleri katalog üzerinden takip edebilir ve talep sürecine dahil olabilirsiniz.",
     icon: Stethoscope,
   },
 ];
 
 const faqs = [
   {
-    question: "Fiyatları neden göremiyorum?",
+    question: "Fiyat bilgisi neden kapalı hesapla paylaşılır?",
     answer:
-      "Fiyatlar yalnızca onaylı kullanıcı hesaplarına gösterilir. Hesabınız henüz onaylanmadıysa katalogu inceleyebilir, ancak fiyatları görüntüleyemezsiniz.",
+      "DENTech Pro’da yer alan profesyonel kullanım kapsamındaki ürünlerde fiyat ve talep süreçleri kapalı profesyonel hesap yapısı üzerinden yürütülür. Bu yapı, Sağlık Bakanlığı/TİTCK düzenlemeleri ve profesyonel kullanım gereklilikleriyle uyumlu bir süreç oluşturmak için tercih edilir.",
   },
   {
-    question: "Hesabım ne zaman onaylanır?",
+    question: "Kimler hesap oluşturabilir?",
     answer:
-      "Hesap onayı DENTech ekibi tarafından manuel olarak yapılır. Başvurunuz incelendikten sonra uygun kullanıcı rolüyle hesabınız aktif hale getirilir.",
+      "Dental klinikler, laboratuvarlar, sağlık meslek mensupları ve ilgili profesyonel kullanıcılar hesap oluşturabilir. Hesap tipi DENTech Medikal ekibi tarafından değerlendirilir.",
   },
   {
-    question: "Talep listesi sipariş midir?",
+    question: "Profesyonel kullanıcı değilsem satın alma yapabilir miyim?",
     answer:
-      "Hayır. Talep listesi online ödeme veya doğrudan checkout ekranı değildir; ilgilendiğiniz ürünleri ekibimize iletmenizi sağlayan B2B talep akışıdır.",
+      "DENTech Pro’da profesyonel kullanım kapsamındaki tıbbi cihaz ve dental ürünler için doğrudan satış yapılmaz. Tıbbi cihaz kapsamında olmayan veya genel satışa uygun ürünler için DENTech Medikal ile iletişime geçebilirsiniz.",
+  },
+  {
+    question: "Talep listesi ne işe yarar?",
+    answer:
+      "Talep listesi, ilgilendiğiniz ürünleri DENTech Medikal ekibine düzenli şekilde iletmenizi sağlar. Doğrudan ödeme veya otomatik sipariş ekranı değildir.",
   },
   {
     question: "Talep gönderdikten sonra ne olur?",
     answer:
-      "Ekibimiz talebinizi inceler ve stok, fiyat, uygun varyant ve süreç bilgisiyle sizinle iletişime geçer.",
+      "Ekibimiz talebinizi inceler; stok, uygun varyant ve ticari detaylar için sizinle iletişime geçer.",
   },
   {
-    question: "Ürün stok bilgisi nasıl öğrenilir?",
+    question: "Stok bilgisi nasıl paylaşılır?",
     answer:
-      "Stok bilgisi, talebiniz veya ürün özelindeki değerlendirme sonrasında DENTech ekibi tarafından paylaşılır.",
+      "Stok bilgisi ürün ve talep özelinde değerlendirilir. Güncel uygunluk bilgisi DENTech Medikal ekibi tarafından paylaşılır.",
   },
   {
-    question: "Laboratuvar hesabı açabilir miyim?",
+    question: "Veteriner dental ürünler katalogda yer alacak mı?",
     answer:
-      "Evet. Laboratuvar kullanıcıları kayıt olabilir; uygun kullanıcı tipi değerlendirilerek hesap manuel olarak onaylanır.",
-  },
-  {
-    question: "Veteriner dental ürünler eklenecek mi?",
-    answer:
-      "İlgili ürün grupları planlı şekilde genişletilmektedir. Güncel kapsam için katalogu takip edebilir veya ekibimizle iletişime geçebilirsiniz.",
+      "Veteriner dental ürün kapsamı planlı şekilde genişletilmektedir. Güncel ürün gruplarını katalog üzerinden takip edebilirsiniz.",
   },
 ];
 
@@ -113,48 +113,36 @@ export default function HowItWorksPage() {
         <div className="grid gap-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(300px,0.85fr)] lg:items-center">
           <div className="max-w-3xl">
             <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-primary">
-              B2B Rehber
+              DENTech Pro Kullanım Rehberi
             </span>
             <h1 className="mt-4 text-3xl font-semibold tracking-normal text-foreground md:text-5xl">
-              DENTech Pro nasıl çalışır?
+              Profesyonel dental ürünler için kapalı katalog yapısı
             </h1>
             <p className="mt-4 max-w-2xl text-base leading-7 text-muted-foreground md:text-lg">
-              DENTech Pro, dental profesyonellerin ürünleri inceleyip onaylı
-              hesaplarıyla fiyat görüntüleyebildiği ve talep oluşturabildiği B2B
-              katalog sistemidir.
+              DENTech Pro, dental klinikler, laboratuvarlar ve ilgili
+              profesyonel kullanıcılar için hazırlanmış kapalı ürün katalog ve
+              talep platformudur. Ürünleri inceleyebilir, uygun varyantları
+              seçebilir ve talebinizi DENTech Medikal ekibine iletebilirsiniz.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
               <Link className={cn(buttonVariants())} href="/products">
                 Kataloğu İncele
               </Link>
-              <Link
-                className={cn(buttonVariants({ variant: "outline" }))}
-                href="/register"
-              >
-                Hesap Oluştur
-              </Link>
             </div>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
-            <div className="rounded-2xl border border-primary/15 bg-background/82 p-4 shadow-sm">
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                Onaylı Hesaplar
-              </p>
-              <p className="mt-2 text-sm leading-6 text-foreground/88">
-                Fiyat görünürlüğü ve talep akışı, kullanıcı tipinin doğru
-                yönetilmesi için onaylı hesaplarla çalışır.
-              </p>
-            </div>
-            <div className="rounded-2xl border border-primary/15 bg-background/82 p-4 shadow-sm">
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                B2B Talep Akışı
-              </p>
-              <p className="mt-2 text-sm leading-6 text-foreground/88">
-                Talep listesi doğrudan ödeme ekranı değildir; ürünleri DENTech
-                ekibine düzenli şekilde iletmenizi sağlar.
-              </p>
-            </div>
+          <div className="rounded-2xl border border-primary/15 bg-background/82 p-4 shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+              Bilgilendirme
+            </p>
+            <p className="mt-2 text-sm leading-6 text-foreground/88">
+              DENTech Pro’da listelenen profesyonel kullanım kapsamındaki tıbbi
+              cihaz ve dental ürün grupları; sağlık meslek mensupları,
+              klinikler, laboratuvarlar ve ilgili profesyonel kullanıcılar için
+              sunulur. Fiyat ve talep süreçleri, Sağlık Bakanlığı/TİTCK
+              düzenlemeleri ve profesyonel kullanım gereklilikleri doğrultusunda
+              kapalı hesap yapısı üzerinden yürütülür.
+            </p>
           </div>
         </div>
       </section>
@@ -165,9 +153,9 @@ export default function HowItWorksPage() {
             Süreç nasıl ilerler?
           </h2>
           <p className="mt-3 text-sm leading-7 text-muted-foreground md:text-base">
-            DENTech Pro’da ürün keşfi, hesap onayı ve talep takibi tek bir B2B
-            akışta toplanır. Aşağıdaki adımlar yeni kullanıcıların sistemi hızlıca
-            anlaması için özetlenmiştir.
+            Ürün inceleme, profesyonel hesap doğrulama ve talep iletme süreci
+            sade bir akışta ilerler. Aşağıdaki adımlar, DENTech Pro’yu ilk kez
+            kullanan profesyonel kullanıcılar için özetlenmiştir.
           </p>
         </div>
 
@@ -199,11 +187,12 @@ export default function HowItWorksPage() {
       <section className="grid gap-4 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
         <div className="rounded-[2rem] border border-border/70 bg-card/86 px-5 py-6 shadow-sm md:px-7">
           <h2 className="text-2xl font-semibold tracking-normal text-foreground">
-            Kimler için?
+            Kimler kullanabilir?
           </h2>
           <p className="mt-3 text-sm leading-7 text-muted-foreground">
-            Sayfa yapısı ve talep akışı; klinikler, laboratuvarlar ve veteriner
-            kullanıcılar için olabildiğince anlaşılır olacak şekilde tasarlanır.
+            DENTech Pro, profesyonel dental ürün ihtiyaçlarının daha düzenli
+            takip edilebilmesi için klinik, laboratuvar ve ilgili profesyonel
+            kullanıcılar düşünülerek tasarlanmıştır.
           </p>
 
           <div className="mt-5 grid gap-3">
@@ -230,35 +219,29 @@ export default function HowItWorksPage() {
 
         <div className="rounded-[2rem] border border-border/70 bg-card/86 px-5 py-6 shadow-sm md:px-7">
           <h2 className="text-2xl font-semibold tracking-normal text-foreground">
-            Fiyat ve onay süreci
+            Fiyat bilgisi ve profesyonel hesap doğrulaması
           </h2>
           <p className="mt-3 text-sm leading-7 text-muted-foreground">
-            DENTech Pro’da fiyatlar yalnızca onaylı kullanıcı hesaplarına
-            gösterilir. Hesap onayı, kullanıcı tipinin ve talep sürecinin doğru
-            yönetilmesi için DENTech ekibi tarafından manuel olarak yapılır.
-            Talep listesi, online ödeme ekranı değil; ürünleri ekibimize
-            iletmenizi sağlayan B2B talep akışıdır.
+            DENTech Pro’da fiyat bilgileri kamuya açık bir satış ekranı olarak
+            listelenmez. Profesyonel kullanım kapsamındaki ürünlerde fiyat ve
+            ticari bilgiler; kullanıcı tipi, ürün grubu, stok durumu ve ilgili
+            satış koşulları değerlendirildikten sonra uygun profesyonel
+            hesaplarla paylaşılır.
+          </p>
+          <p className="mt-3 text-sm leading-7 text-muted-foreground">
+            Talep listesi doğrudan ödeme veya otomatik sipariş ekranı değildir.
+            İlgilendiğiniz ürünleri DENTech Medikal ekibine düzenli şekilde
+            iletmenizi sağlar. Talep sonrası ekibimiz stok, uygun varyant ve
+            ticari detaylar için sizinle iletişime geçer.
           </p>
 
-          <div className="mt-5 grid gap-3 sm:grid-cols-2">
-            <div className="rounded-2xl border border-primary/15 bg-primary/8 p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
-                Fiyat Görünürlüğü
-              </p>
-              <p className="mt-2 text-sm leading-6 text-foreground/88">
-                Onaysız kullanıcılar katalogu inceleyebilir; fiyatlar ise yalnızca
-                onaylanan hesaplarda açılır.
-              </p>
-            </div>
-            <div className="rounded-2xl border border-primary/15 bg-primary/8 p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
-                Talep Sonrası
-              </p>
-              <p className="mt-2 text-sm leading-6 text-foreground/88">
-                Talebiniz sonrasında ekibimiz ürün uygunluğu, stok ve ticari
-                detaylar için sizinle iletişime geçer.
-              </p>
-            </div>
+          <div className="mt-5 rounded-2xl border border-primary/15 bg-primary/8 p-4">
+            <p className="text-sm leading-6 text-foreground/88">
+              Profesyonel kullanıcı olmayan ziyaretçiler için doğrudan satış
+              yapılmaz. Tıbbi cihaz kapsamında olmayan veya genel satışa uygun
+              ürün grupları hakkında bilgi almak için DENTech Medikal ekibiyle
+              iletişime geçebilirsiniz.
+            </p>
           </div>
         </div>
       </section>
@@ -296,22 +279,16 @@ export default function HowItWorksPage() {
         <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
           <div className="max-w-2xl">
             <h2 className="text-2xl font-semibold tracking-normal text-foreground md:text-3xl">
-              Ürünleri incelemeye başlayın.
+              Hesabınızı oluşturarak süreci başlatın.
             </h2>
             <p className="mt-3 text-sm leading-7 text-muted-foreground md:text-base">
-              Kataloğu keşfedin, uygun ürünleri bulun ve hesabınızı oluşturarak
-              DENTech Pro talep akışına dahil olun.
+              Profesyonel kullanıma uygun ürün gruplarını incelemek ve talep
+              sürecine dahil olmak için hesabınızı oluşturabilirsiniz.
             </p>
           </div>
 
           <div className="flex flex-wrap gap-3">
-            <Link className={cn(buttonVariants())} href="/products">
-              Kataloğa Git
-            </Link>
-            <Link
-              className={cn(buttonVariants({ variant: "outline" }))}
-              href="/register"
-            >
+            <Link className={cn(buttonVariants())} href="/register">
               Hesap Oluştur
             </Link>
           </div>
