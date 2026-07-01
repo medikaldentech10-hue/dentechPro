@@ -1,17 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
 import { useRouter } from "next/navigation";
-import { Command, CornerDownLeft, Search } from "lucide-react";
+import { Command, CornerDownLeft, Search, XIcon } from "lucide-react";
 
 import { buttonVariants } from "@/components/ui/button";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 
 const OPEN_COMMAND_SEARCH_EVENT = "dentech:open-command-search";
@@ -94,79 +88,97 @@ export function CommandSearch() {
   }, [open]);
 
   return (
-    <Sheet onOpenChange={setOpen} open={open}>
-      <SheetContent
-        className="top-[max(1rem,8vh)] left-1/2 h-auto w-[min(42rem,calc(100vw-1rem))] -translate-x-1/2 rounded-[1.75rem] border border-border/70 bg-background/96 p-0 shadow-2xl backdrop-blur-xl data-[side=top]:inset-x-auto data-[side=top]:border data-[side=top]:data-ending-style:translate-y-[-1rem] data-[side=top]:data-starting-style:translate-y-[-1rem] sm:w-[min(42rem,calc(100vw-2rem))]"
-        side="top"
-      >
-        <SheetHeader className="border-b border-border/70 p-5 pr-12">
-          <SheetTitle>Ürün ara</SheetTitle>
-          <SheetDescription>
-            Ürün adı, SKU, kategori veya kullanım alanı yazın.
-          </SheetDescription>
-        </SheetHeader>
+    <DialogPrimitive.Root onOpenChange={setOpen} open={open}>
+      <DialogPrimitive.Portal>
+        <DialogPrimitive.Backdrop className="fixed inset-0 z-50 bg-slate-950/28 transition-opacity duration-150 data-ending-style:opacity-0 data-starting-style:opacity-0" />
 
-        <div className="p-4 sm:p-5">
-          <form
-            className="flex flex-col gap-4"
-            onSubmit={(event) => {
-              event.preventDefault();
-              submitQuery(query);
-            }}
-          >
-            <div className="flex items-center gap-3 rounded-2xl border border-border/70 bg-card/86 px-4 py-3 shadow-sm">
-              <Search className="size-4 shrink-0 text-primary" />
-              <input
-                aria-label="Ürün arama terimi"
-                className="min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Ürün adı, SKU veya kullanım alanı ara..."
-                ref={inputRef}
-                value={query}
-              />
+        <DialogPrimitive.Popup className="fixed top-[96px] left-1/2 z-[60] flex h-auto w-[min(640px,calc(100vw-32px))] -translate-x-1/2 flex-col overflow-hidden rounded-[1.75rem] border border-border/70 bg-background/97 text-foreground shadow-[0_24px_80px_rgb(15_23_42/0.18)] transition duration-150 ease-out data-ending-style:opacity-0 data-ending-style:scale-[0.985] data-starting-style:opacity-0 data-starting-style:scale-[0.985] max-sm:top-[76px] max-sm:w-[calc(100vw-24px)] dark:shadow-[0_28px_90px_rgb(0_0_0/0.42)] sm:top-[104px]">
+          <DialogPrimitive.Close
+            render={
               <button
-                className={cn(buttonVariants({ size: "sm" }), "shrink-0")}
-                type="submit"
-              >
-                Ara
-              </button>
-            </div>
+                aria-label="Kapat"
+                className={cn(
+                  buttonVariants({ size: "icon-sm", variant: "ghost" }),
+                  "absolute top-3 right-3 z-10"
+                )}
+                type="button"
+              />
+            }
+          >
+            <XIcon className="size-4" />
+          </DialogPrimitive.Close>
 
-            <div className="space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                Popüler aramalar
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {POPULAR_QUERIES.map((chip) => (
-                  <button
-                    className={cn(
-                      buttonVariants({ size: "sm", variant: "outline" }),
-                      "rounded-full border-primary/20 bg-primary/6 px-3 text-foreground hover:bg-primary/10"
-                    )}
-                    key={chip}
-                    onClick={() => submitQuery(chip)}
-                    type="button"
-                  >
-                    {chip}
-                  </button>
-                ))}
-              </div>
-            </div>
+          <div className="border-b border-border/70 p-5 pr-12">
+            <DialogPrimitive.Title className="text-base font-medium text-foreground">
+              Ürün ara
+            </DialogPrimitive.Title>
+            <DialogPrimitive.Description className="mt-1 text-sm text-muted-foreground">
+              Ürün adı, SKU, kategori veya kullanım alanı yazın.
+            </DialogPrimitive.Description>
+          </div>
 
-            <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-border/60 bg-muted/45 px-3 py-2 text-xs text-muted-foreground">
-              <div className="flex items-center gap-2">
-                <Command className="size-3.5" />
-                <span>Ctrl+K / Cmd+K ile açın</span>
+          <div className="p-4 sm:p-5">
+            <form
+              className="flex flex-col gap-4"
+              onSubmit={(event) => {
+                event.preventDefault();
+                submitQuery(query);
+              }}
+            >
+              <div className="flex items-center gap-3 rounded-2xl border border-border/70 bg-card/86 px-4 py-3 shadow-sm">
+                <Search className="size-4 shrink-0 text-primary" />
+                <input
+                  aria-label="Ürün arama terimi"
+                  className="min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="Ürün adı, SKU veya kullanım alanı ara..."
+                  ref={inputRef}
+                  value={query}
+                />
+                <button
+                  className={cn(buttonVariants({ size: "sm" }), "shrink-0")}
+                  type="submit"
+                >
+                  Ara
+                </button>
               </div>
-              <div className="flex items-center gap-1.5">
-                <CornerDownLeft className="size-3.5" />
-                <span>Enter ile arayın</span>
+
+              <div className="space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                  Popüler aramalar
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {POPULAR_QUERIES.map((chip) => (
+                    <button
+                      className={cn(
+                        buttonVariants({ size: "sm", variant: "outline" }),
+                        "rounded-full border-primary/20 bg-primary/6 px-3 text-foreground hover:bg-primary/10"
+                      )}
+                      key={chip}
+                      onClick={() => submitQuery(chip)}
+                      type="button"
+                    >
+                      {chip}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
-          </form>
-        </div>
-      </SheetContent>
-    </Sheet>
+
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-border/60 bg-muted/45 px-3 py-2 text-xs text-muted-foreground">
+                <div className="flex items-center gap-2">
+                  <Command className="size-3.5" />
+                  <span>Ctrl+K / Cmd+K ile açın</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <CornerDownLeft className="size-3.5" />
+                  <span>Enter ile arayın</span>
+                </div>
+              </div>
+            </form>
+          </div>
+        </DialogPrimitive.Popup>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
   );
 }
 
