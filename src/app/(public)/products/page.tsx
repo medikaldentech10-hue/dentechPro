@@ -111,6 +111,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
     hasPriceAccess && params.max_price ? `Max: ₺${params.max_price}` : null,
   ].filter((label): label is string => Boolean(label));
   const interpretedCriteria = interpretCatalogQuery(params.q);
+  const searchUiKey = getFilterUiStateKey(params);
 
   return (
     <div className="mx-auto flex w-full max-w-[1320px] flex-col gap-5 px-3 py-4 md:gap-6 md:px-6 md:py-8">
@@ -124,7 +125,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
           </p>
         </div>
 
-        <form className="flex gap-2 md:hidden">
+        <form className="flex gap-2 md:hidden" key={`mobile-search-${searchUiKey}`}>
           <div className="relative min-w-0 flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -146,7 +147,10 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
             <SlidersHorizontal className="size-4" />
             Filtreler
           </summary>
-          <form className="mt-3 grid gap-2 rounded-2xl border border-border/70 bg-card/70 p-3 shadow-sm">
+          <form
+            className="mt-3 grid gap-2 rounded-2xl border border-border/70 bg-card/70 p-3 shadow-sm"
+            key={`mobile-filters-${searchUiKey}`}
+          >
             <input name="page" type="hidden" value="1" />
             {params.q ? <input name="q" type="hidden" value={params.q} /> : null}
             <CatalogSelects
@@ -176,7 +180,10 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
           </form>
         </details>
 
-        <form className="hidden gap-2 md:grid md:grid-cols-[minmax(180px,1.4fr)_minmax(140px,0.8fr)_minmax(140px,0.8fr)_minmax(140px,0.8fr)_auto]">
+        <form
+          className="hidden gap-2 md:grid md:grid-cols-[minmax(180px,1.4fr)_minmax(140px,0.8fr)_minmax(140px,0.8fr)_minmax(140px,0.8fr)_auto]"
+          key={`desktop-filters-${searchUiKey}`}
+        >
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -559,7 +566,11 @@ function PaginationLinks({
           </Link>
         ) : null}
       </div>
-      <form className="flex w-full items-center justify-center gap-1 sm:w-auto" action="/products">
+      <form
+        className="flex w-full items-center justify-center gap-1 sm:w-auto"
+        action="/products"
+        key={`pagination-${getFilterUiStateKey(params)}-${safeCurrentPage}`}
+      >
         <PreservedSearchParamInputs params={params} />
         <Input
           aria-label="Sayfa numarası"
@@ -678,4 +689,16 @@ function clampPage(page: number, totalPages: number) {
   }
 
   return Math.min(Math.max(1, Math.floor(page)), Math.max(1, totalPages));
+}
+
+function getFilterUiStateKey(params: ProductsSearchParams) {
+  return [
+    params.q ?? "",
+    params.brand ?? "",
+    params.category ?? "",
+    params.usage ?? "",
+    params.min_price ?? "",
+    params.max_price ?? "",
+    params.page ?? "",
+  ].join("|");
 }

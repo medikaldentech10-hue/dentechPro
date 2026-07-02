@@ -1,7 +1,9 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { Eye } from "lucide-react";
+import { Eye, FileDown, XCircle } from "lucide-react";
 
+import { updateRequestStatusAction } from "@/app/(admin)/admin/requests/actions";
+import { ConfirmSubmitButton } from "@/components/admin/confirm-submit-button";
 import { SurfaceCard } from "@/components/premium/surface-card";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageTitle } from "@/components/shared/page-title";
@@ -47,7 +49,7 @@ export default async function AdminRequestsPage({
 
       <SurfaceCard className="overflow-hidden">
         <CardContent className="p-0">
-          <div className="hidden grid-cols-[1.15fr_0.65fr_0.8fr_0.7fr_0.65fr_0.75fr_0.9fr_0.9fr_0.35fr] gap-3 border-b border-border/70 px-4 py-3 text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground xl:grid">
+          <div className="hidden grid-cols-[1.15fr_0.65fr_0.8fr_0.7fr_0.65fr_0.75fr_0.9fr_0.9fr_1.1fr] gap-3 border-b border-border/70 px-4 py-3 text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground xl:grid">
             <span>Müşteri / Kullanıcı</span>
             <span>Kaynak</span>
             <span>Durum</span>
@@ -56,7 +58,7 @@ export default async function AdminRequestsPage({
             <span>Oluşturan</span>
             <span>Oluşturma</span>
             <span>Güncelleme</span>
-            <span />
+            <span>Aksiyonlar</span>
           </div>
 
           {requests.length ? (
@@ -181,9 +183,10 @@ function RequestFilters({ filters }: { filters: AdminRequestListFilters }) {
 
 function RequestRow({ request }: { request: AdminRequestListItem }) {
   const detailHref = `/admin/requests/${request.id}`;
+  const quoteHref = `/admin/requests/${request.id}/quote`;
 
   return (
-    <div className="relative grid gap-4 px-4 py-4 text-sm transition hover:bg-muted/45 xl:grid-cols-[1.35fr_0.65fr_0.8fr_0.7fr_0.55fr_0.75fr_0.85fr_0.85fr_0.35fr] xl:items-center">
+    <div className="relative grid gap-4 px-4 py-4 text-sm transition hover:bg-muted/45 xl:grid-cols-[1.35fr_0.65fr_0.8fr_0.7fr_0.55fr_0.75fr_0.85fr_0.85fr_1.1fr] xl:items-center">
       <Link
         aria-label="Talep detayını aç"
         className="absolute inset-0 z-0"
@@ -202,9 +205,58 @@ function RequestRow({ request }: { request: AdminRequestListItem }) {
       <MobileLabel label="Oluşturan" value={request.requester?.full_name ?? "-"} />
       <MobileLabel label="Oluşturma" value={formatDate(request.created_at)} />
       <MobileLabel label="Güncelleme" value={formatDate(request.updated_at)} />
-      <span className="relative z-10 inline-flex size-9 items-center justify-center rounded-lg border border-border/70 bg-background/60 text-muted-foreground">
-        <Eye />
-      </span>
+      <div className="relative z-10 xl:justify-self-end">
+        <RequestQuickActions
+          detailHref={detailHref}
+          quoteHref={quoteHref}
+          request={request}
+        />
+      </div>
+    </div>
+  );
+}
+
+function RequestQuickActions({
+  detailHref,
+  quoteHref,
+  request,
+}: {
+  detailHref: string;
+  quoteHref: string;
+  request: AdminRequestListItem;
+}) {
+  const canCancel = isCancellableStatus(request.status);
+
+  return (
+    <div className="flex flex-wrap justify-end gap-2 xl:flex-col xl:items-stretch">
+      <Link
+        aria-label="Talep detayını görüntüle"
+        className={cn(buttonVariants({ variant: "outline", size: "sm" }), "h-8 px-3")}
+        href={detailHref}
+      >
+        <Eye data-icon="inline-start" />
+        Görüntüle
+      </Link>
+      <a
+        className={cn(buttonVariants({ variant: "outline", size: "sm" }), "h-8 px-3")}
+        href={quoteHref}
+      >
+        <FileDown data-icon="inline-start" />
+        PDF İndir
+      </a>
+      {canCancel ? (
+        <form action={updateRequestStatusAction}>
+          <input name="request_id" type="hidden" value={request.id} />
+          <input name="status" type="hidden" value="cancelled" />
+          <ConfirmSubmitButton
+            className="h-8 px-3 text-xs"
+            confirmMessage="Bu talebi iptal etmek istediğinize emin misiniz?"
+          >
+            <XCircle data-icon="inline-start" />
+            İptal
+          </ConfirmSubmitButton>
+        </form>
+      ) : null}
     </div>
   );
 }
@@ -293,6 +345,10 @@ function formatDate(value: string) {
   }).format(new Date(value));
 }
 
+function isCancellableStatus(status: string) {
+  return status !== "cancelled";
+}
+
 function parseRequestFilters(
   query: Record<string, string | string[] | undefined>
 ): AdminRequestListFilters {
@@ -352,11 +408,7 @@ function getSortParam(
 ): AdminRequestListFilters["sort"] {
   const item = getStringParam(value);
 
-  if (
-    item === "oldest" ||
-    item === "updated_newest" ||
-    item === "total_desc"
-  ) {
+  if (item === "oldest" || item === "updated_newest" || item === "total_desc") {
     return item;
   }
 

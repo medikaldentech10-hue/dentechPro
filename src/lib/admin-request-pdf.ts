@@ -13,7 +13,9 @@ import {
 } from "@/lib/admin-requests";
 
 const PAGE_MARGIN = 42;
-const FOOTER_Y = 796;
+const CONTENT_WIDTH = 511;
+const CONTENT_RIGHT = PAGE_MARGIN + CONTENT_WIDTH;
+const FOOTER_Y = 782;
 const FOOTER_RESERVED_Y = 760;
 const FONT_PATH = path.join(
   process.cwd(),
@@ -59,11 +61,11 @@ function drawQuote(doc: PDFKit.PDFDocument, request: AdminRequestDetail) {
 function drawHeader(doc: PDFKit.PDFDocument, request: AdminRequestDetail) {
   doc
     .fillColor("#111827")
-    .fontSize(22)
+    .fontSize(19)
     .text("DENTech Medikal", PAGE_MARGIN, PAGE_MARGIN)
     .fillColor("#0f766e")
-    .fontSize(12)
-    .text("Dentech Pro Teklif Formu", PAGE_MARGIN, PAGE_MARGIN + 28);
+    .fontSize(10.5)
+    .text("Dentech Pro Teklif Formu", PAGE_MARGIN, PAGE_MARGIN + 22);
 
   const rightX = 350;
   doc
@@ -75,23 +77,23 @@ function drawHeader(doc: PDFKit.PDFDocument, request: AdminRequestDetail) {
     .text(request.id, rightX, PAGE_MARGIN + 14, { align: "right", width: 200 })
     .fillColor("#6b7280")
     .fontSize(9)
-    .text("Durum", rightX, PAGE_MARGIN + 36, { align: "right", width: 200 })
+    .text("Durum", rightX, PAGE_MARGIN + 32, { align: "right", width: 200 })
     .fillColor("#111827")
     .fontSize(10)
-    .text(requestStatusLabel(request.status), rightX, PAGE_MARGIN + 50, {
+    .text(requestStatusLabel(request.status), rightX, PAGE_MARGIN + 46, {
       align: "right",
       width: 200,
     });
 
   doc
-    .moveTo(PAGE_MARGIN, PAGE_MARGIN + 82)
-    .lineTo(553, PAGE_MARGIN + 82)
+    .moveTo(PAGE_MARGIN, PAGE_MARGIN + 68)
+    .lineTo(CONTENT_RIGHT, PAGE_MARGIN + 68)
     .strokeColor("#d1d5db")
     .stroke();
 }
 
 function drawParties(doc: PDFKit.PDFDocument, request: AdminRequestDetail) {
-  const y = PAGE_MARGIN + 106;
+  const y = PAGE_MARGIN + 84;
   const customerRows: Array<[string, string | null | undefined]> = request.customer
     ? [
         ["Firma / Klinik", request.customer.company_name],
@@ -110,6 +112,17 @@ function drawParties(doc: PDFKit.PDFDocument, request: AdminRequestDetail) {
         ["E-posta", request.requester?.email],
         ["Rol", request.requester?.role],
       ];
+  const requestRows: Array<[string, string | null | undefined]> = [
+    ["Kaynak", requestSourceLabel(request.source)],
+    ["Oluşturan", request.requester?.full_name],
+    ["Oluşturan E-posta", request.requester?.email],
+    ["Saha Temsilcisi", request.salesRep?.full_name],
+    ["Oluşturma", formatDate(request.created_at)],
+  ];
+  const boxHeight = Math.max(
+    getInfoBoxHeight(doc, customerRows, 245),
+    getInfoBoxHeight(doc, requestRows, 245)
+  );
 
   drawInfoBox(
     doc,
@@ -117,16 +130,30 @@ function drawParties(doc: PDFKit.PDFDocument, request: AdminRequestDetail) {
     customerRows,
     PAGE_MARGIN,
     y,
-    245
+    245,
+    boxHeight
   );
+  drawInfoBox(doc, "Talep Bilgileri", requestRows, 308, y, 245, boxHeight);
 
-  drawInfoBox(doc, "Talep Bilgileri", [
-    ["Kaynak", requestSourceLabel(request.source)],
-    ["Oluşturan", request.requester?.full_name],
-    ["Oluşturan E-posta", request.requester?.email],
-    ["Saha Temsilcisi", request.salesRep?.full_name],
-    ["Oluşturma", formatDate(request.created_at)],
-  ], 308, y, 245);
+  doc.y = y + boxHeight + 12;
+}
+
+function getInfoBoxHeight(
+  doc: PDFKit.PDFDocument,
+  rows: Array<[string, string | null | undefined]>,
+  width: number
+) {
+  let height = 36;
+
+  for (const [label, value] of rows) {
+    const labelHeight = doc.fontSize(8).heightOfString(label, { width: 78 });
+    const valueHeight = doc.fontSize(8.5).heightOfString(value || "-", {
+      width: width - 110,
+    });
+    height += Math.max(labelHeight, valueHeight) + 8;
+  }
+
+  return Math.max(102, height + 6);
 }
 
 function drawInfoBox(
@@ -135,64 +162,71 @@ function drawInfoBox(
   rows: Array<[string, string | null | undefined]>,
   x: number,
   y: number,
-  width: number
+  width: number,
+  height: number
 ) {
   doc
-    .roundedRect(x, y, width, 128, 10)
+    .roundedRect(x, y, width, height, 10)
     .fillAndStroke("#f9fafb", "#e5e7eb")
     .fillColor("#111827")
-    .fontSize(11)
+    .fontSize(10.5)
     .text(title, x + 14, y + 12, { width: width - 28 });
 
-  let rowY = y + 34;
+  let rowY = y + 30;
   for (const [label, value] of rows) {
+    const rowHeight = Math.max(
+      doc.fontSize(8).heightOfString(label, { width: 78 }),
+      doc.fontSize(8.5).heightOfString(value || "-", { width: width - 110 })
+    );
+
     doc
       .fillColor("#6b7280")
       .fontSize(8)
-      .text(label, x + 14, rowY, { continued: false, width: 78 })
+      .text(label, x + 14, rowY, { width: 78 })
       .fillColor("#111827")
       .fontSize(8.5)
       .text(value || "-", x + 96, rowY, { width: width - 110 });
-    rowY += 17;
+
+    rowY += rowHeight + 6;
   }
 }
 
 function drawLines(doc: PDFKit.PDFDocument, request: AdminRequestDetail) {
-  let y = PAGE_MARGIN + 260;
-  doc.fillColor("#111827").fontSize(13).text("Ürün Kalemleri", PAGE_MARGIN, y);
-  y += 24;
+  let y = Math.max(doc.y, PAGE_MARGIN + 214);
+  doc.fillColor("#111827").fontSize(12).text("Ürün Kalemleri", PAGE_MARGIN, y);
+  y += 18;
 
   drawTableHeader(doc, y);
-  y += 24;
+  y += 20;
 
   for (const [index, item] of request.items.entries()) {
     const rowHeight = getLineHeight(doc, item);
 
-    if (y + rowHeight > 720) {
+    if (y + rowHeight > FOOTER_RESERVED_Y) {
       doc.addPage();
       y = PAGE_MARGIN;
       drawTableHeader(doc, y);
-      y += 24;
+      y += 20;
     }
 
     drawLineRow(doc, item, index + 1, y, rowHeight);
     y += rowHeight;
   }
 
-  doc.y = y + 10;
+  doc.y = y + 6;
 }
 
 function drawTableHeader(doc: PDFKit.PDFDocument, y: number) {
   doc
-    .roundedRect(PAGE_MARGIN, y, 511, 22, 6)
+    .roundedRect(PAGE_MARGIN, y, CONTENT_WIDTH, 18, 6)
     .fill("#ecfdf5")
     .fillColor("#065f46")
     .fontSize(8)
-    .text("Ürün", 52, y + 7, { width: 196 })
-    .text("SKU / Varyant", 250, y + 7, { width: 92 })
-    .text("Adet", 346, y + 7, { align: "right", width: 36 })
-    .text("Birim", 390, y + 7, { align: "right", width: 70 })
-    .text("Toplam", 470, y + 7, { align: "right", width: 70 });
+    .text("Ürün", 52, y + 5, { width: 196 })
+    .text("SKU / Varyant", 250, y + 5, { width: 92 })
+    .text("Adet", 346, y + 5, { align: "right", width: 36 })
+    .text("Birim", 390, y + 5, { align: "right", width: 70 })
+    .text("Toplam", 470, y + 5, { align: "right", width: 70 });
 }
 
 function drawLineRow(
@@ -203,26 +237,26 @@ function drawLineRow(
   rowHeight: number
 ) {
   doc
-    .rect(PAGE_MARGIN, y, 511, rowHeight)
+    .rect(PAGE_MARGIN, y, CONTENT_WIDTH, rowHeight)
     .fillAndStroke(index % 2 ? "#ffffff" : "#f9fafb", "#e5e7eb");
 
   doc
     .fillColor("#111827")
     .fontSize(8.5)
-    .text(`${index}. ${item.product?.product_name ?? "Ürün"}`, 52, y + 8, {
+    .text(`${index}. ${item.product?.product_name ?? "Ürün"}`, 52, y + 6, {
       width: 190,
     })
     .fillColor("#6b7280")
     .fontSize(7.5)
-    .text(cleanCode(item.product?.product_group_code) ?? "-", 52, y + 28, {
+    .text(cleanCode(item.product?.product_group_code) ?? "-", 52, y + 22, {
       width: 190,
     })
     .fillColor("#111827")
     .fontSize(8)
-    .text(getVariantCode(item), 250, y + 8, { width: 90 })
-    .text(String(item.quantity), 346, y + 8, { align: "right", width: 36 })
-    .text(formatPrice(item.unit_price), 390, y + 8, { align: "right", width: 70 })
-    .text(formatPrice(item.line_total), 470, y + 8, { align: "right", width: 70 });
+    .text(getVariantCode(item), 250, y + 6, { width: 90 })
+    .text(String(item.quantity), 346, y + 6, { align: "right", width: 36 })
+    .text(formatPrice(item.unit_price), 390, y + 6, { align: "right", width: 70 })
+    .text(formatPrice(item.line_total), 470, y + 6, { align: "right", width: 70 });
 }
 
 function getLineHeight(doc: PDFKit.PDFDocument, item: AdminRequestLine) {
@@ -230,33 +264,34 @@ function getLineHeight(doc: PDFKit.PDFDocument, item: AdminRequestLine) {
     width: 190,
   });
 
-  return Math.max(44, productHeight + 30);
+  return Math.max(34, productHeight + 20);
 }
 
 function drawTotals(doc: PDFKit.PDFDocument, request: AdminRequestDetail) {
-  let y = Math.max(doc.y, 570);
+  const totalsHeight = 68;
+  let y = Math.max(doc.y + 4, PAGE_MARGIN);
 
-  if (y > 690) {
+  if (y + totalsHeight > FOOTER_RESERVED_Y) {
     doc.addPage();
     y = PAGE_MARGIN;
   }
 
   const x = 348;
   drawAmountRow(doc, "Ara Toplam", request.subtotal, x, y);
-  drawAmountRow(doc, "İndirim", request.discount_total, x, y + 20);
+  drawAmountRow(doc, "İndirim", request.discount_total, x, y + 16);
 
   doc
-    .roundedRect(x, y + 46, 205, 30, 8)
+    .roundedRect(x, y + 34, 205, 28, 8)
     .fill("#0f766e")
     .fillColor("#ffffff")
-    .fontSize(11)
-    .text("Genel Toplam", x + 12, y + 56, { width: 82 })
-    .text(formatPrice(request.total), x + 96, y + 56, {
+    .fontSize(10.5)
+    .text("Genel Toplam", x + 12, y + 44, { width: 82 })
+    .text(formatPrice(request.total), x + 96, y + 44, {
       align: "right",
       width: 96,
     });
 
-  doc.y = y + 96;
+  doc.y = y + totalsHeight;
 }
 
 function drawAmountRow(
@@ -275,39 +310,81 @@ function drawAmountRow(
 }
 
 function drawPaymentInfo(doc: PDFKit.PDFDocument, request: AdminRequestDetail) {
-  const rows = [
-    `Ödeme yöntemi: ${paymentMethodLabel(request.paymentInfo.method)}`,
-    `Referans: ${request.paymentInfo.reference || "-"}`,
-    `Ödeme notu: ${request.paymentInfo.note || "-"}`,
-    `Talep notu: ${request.requestNote || "-"}`,
+  const rows: Array<[string, string]> = [
+    ["Ödeme yöntemi", paymentMethodLabel(request.paymentInfo.method)],
+    ["Referans", request.paymentInfo.reference || "-"],
+    ["Ödeme notu", request.paymentInfo.note || "-"],
+    ["Talep notu", request.requestNote || "-"],
   ];
-  const content = rows.join("\n");
-  const contentHeight = doc.heightOfString(content, {
-    lineGap: 4,
-    width: 483,
-  });
-  const boxHeight = Math.min(Math.max(92, contentHeight + 48), 190);
 
-  if (doc.y + boxHeight > FOOTER_RESERVED_Y) {
+  let y = Math.max(doc.y + 6, PAGE_MARGIN);
+  const estimatedSectionHeight =
+    16 +
+    rows.reduce(
+      (total, [label, value]) =>
+        total + getPaymentRowHeight(doc, label, value, CONTENT_WIDTH) + 4,
+      0
+    );
+
+  const startSection = (titleY: number) => {
+    doc.fillColor("#111827").fontSize(11).text("Ödeme Bilgisi", PAGE_MARGIN, titleY);
+    return titleY + 16;
+  };
+
+  if (y + estimatedSectionHeight > FOOTER_RESERVED_Y) {
     doc.addPage();
+    y = PAGE_MARGIN;
   }
 
-  const y = doc.y;
+  y = startSection(y);
 
+  for (const [label, value] of rows) {
+    const rowHeight = getPaymentRowHeight(doc, label, value, CONTENT_WIDTH);
+
+    if (y + rowHeight > FOOTER_RESERVED_Y) {
+      doc.addPage();
+      y = startSection(PAGE_MARGIN);
+    }
+
+    drawPaymentRow(doc, label, value, PAGE_MARGIN, y, CONTENT_WIDTH, rowHeight);
+    y += rowHeight + 4;
+  }
+
+  doc.y = y;
+}
+
+function getPaymentRowHeight(
+  doc: PDFKit.PDFDocument,
+  label: string,
+  value: string,
+  width: number
+) {
+  const labelHeight = doc.fontSize(8).heightOfString(label, { width: 86 });
+  const valueHeight = doc.fontSize(8.5).heightOfString(value, {
+    width: width - 118,
+  });
+
+  return Math.max(30, Math.max(labelHeight, valueHeight) + 14);
+}
+
+function drawPaymentRow(
+  doc: PDFKit.PDFDocument,
+  label: string,
+  value: string,
+  x: number,
+  y: number,
+  width: number,
+  height: number
+) {
   doc
-    .roundedRect(PAGE_MARGIN, y, 511, boxHeight, 10)
+    .roundedRect(x, y, width, height, 8)
     .fillAndStroke("#f9fafb", "#e5e7eb")
+    .fillColor("#6b7280")
+    .fontSize(8)
+    .text(label, x + 12, y + 10, { width: 86 })
     .fillColor("#111827")
-    .fontSize(11)
-    .text("Ödeme Bilgisi", PAGE_MARGIN + 14, y + 12)
-    .fillColor("#4b5563")
     .fontSize(8.5)
-    .text(content, PAGE_MARGIN + 14, y + 30, {
-      lineGap: 4,
-      width: 483,
-    });
-
-  doc.y = y + boxHeight + 10;
+    .text(value, x + 102, y + 10, { width: width - 116 });
 }
 
 function addPageFooters(doc: PDFKit.PDFDocument) {
@@ -322,7 +399,7 @@ function addPageFooters(doc: PDFKit.PDFDocument) {
         "Bu belge Dentech Pro üzerinden oluşturulmuştur.",
         PAGE_MARGIN,
         FOOTER_Y,
-        { align: "center", width: 511 }
+        { align: "center", width: CONTENT_WIDTH }
       );
   }
 }
