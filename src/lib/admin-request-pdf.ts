@@ -6,8 +6,8 @@ import PDFDocument from "pdfkit";
 
 import {
   paymentMethodLabel,
-  requestSourceLabel,
   requestStatusLabel,
+  type AdminPaymentMethod,
   type AdminRequestDetail,
   type AdminRequestLine,
 } from "@/lib/admin-requests";
@@ -56,6 +56,7 @@ function drawQuote(doc: PDFKit.PDFDocument, request: AdminRequestDetail) {
   drawParties(doc, request);
   drawLines(doc, request);
   drawTotals(doc, request);
+  drawCustomerNote(doc, request);
   drawPaymentInfo(doc, request);
 }
 
@@ -65,83 +66,82 @@ function drawHeader(doc: PDFKit.PDFDocument, request: AdminRequestDetail) {
     .fontSize(19)
     .text("DENTech Medikal", PAGE_MARGIN, PAGE_MARGIN)
     .fillColor("#0f766e")
-    .fontSize(10.5)
-    .text("Dentech Pro Teklif Formu", PAGE_MARGIN, PAGE_MARGIN + 22);
+    .fontSize(11)
+    .text("Teklif Formu", PAGE_MARGIN, PAGE_MARGIN + 22);
 
-  const rightX = 350;
-  doc
-    .fillColor("#6b7280")
-    .fontSize(9)
-    .text("Talep No", rightX, PAGE_MARGIN, { align: "right", width: 200 })
-    .fillColor("#111827")
-    .fontSize(10)
-    .text(getRequestDisplayNumber(request), rightX, PAGE_MARGIN + 14, {
-      align: "right",
-      width: 200,
-    })
-    .fillColor("#6b7280")
-    .fontSize(9)
-    .text("Durum", rightX, PAGE_MARGIN + 32, { align: "right", width: 200 })
-    .fillColor("#111827")
-    .fontSize(10)
-    .text(requestStatusLabel(request.status), rightX, PAGE_MARGIN + 46, {
-      align: "right",
-      width: 200,
-    });
+  const rightX = 334;
+  const headerRows: Array<[string, string]> = [
+    ["Teklif No", getRequestDisplayNumber(request)],
+    ["Tarih", formatDate(request.created_at)],
+    ["Durum", requestStatusLabel(request.status)],
+  ];
+
+  let rowY = PAGE_MARGIN;
+  for (const [label, value] of headerRows) {
+    doc
+      .fillColor("#6b7280")
+      .fontSize(9)
+      .text(label, rightX, rowY, { align: "right", width: 220 })
+      .fillColor("#111827")
+      .fontSize(10)
+      .text(value, rightX, rowY + 14, { align: "right", width: 220 });
+    rowY += 32;
+  }
 
   doc
-    .moveTo(PAGE_MARGIN, PAGE_MARGIN + 68)
-    .lineTo(CONTENT_RIGHT, PAGE_MARGIN + 68)
+    .moveTo(PAGE_MARGIN, PAGE_MARGIN + 84)
+    .lineTo(CONTENT_RIGHT, PAGE_MARGIN + 84)
     .strokeColor("#d1d5db")
     .stroke();
 }
 
 function drawParties(doc: PDFKit.PDFDocument, request: AdminRequestDetail) {
-  const y = PAGE_MARGIN + 84;
-  const customerRows: Array<[string, string | null | undefined]> = request.customer
-    ? [
-        ["Firma / Klinik", request.customer.company_name],
-        ["Ad / Ünvan", request.customer.name],
-        ["Telefon", request.customer.phone],
-        ["E-posta", request.customer.email],
-        [
-          "Konum",
-          [request.customer.city, request.customer.district].filter(Boolean).join(" / "),
-        ],
-      ]
-    : [
-        ["Kayıt Tipi", "Kayıtlı uygulama kullanıcısı"],
-        ["Ad Soyad", request.requester?.full_name],
-        ["Telefon", request.requester?.phone],
-        ["E-posta", request.requester?.email],
-        ["Rol", request.requester?.role],
-      ];
-  const requestRowsBase: Array<[string, string | null | undefined]> = [
-    ["Kaynak", requestSourceLabel(request.source)],
-    ["Oluşturan", request.requester?.full_name],
-    ["Oluşturan E-posta", request.requester?.email],
-    ["Saha Temsilcisi", request.salesRep?.full_name],
-    ["Oluşturma", formatDate(request.created_at)],
-  ];
-  const requestRows = requestRowsBase.filter((row) => hasMeaningfulValue(row[1]));
-
+  const y = PAGE_MARGIN + 100;
+  const customerRows = getCustomerRows(request);
+  const metaRows = getQuoteMetaRows(request);
   const boxHeight = Math.max(
     getInfoBoxHeight(doc, customerRows, 245),
-    getInfoBoxHeight(doc, requestRows, 245)
+    getInfoBoxHeight(doc, metaRows, 245)
   );
 
-  drawInfoBox(
-    doc,
-    request.customer ? "Müşteri Bilgileri" : "Kayıtlı Kullanıcı Bilgisi",
-    customerRows,
-    PAGE_MARGIN,
-    y,
-    245,
-    boxHeight
-  );
-  drawInfoBox(doc, "Talep Bilgileri", requestRows, 308, y, 245, boxHeight);
+  drawInfoBox(doc, "Müşteri Bilgileri", customerRows, PAGE_MARGIN, y, 245, boxHeight);
+  drawInfoBox(doc, "Teklif Bilgileri", metaRows, 308, y, 245, boxHeight);
 
   doc.y = y + boxHeight + 12;
+}
+
+function getCustomerRows(
+  request: AdminRequestDetail
+): Array<[string, string | null | undefined]> {
+  const rows: Array<[string, string | null | undefined]> = [];
+  const companyName = request.customer?.company_name?.trim();
+  const personName = request.customer?.name?.trim() || request.requester?.full_name?.trim();
+
+  if (companyName && personName && companyName !== personName) {
+    rows.push(["Kurum", companyName], ["Ad Soyad", personName]);
+  } else {
+    rows.push(["Ad Soyad / Kurum", companyName || personName || "-"]);
+  }
+
+  rows.push(["Telefon", request.customer?.phone || request.requester?.phone]);
+  rows.push(["E-posta", request.customer?.email || request.requester?.email]);
+
+  return rows.filter((row) => hasMeaningfulValue(row[1]));
+}
+
+function getQuoteMetaRows(
+  request: AdminRequestDetail
+): Array<[string, string | null | undefined]> {
+  const rows: Array<[string, string | null | undefined]> = [
+    ["Teklif tarihi", formatDate(request.created_at)],
+    ["Durum", requestStatusLabel(request.status)],
+  ];
+
+  if (hasMeaningfulValue(request.salesRep?.full_name)) {
+    rows.push(["Saha temsilcisi", request.salesRep?.full_name]);
+  }
+
+  return rows.filter((row) => hasMeaningfulValue(row[1]));
 }
 
 function getInfoBoxHeight(
@@ -159,7 +159,7 @@ function getInfoBoxHeight(
     height += Math.max(labelHeight, valueHeight) + 8;
   }
 
-  return Math.max(102, height + 6);
+  return Math.max(94, height + 6);
 }
 
 function drawInfoBox(
@@ -199,7 +199,7 @@ function drawInfoBox(
 
 function drawLines(doc: PDFKit.PDFDocument, request: AdminRequestDetail) {
   let y = Math.max(doc.y, PAGE_MARGIN + 214);
-  doc.fillColor("#111827").fontSize(12).text("Ürün Kalemleri", PAGE_MARGIN, y);
+  doc.fillColor("#111827").fontSize(12).text("Ürünler", PAGE_MARGIN, y);
   y += 18;
 
   drawTableHeader(doc, y);
@@ -228,11 +228,11 @@ function drawTableHeader(doc: PDFKit.PDFDocument, y: number) {
     .fill("#ecfdf5")
     .fillColor("#065f46")
     .fontSize(8)
-    .text("Ürün", 52, y + 5, { width: 196 })
-    .text("SKU / Varyant", 250, y + 5, { width: 92 })
-    .text("Adet", 346, y + 5, { align: "right", width: 36 })
-    .text("Birim", 390, y + 5, { align: "right", width: 70 })
-    .text("Toplam", 470, y + 5, { align: "right", width: 70 });
+    .text("Ürün", 52, y + 5, { width: 216 })
+    .text("Varyant / SKU", 270, y + 5, { width: 86 })
+    .text("Adet", 362, y + 5, { align: "right", width: 30 })
+    .text("Birim Fiyat", 400, y + 5, { align: "right", width: 64 })
+    .text("Toplam", 472, y + 5, { align: "right", width: 68 });
 }
 
 function drawLineRow(
@@ -242,6 +242,9 @@ function drawLineRow(
   y: number,
   rowHeight: number
 ) {
+  const productName = item.product?.product_name ?? "Ürün";
+  const displaySku = getCustomerFacingSku(item);
+
   doc
     .rect(PAGE_MARGIN, y, CONTENT_WIDTH, rowHeight)
     .fillAndStroke(index % 2 ? "#ffffff" : "#f9fafb", "#e5e7eb");
@@ -249,28 +252,22 @@ function drawLineRow(
   doc
     .fillColor("#111827")
     .fontSize(8.5)
-    .text(`${index}. ${item.product?.product_name ?? "Ürün"}`, 52, y + 6, {
-      width: 190,
+    .text(`${index}. ${productName}`, 52, y + 6, {
+      width: 208,
     })
-    .fillColor("#6b7280")
-    .fontSize(7.5)
-    .text(cleanCode(item.product?.product_group_code) ?? "", 52, y + 22, {
-      width: 190,
-    })
-    .fillColor("#111827")
     .fontSize(8)
-    .text(getVariantCode(item), 250, y + 6, { width: 90 })
-    .text(String(item.quantity), 346, y + 6, { align: "right", width: 36 })
-    .text(formatPrice(item.unit_price), 390, y + 6, { align: "right", width: 70 })
-    .text(formatPrice(item.line_total), 470, y + 6, { align: "right", width: 70 });
+    .text(displaySku || "-", 270, y + 6, { width: 86 })
+    .text(String(item.quantity), 362, y + 6, { align: "right", width: 30 })
+    .text(formatPrice(item.unit_price), 400, y + 6, { align: "right", width: 64 })
+    .text(formatPrice(item.line_total), 472, y + 6, { align: "right", width: 68 });
 }
 
 function getLineHeight(doc: PDFKit.PDFDocument, item: AdminRequestLine) {
   const productHeight = doc.heightOfString(item.product?.product_name ?? "Ürün", {
-    width: 190,
+    width: 208,
   });
 
-  return Math.max(34, productHeight + 20);
+  return Math.max(32, productHeight + 12);
 }
 
 function drawTotals(doc: PDFKit.PDFDocument, request: AdminRequestDetail) {
@@ -282,17 +279,17 @@ function drawTotals(doc: PDFKit.PDFDocument, request: AdminRequestDetail) {
     y = PAGE_MARGIN;
   }
 
-  const x = 348;
+  const x = 336;
   drawAmountRow(doc, "Ara Toplam", request.subtotal, x, y);
   drawAmountRow(doc, "İndirim", request.discount_total, x, y + 16);
 
   doc
-    .roundedRect(x, y + 34, 205, 28, 8)
+    .roundedRect(x, y + 34, 217, 28, 8)
     .fill("#0f766e")
     .fillColor("#ffffff")
     .fontSize(10.5)
-    .text("Genel Toplam", x + 12, y + 44, { width: 82 })
-    .text(formatPrice(request.total), x + 96, y + 44, {
+    .text("Genel Toplam", x + 12, y + 44, { width: 92 })
+    .text(formatPrice(request.total), x + 108, y + 44, {
       align: "right",
       width: 96,
     });
@@ -310,13 +307,44 @@ function drawAmountRow(
   doc
     .fillColor("#6b7280")
     .fontSize(9)
-    .text(label, x, y, { width: 88 })
+    .text(label, x, y, { width: 96 })
     .fillColor("#111827")
-    .text(formatPrice(value), x + 88, y, { align: "right", width: 116 });
+    .text(formatPrice(value), x + 96, y, { align: "right", width: 120 });
+}
+
+function drawCustomerNote(doc: PDFKit.PDFDocument, request: AdminRequestDetail) {
+  const note = getCustomerFacingNote(request.requestNote);
+
+  if (!note) {
+    return;
+  }
+
+  let y = Math.max(doc.y + 6, PAGE_MARGIN);
+  const height = Math.max(
+    44,
+    doc.fontSize(8.5).heightOfString(note, { width: CONTENT_WIDTH - 28 }) + 26
+  );
+
+  if (y + height > FOOTER_RESERVED_Y) {
+    doc.addPage();
+    y = PAGE_MARGIN;
+  }
+
+  doc.fillColor("#111827").fontSize(11).text("Notlar", PAGE_MARGIN, y);
+  y += 16;
+
+  doc
+    .roundedRect(PAGE_MARGIN, y, CONTENT_WIDTH, height - 8, 8)
+    .fillAndStroke("#f9fafb", "#e5e7eb")
+    .fillColor("#111827")
+    .fontSize(8.5)
+    .text(note, PAGE_MARGIN + 14, y + 10, { width: CONTENT_WIDTH - 28 });
+
+  doc.y = y + height;
 }
 
 function drawPaymentInfo(doc: PDFKit.PDFDocument, request: AdminRequestDetail) {
-  const rows = getPaymentRows(request);
+  const rows = getCustomerPaymentRows(request);
 
   if (!rows.length) {
     return;
@@ -356,6 +384,37 @@ function drawPaymentInfo(doc: PDFKit.PDFDocument, request: AdminRequestDetail) {
   }
 
   doc.y = y;
+}
+
+function getCustomerPaymentRows(
+  request: AdminRequestDetail
+): Array<[string, string]> {
+  const method = getCustomerFacingPaymentMethod(request.status, request.paymentInfo.method);
+
+  if (!method) {
+    return [];
+  }
+
+  return [["Ödeme yöntemi", paymentMethodLabel(method)]];
+}
+
+function getCustomerFacingPaymentMethod(
+  status: string,
+  method: AdminPaymentMethod | null
+) {
+  if (!method) {
+    return null;
+  }
+
+  if (!CUSTOMER_VISIBLE_PAYMENT_STATUSES.has(status)) {
+    return null;
+  }
+
+  if (method === "other") {
+    return null;
+  }
+
+  return method;
 }
 
 function getPaymentRowHeight(
@@ -407,22 +466,64 @@ function addPageFooters(doc: PDFKit.PDFDocument) {
   }
 }
 
-function getPaymentRows(request: AdminRequestDetail): Array<[string, string]> {
-  const rows: Array<[string, string | null | undefined]> = [];
+const CUSTOMER_VISIBLE_PAYMENT_STATUSES = new Set([
+  "confirmed",
+  "payment_received",
+  "completed",
+]);
 
-  if (request.paymentInfo.method) {
-    rows.push(["Ödeme yöntemi", paymentMethodLabel(request.paymentInfo.method)]);
+function getCustomerFacingSku(item: AdminRequestLine) {
+  const variantCandidates = [item.variant?.variant_code, item.variant?.manufacturer_ref];
+
+  for (const candidate of variantCandidates) {
+    const normalized = normalizeDisplayCode(candidate);
+    if (normalized) {
+      return normalized;
+    }
   }
 
-  rows.push(
-    ["Referans", request.paymentInfo.reference],
-    ["Ödeme notu", request.paymentInfo.note],
-    ["Talep notu", request.requestNote]
-  );
+  return normalizeDisplayCode(item.product?.product_group_code);
+}
 
-  return rows.filter(
-    (row): row is [string, string] => hasMeaningfulValue(row[1])
-  );
+function normalizeDisplayCode(value: string | null | undefined) {
+  const normalized = value?.trim();
+
+  if (!normalized || isUuid(normalized) || looksLikeSlug(normalized)) {
+    return null;
+  }
+
+  return normalized;
+}
+
+function looksLikeSlug(value: string) {
+  return /^[a-z0-9]+(?:-[a-z0-9]+){2,}$/.test(value);
+}
+
+function getCustomerFacingNote(value: string | null | undefined) {
+  const normalized = value?.trim();
+
+  if (!normalized || !hasMeaningfulValue(normalized)) {
+    return null;
+  }
+
+  const lowered = normalized.toLocaleLowerCase("tr-TR");
+  const internalFragments = [
+    "hesaba yatır",
+    "bekleniyor",
+    "ödeme",
+    "iban",
+    "dekont",
+    "admin",
+    "internal",
+    "whatsapp",
+    "pos link",
+  ];
+
+  if (internalFragments.some((fragment) => lowered.includes(fragment))) {
+    return null;
+  }
+
+  return normalized;
 }
 
 function hasMeaningfulValue(value: string | null | undefined) {
@@ -433,23 +534,6 @@ function hasMeaningfulValue(value: string | null | undefined) {
   }
 
   return normalized !== "-" && normalized !== "Belirtilmedi";
-}
-
-
-function getVariantCode(item: AdminRequestLine) {
-  return (
-    cleanCode(item.variant?.manufacturer_ref) ??
-    cleanCode(item.variant?.variant_code) ??
-    "-"
-  );
-}
-
-function cleanCode(value: string | null | undefined) {
-  if (!value || isUuid(value)) {
-    return null;
-  }
-
-  return value;
 }
 
 function isUuid(value: string) {
