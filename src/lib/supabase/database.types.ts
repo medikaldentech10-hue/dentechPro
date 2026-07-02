@@ -195,6 +195,7 @@ export type Database = {
       order_drafts: {
         Row: {
           id: string;
+          request_number: string | null;
           created_by_user_id: string | null;
           customer_id: string | null;
           source: "web" | "sales" | "whatsapp" | "admin";
@@ -219,6 +220,7 @@ export type Database = {
         };
         Insert: {
           id?: string;
+          request_number?: string | null;
           created_by_user_id?: string | null;
           customer_id?: string | null;
           source?: "web" | "sales" | "whatsapp" | "admin";

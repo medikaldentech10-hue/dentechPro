@@ -18,6 +18,7 @@ import {
   type AdminRequestListFilters,
   type AdminRequestListItem,
 } from "@/lib/admin-requests";
+import { getRequestDisplayNumber } from "@/lib/request-numbers";
 import type { Database } from "@/lib/supabase/database.types";
 import { cn } from "@/lib/utils";
 
@@ -49,7 +50,7 @@ export default async function AdminRequestsPage({
 
       <SurfaceCard className="overflow-hidden">
         <CardContent className="p-0">
-          <div className="hidden grid-cols-[1.15fr_0.65fr_0.8fr_0.7fr_0.65fr_0.75fr_0.9fr_0.9fr_1.1fr] gap-3 border-b border-border/70 px-4 py-3 text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground xl:grid">
+          <div className="hidden grid-cols-[1.15fr_0.65fr_0.8fr_0.7fr_0.65fr_0.75fr_0.9fr_0.9fr_0.55fr] gap-3 border-b border-border/70 px-4 py-3 text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground xl:grid">
             <span>Müşteri / Kullanıcı</span>
             <span>Kaynak</span>
             <span>Durum</span>
@@ -58,7 +59,7 @@ export default async function AdminRequestsPage({
             <span>Oluşturan</span>
             <span>Oluşturma</span>
             <span>Güncelleme</span>
-            <span>Aksiyonlar</span>
+            <span className="text-right">Aksiyonlar</span>
           </div>
 
           {requests.length ? (
@@ -186,7 +187,7 @@ function RequestRow({ request }: { request: AdminRequestListItem }) {
   const quoteHref = `/admin/requests/${request.id}/quote`;
 
   return (
-    <div className="relative grid gap-4 px-4 py-4 text-sm transition hover:bg-muted/45 xl:grid-cols-[1.35fr_0.65fr_0.8fr_0.7fr_0.55fr_0.75fr_0.85fr_0.85fr_1.1fr] xl:items-center">
+    <div className="relative grid gap-4 px-4 py-4 text-sm transition hover:bg-muted/45 xl:grid-cols-[1.35fr_0.65fr_0.8fr_0.7fr_0.55fr_0.75fr_0.85fr_0.85fr_0.55fr] xl:items-center">
       <Link
         aria-label="Talep detayını aç"
         className="absolute inset-0 z-0"
@@ -228,32 +229,34 @@ function RequestQuickActions({
   const canCancel = isCancellableStatus(request.status);
 
   return (
-    <div className="flex flex-wrap justify-end gap-2 xl:flex-col xl:items-stretch">
+    <div className="flex flex-wrap justify-end gap-1.5">
       <Link
-        aria-label="Talep detayını görüntüle"
-        className={cn(buttonVariants({ variant: "outline", size: "sm" }), "h-8 px-3")}
+        aria-label="Görüntüle"
+        className={buttonVariants({ size: "icon-sm", variant: "outline" })}
         href={detailHref}
+        title="Görüntüle"
       >
-        <Eye data-icon="inline-start" />
-        Görüntüle
+        <Eye />
       </Link>
       <a
-        className={cn(buttonVariants({ variant: "outline", size: "sm" }), "h-8 px-3")}
+        aria-label="PDF indir"
+        className={buttonVariants({ size: "icon-sm", variant: "outline" })}
         href={quoteHref}
+        title="PDF indir"
       >
-        <FileDown data-icon="inline-start" />
-        PDF İndir
+        <FileDown />
       </a>
       {canCancel ? (
-        <form action={updateRequestStatusAction}>
+        <form action={updateRequestStatusAction} className="contents">
           <input name="request_id" type="hidden" value={request.id} />
           <input name="status" type="hidden" value="cancelled" />
           <ConfirmSubmitButton
-            className="h-8 px-3 text-xs"
+            aria-label="İptal et"
             confirmMessage="Bu talebi iptal etmek istediğinize emin misiniz?"
+            size="icon-sm"
+            title="İptal et"
           >
-            <XCircle data-icon="inline-start" />
-            İptal
+            <XCircle />
           </ConfirmSubmitButton>
         </form>
       ) : null}
@@ -287,7 +290,7 @@ function RequestIdentity({ request }: { request: AdminRequestListItem }) {
         </span>
       ) : null}
       <span className="mt-0.5 block truncate text-[11px] font-normal text-muted-foreground/75">
-        Talep: {request.id.slice(0, 8)}
+        Talep: {getRequestDisplayNumber(request)}
       </span>
     </span>
   );

@@ -2,6 +2,7 @@ import "server-only";
 
 import { canViewPrices, isAdmin, isApprovedUser, isSalesRep } from "@/lib/auth";
 import { DENTECH_WHATSAPP_NUMBER } from "@/lib/config";
+import { getRequestSearchTokens } from "@/lib/request-numbers";
 import type { Database, Json } from "@/lib/supabase/database.types";
 import { getSupabaseAdminClient } from "@/lib/supabase/server";
 import type { Profile } from "@/lib/types/auth";
@@ -48,7 +49,7 @@ type DraftItemQueryRow = OrderItemRow & {
 };
 
 const REQUEST_DRAFT_COLUMNS =
-  "id,created_by_user_id,customer_id,discount_total,note,source,status,subtotal,total,created_at,updated_at";
+  "id,request_number,created_by_user_id,customer_id,discount_total,note,source,status,subtotal,total,created_at,updated_at";
 const REQUEST_ITEM_COLUMNS =
   "id,order_draft_id,variant_id,quantity,unit_price,line_total,created_at,updated_at";
 
@@ -568,7 +569,7 @@ function filterRequestHistorySearch(
 
   return drafts.filter((draft) => {
     const haystack = [
-      draft.id,
+      ...getRequestSearchTokens(draft),
       ...draft.items.flatMap((item) => [
         item.product.product_group_code,
         item.product.product_name,

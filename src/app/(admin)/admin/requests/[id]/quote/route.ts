@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getCurrentProfile, isAdmin } from "@/lib/auth";
 import { getAdminRequestDetail } from "@/lib/admin-requests";
 import { createAdminRequestQuotePdf } from "@/lib/admin-request-pdf";
+import { getRequestDisplayNumber } from "@/lib/request-numbers";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -31,7 +32,7 @@ export async function GET(_request: Request, { params }: QuoteRouteProps) {
     }
 
     const pdf = await createAdminRequestQuotePdf(requestDetail);
-    const fileName = `dentech-teklif-${requestDetail.id}.pdf`;
+    const fileName = `dentech-teklif-${getRequestDisplayNumber(requestDetail)}.pdf`;
 
     return new Response(new Uint8Array(pdf), {
       headers: {

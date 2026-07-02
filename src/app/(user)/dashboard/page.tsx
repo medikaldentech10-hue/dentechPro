@@ -15,6 +15,7 @@ import {
   type RequestDraft,
 } from "@/lib/order-drafts";
 import { getPricedProductsForProfile } from "@/lib/products";
+import { getRequestDisplayNumber } from "@/lib/request-numbers";
 import type { Database } from "@/lib/supabase/database.types";
 import { getSupabaseAdminClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
@@ -24,7 +25,7 @@ type OrderDraftRow = Database["public"]["Tables"]["order_drafts"]["Row"];
 
 type DashboardRequest = Pick<
   OrderDraftRow,
-  "created_at" | "id" | "status" | "total"
+  "created_at" | "id" | "request_number" | "status" | "total"
 > & {
   itemCount: number;
 };
@@ -190,7 +191,7 @@ async function getLatestUserRequests(userId: string): Promise<DashboardRequest[]
   const supabase = getSupabaseAdminClient();
   const { data, error } = await supabase
     .from("order_drafts")
-    .select("created_at,id,status,total")
+    .select("created_at,id,request_number,status,total")
     .eq("created_by_user_id", userId)
     .neq("status", "draft")
     .order("updated_at", { ascending: false })
@@ -204,7 +205,10 @@ async function getLatestUserRequests(userId: string): Promise<DashboardRequest[]
 }
 
 async function attachItemCounts(
-  drafts: Pick<OrderDraftRow, "created_at" | "id" | "status" | "total">[]
+  drafts: Pick<
+    OrderDraftRow,
+    "created_at" | "id" | "request_number" | "status" | "total"
+  >[]
 ): Promise<DashboardRequest[]> {
   if (!drafts.length) {
     return [];
@@ -242,6 +246,7 @@ function mergeActiveDraft(
           created_at: activeDraft.created_at,
           id: activeDraft.id,
           itemCount: activeDraft.items.length,
+          request_number: activeDraft.request_number,
           status: activeDraft.status,
           total: activeDraft.total,
         },
@@ -368,7 +373,7 @@ function RequestRow({
       href="/request"
     >
       <div className="min-w-0">
-        <p className="truncate font-medium">Talep #{request.id.slice(0, 8)}</p>
+        <p className="truncate font-medium">{getRequestDisplayNumber(request)}</p>
         <p className="text-xs text-muted-foreground">{formatDate(request.created_at)}</p>
       </div>
       <div>

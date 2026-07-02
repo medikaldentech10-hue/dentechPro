@@ -23,6 +23,7 @@ import {
   type AdminRequestDetail,
   type AdminRequestLine,
 } from "@/lib/admin-requests";
+import { getRequestDisplayNumber } from "@/lib/request-numbers";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -48,7 +49,7 @@ export default async function AdminRequestDetailPage({
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <PageTitle
-          description={`${requestSourceLabel(request.source)} kaynaklı talep detayı ve durum yönetimi.`}
+          description={`${getRequestDisplayNumber(request)} · ${requestSourceLabel(request.source)} kaynaklı talep detayı ve durum yönetimi.`}
           title="Talep Detayı"
         />
         <Link
@@ -316,6 +317,7 @@ function RequestSummary({ request }: { request: AdminRequestDetail }) {
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         <div className="rounded-xl border border-border/70 bg-background/60 p-4">
+          <Info label="Talep No" value={getRequestDisplayNumber(request)} />
           <Info label="Kaynak" value={requestSourceLabel(request.source)} />
           <Info label="Mevcut Durum" value={requestStatusLabel(request.status)} />
           <Info label="Oluşturma" value={formatDate(request.created_at)} />

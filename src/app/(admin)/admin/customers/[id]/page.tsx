@@ -13,6 +13,7 @@ import {
   requestSourceLabel,
   requestStatusLabel,
 } from "@/lib/admin-requests";
+import { getRequestDisplayNumber } from "@/lib/request-numbers";
 import type { Database } from "@/lib/supabase/database.types";
 import { cn } from "@/lib/utils";
 
@@ -140,7 +141,7 @@ export default async function AdminCustomerDetailPage({
 function RequestRow({ request }: { request: DraftRow }) {
   return (
     <div className="grid gap-4 px-4 py-4 text-sm lg:grid-cols-[0.9fr_0.75fr_0.9fr_0.8fr_0.9fr_0.35fr] lg:items-center">
-      <MobileLabel label="Talep No" value={request.id.slice(0, 8)} />
+      <MobileLabel label="Talep No" value={getRequestDisplayNumber(request)} />
       <MobileLabel label="Kaynak" value={requestSourceLabel(request.source)} />
       <div className="flex items-center justify-between gap-3 lg:block">
         <span className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground lg:hidden">

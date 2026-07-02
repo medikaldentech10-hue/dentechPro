@@ -1,6 +1,7 @@
 import "server-only";
 
 import { DENTECH_WHATSAPP_NUMBER } from "@/lib/config";
+import { getRequestDisplayNumber, getRequestSearchTokens } from "@/lib/request-numbers";
 import type { Database, Json } from "@/lib/supabase/database.types";
 import { getSupabaseAdminClient } from "@/lib/supabase/server";
 import type { Profile } from "@/lib/types/auth";
@@ -26,7 +27,7 @@ type AdminRequestCustomer = Pick<
 
 const PAYMENT_NOTE_MARKER = "\n\n---DENTECH_ADMIN_PAYMENT---\n";
 const ADMIN_REQUEST_DRAFT_COLUMNS =
-  "id,created_by_user_id,customer_id,discount_total,note,source,status,subtotal,total,created_at,updated_at";
+  "id,request_number,created_by_user_id,customer_id,discount_total,note,source,status,subtotal,total,created_at,updated_at";
 const ADMIN_REQUEST_ITEM_COLUMNS =
   "id,order_draft_id,variant_id,quantity,unit_price,line_total,created_at,updated_at";
 
@@ -172,7 +173,7 @@ export function buildAdminRequestWhatsAppMessage(request: AdminRequestDetail) {
     "Aşağıdaki talep için takip mesajı oluşturuldu:",
     "",
     "Talep Bilgileri:",
-    `Talep No: ${request.id}`,
+    `Talep No: ${getRequestDisplayNumber(request)}`,
     `Durum: ${requestStatusLabel(request.status)}`,
     `Kaynak: ${requestSourceLabel(request.source)}`,
     `Oluşturma: ${formatDateTime(request.created_at)}`,
@@ -809,7 +810,7 @@ function filterAdminRequestSearch(
 
   return rows.filter((row) => {
     const haystack = [
-      row.id,
+      ...getRequestSearchTokens(row),
       row.customer?.name,
       row.customer?.company_name,
       row.customer?.phone,

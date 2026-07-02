@@ -11,6 +11,7 @@ import {
   type AdminRequestDetail,
   type AdminRequestLine,
 } from "@/lib/admin-requests";
+import { getRequestDisplayNumber } from "@/lib/request-numbers";
 
 const PAGE_MARGIN = 42;
 const CONTENT_WIDTH = 511;
@@ -74,7 +75,10 @@ function drawHeader(doc: PDFKit.PDFDocument, request: AdminRequestDetail) {
     .text("Talep No", rightX, PAGE_MARGIN, { align: "right", width: 200 })
     .fillColor("#111827")
     .fontSize(10)
-    .text(request.id, rightX, PAGE_MARGIN + 14, { align: "right", width: 200 })
+    .text(getRequestDisplayNumber(request), rightX, PAGE_MARGIN + 14, {
+      align: "right",
+      width: 200,
+    })
     .fillColor("#6b7280")
     .fontSize(9)
     .text("Durum", rightX, PAGE_MARGIN + 32, { align: "right", width: 200 })
@@ -112,13 +116,15 @@ function drawParties(doc: PDFKit.PDFDocument, request: AdminRequestDetail) {
         ["E-posta", request.requester?.email],
         ["Rol", request.requester?.role],
       ];
-  const requestRows: Array<[string, string | null | undefined]> = [
+  const requestRowsBase: Array<[string, string | null | undefined]> = [
     ["Kaynak", requestSourceLabel(request.source)],
     ["Oluşturan", request.requester?.full_name],
     ["Oluşturan E-posta", request.requester?.email],
     ["Saha Temsilcisi", request.salesRep?.full_name],
     ["Oluşturma", formatDate(request.created_at)],
   ];
+  const requestRows = requestRowsBase.filter((row) => hasMeaningfulValue(row[1]));
+
   const boxHeight = Math.max(
     getInfoBoxHeight(doc, customerRows, 245),
     getInfoBoxHeight(doc, requestRows, 245)
@@ -147,7 +153,7 @@ function getInfoBoxHeight(
 
   for (const [label, value] of rows) {
     const labelHeight = doc.fontSize(8).heightOfString(label, { width: 78 });
-    const valueHeight = doc.fontSize(8.5).heightOfString(value || "-", {
+    const valueHeight = doc.fontSize(8.5).heightOfString(value ?? "", {
       width: width - 110,
     });
     height += Math.max(labelHeight, valueHeight) + 8;
@@ -176,7 +182,7 @@ function drawInfoBox(
   for (const [label, value] of rows) {
     const rowHeight = Math.max(
       doc.fontSize(8).heightOfString(label, { width: 78 }),
-      doc.fontSize(8.5).heightOfString(value || "-", { width: width - 110 })
+      doc.fontSize(8.5).heightOfString(value ?? "", { width: width - 110 })
     );
 
     doc
@@ -185,7 +191,7 @@ function drawInfoBox(
       .text(label, x + 14, rowY, { width: 78 })
       .fillColor("#111827")
       .fontSize(8.5)
-      .text(value || "-", x + 96, rowY, { width: width - 110 });
+      .text(value ?? "", x + 96, rowY, { width: width - 110 });
 
     rowY += rowHeight + 6;
   }
@@ -248,7 +254,7 @@ function drawLineRow(
     })
     .fillColor("#6b7280")
     .fontSize(7.5)
-    .text(cleanCode(item.product?.product_group_code) ?? "-", 52, y + 22, {
+    .text(cleanCode(item.product?.product_group_code) ?? "", 52, y + 22, {
       width: 190,
     })
     .fillColor("#111827")
@@ -310,12 +316,11 @@ function drawAmountRow(
 }
 
 function drawPaymentInfo(doc: PDFKit.PDFDocument, request: AdminRequestDetail) {
-  const rows: Array<[string, string]> = [
-    ["Ödeme yöntemi", paymentMethodLabel(request.paymentInfo.method)],
-    ["Referans", request.paymentInfo.reference || "-"],
-    ["Ödeme notu", request.paymentInfo.note || "-"],
-    ["Talep notu", request.requestNote || "-"],
-  ];
+  const rows = getPaymentRows(request);
+
+  if (!rows.length) {
+    return;
+  }
 
   let y = Math.max(doc.y + 6, PAGE_MARGIN);
   const estimatedSectionHeight =
@@ -395,14 +400,41 @@ function addPageFooters(doc: PDFKit.PDFDocument) {
     doc
       .fillColor("#6b7280")
       .fontSize(8)
-      .text(
-        "Bu belge Dentech Pro üzerinden oluşturulmuştur.",
-        PAGE_MARGIN,
-        FOOTER_Y,
-        { align: "center", width: CONTENT_WIDTH }
-      );
+      .text("Bu belge Dentech Pro üzerinden oluşturulmuştur.", PAGE_MARGIN, FOOTER_Y, {
+        align: "center",
+        width: CONTENT_WIDTH,
+      });
   }
 }
+
+function getPaymentRows(request: AdminRequestDetail): Array<[string, string]> {
+  const rows: Array<[string, string | null | undefined]> = [];
+
+  if (request.paymentInfo.method) {
+    rows.push(["Ödeme yöntemi", paymentMethodLabel(request.paymentInfo.method)]);
+  }
+
+  rows.push(
+    ["Referans", request.paymentInfo.reference],
+    ["Ödeme notu", request.paymentInfo.note],
+    ["Talep notu", request.requestNote]
+  );
+
+  return rows.filter(
+    (row): row is [string, string] => hasMeaningfulValue(row[1])
+  );
+}
+
+function hasMeaningfulValue(value: string | null | undefined) {
+  const normalized = value?.trim();
+
+  if (!normalized) {
+    return false;
+  }
+
+  return normalized !== "-" && normalized !== "Belirtilmedi";
+}
+
 
 function getVariantCode(item: AdminRequestLine) {
   return (
@@ -427,10 +459,10 @@ function isUuid(value: string) {
 }
 
 function formatPrice(value: number | null) {
-  return new Intl.NumberFormat("tr-TR", {
-    currency: "TRY",
-    style: "currency",
-  }).format(value ?? 0);
+  return `${new Intl.NumberFormat("tr-TR", {
+    maximumFractionDigits: 2,
+    minimumFractionDigits: 2,
+  }).format(value ?? 0)} TL`;
 }
 
 function formatDate(value: string) {

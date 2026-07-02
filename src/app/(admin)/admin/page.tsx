@@ -19,6 +19,7 @@ import {
   type AdminDashboardRequest,
 } from "@/lib/admin-dashboard";
 import { requestSourceLabel, requestStatusLabel } from "@/lib/admin-requests";
+import { getRequestDisplayNumber } from "@/lib/request-numbers";
 import type { Profile } from "@/lib/types/auth";
 import { cn } from "@/lib/utils";
 
@@ -122,7 +123,7 @@ function LatestRequestsCard({ requests }: { requests: AdminDashboardRequest[] })
                   <p className="truncate text-sm font-semibold">
                     {request.customer?.company_name ||
                       request.customer?.name ||
-                      request.id.slice(0, 8)}
+                      getRequestDisplayNumber(request)}
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {requestSourceLabel(request.source)} · {formatDate(request.created_at)}

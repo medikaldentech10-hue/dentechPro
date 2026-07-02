@@ -21,6 +21,7 @@ import {
   type RequestHistoryFilters,
   type RequestListItem,
 } from "@/lib/order-drafts";
+import { getRequestDisplayNumber } from "@/lib/request-numbers";
 import type { Database } from "@/lib/supabase/database.types";
 import { cn } from "@/lib/utils";
 
@@ -343,7 +344,7 @@ function RequestHistoryRow({ draft }: { draft: RequestDraft }) {
         label="Talep"
         value={
           <div>
-            <p className="font-medium">Talep özeti</p>
+            <p className="font-medium">{getRequestDisplayNumber(draft)}</p>
             <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
               {draft.items
                 .map((item) => item.product.product_name)

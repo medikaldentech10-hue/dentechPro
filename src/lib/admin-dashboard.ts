@@ -93,7 +93,7 @@ async function getLatestRequests(): Promise<AdminDashboardRequest[]> {
   const { data, error } = await supabase
     .from("order_drafts")
     .select(
-      "id,customer_id,created_by_user_id,discount_total,note,source,status,subtotal,total,created_at,updated_at"
+      "id,request_number,customer_id,created_by_user_id,discount_total,note,source,status,subtotal,total,created_at,updated_at"
     )
     .order("created_at", { ascending: false })
     .limit(5);
