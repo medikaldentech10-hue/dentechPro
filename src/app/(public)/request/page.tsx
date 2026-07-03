@@ -22,6 +22,7 @@ import {
   type RequestListItem,
 } from "@/lib/order-drafts";
 import { getRequestDisplayNumber } from "@/lib/request-numbers";
+import { getRequestStatusLabel } from "@/lib/request-status";
 import type { Database } from "@/lib/supabase/database.types";
 import { cn } from "@/lib/utils";
 
@@ -42,7 +43,7 @@ const historyStatusOptions: Array<{
   { label: "İletişime Geçildi", value: "contacted" },
   { label: "Ödeme Bekliyor", value: "payment_pending" },
   { label: "Onaylandı", value: "confirmed" },
-  { label: "İptal", value: "cancelled" },
+  { label: "İptal Edildi", value: "cancelled" },
 ];
 
 export default async function RequestPage({ searchParams }: RequestPageProps) {
@@ -72,7 +73,7 @@ export default async function RequestPage({ searchParams }: RequestPageProps) {
     <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-6 px-4 py-8 md:px-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <PageTitle
-          description="Onaylı JOTA ürünlerini talep listenize ekleyin, miktarları düzenleyin ve talebi WhatsApp üzerinden DENTech Medikal ekibine iletin."
+          description="İlgilendiğiniz ürünleri talep listenize ekleyin, miktarları düzenleyin ve teklif talebinizi WhatsApp üzerinden DENTech Medikal ekibine iletin."
           title="Talep Listem"
         />
         <Link
@@ -80,11 +81,12 @@ export default async function RequestPage({ searchParams }: RequestPageProps) {
           href="/products"
         >
           <PackageSearch data-icon="inline-start" />
-          Ürün Kataloğuna Dön
+          Kataloğa Dön
         </Link>
       </div>
 
-      {status ? <RequestStatus status={status} /> : null}
+      {status ? <RequestStatusBanner status={status} /> : null}
+      <RequestFlowSummary />
 
       <section className="flex flex-col gap-4">
         <h2 className="text-xl font-semibold tracking-normal">Aktif Talep</h2>
@@ -99,8 +101,8 @@ export default async function RequestPage({ searchParams }: RequestPageProps) {
         <div className="flex flex-col gap-1">
           <h2 className="text-xl font-semibold tracking-normal">Talep Geçmişi</h2>
           <p className="text-sm leading-6 text-muted-foreground">
-            Gönderilen ve admin tarafından işleme alınan geçmiş taleplerinizi
-            buradan takip edebilirsiniz.
+            Gönderdiğiniz taleplerin durumunu ve son hareketlerini buradan takip
+            edebilirsiniz.
           </p>
         </div>
         <RequestHistoryFilters filters={filters} />
@@ -127,7 +129,7 @@ export default async function RequestPage({ searchParams }: RequestPageProps) {
   );
 }
 
-function RequestStatus({ status }: { status: string }) {
+function RequestStatusBanner({ status }: { status: string }) {
   const messages: Record<string, string> = {
     added: "Ürün talep listesine eklendi.",
     cleared: "Talep listesi temizlendi.",
@@ -148,6 +150,39 @@ function RequestStatus({ status }: { status: string }) {
   );
 }
 
+function RequestFlowSummary() {
+  const steps = [
+    "Ürün ekleyin",
+    "Listeyi kontrol edin",
+    "Talebi gönderin",
+    "Ekibimiz sizinle iletişime geçsin",
+  ];
+
+  return (
+    <SurfaceCard>
+      <CardContent className="flex flex-col gap-3 p-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <p className="text-sm font-medium text-primary">Talep akışı</p>
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">
+            Burası doğrudan ödeme ekranı değil; ürünleri seçip ekibimize teklif
+            talebi ilettiğiniz profesyonel talep alanıdır.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {steps.map((step, index) => (
+            <span
+              className="rounded-full border border-primary/15 bg-primary/5 px-3 py-1.5 text-xs font-medium text-primary"
+              key={step}
+            >
+              {index + 1}. {step}
+            </span>
+          ))}
+        </div>
+      </CardContent>
+    </SurfaceCard>
+  );
+}
+
 function EmptyRequestList() {
   return (
     <SurfaceCard>
@@ -156,11 +191,9 @@ function EmptyRequestList() {
           <PackageSearch />
         </div>
         <div className="flex max-w-md flex-col gap-2">
-          <h2 className="text-lg font-semibold">
-            Talep listenizde henüz ürün yok.
-          </h2>
+          <h2 className="text-lg font-semibold">Talep listenizde henüz ürün yok.</h2>
           <p className="text-sm leading-6 text-muted-foreground">
-            JOTA katalogundan ürün seçerek talep listenizi oluşturabilirsiniz.
+            Katalogdan ürün ekleyerek teklif sürecinizi başlatabilirsiniz.
           </p>
         </div>
         <Link className={cn(buttonVariants())} href="/products">
@@ -186,9 +219,7 @@ function RequestList({ draft }: { draft: RequestDraft }) {
                   <th className="px-4 py-3 font-medium">Ürün</th>
                   <th className="px-4 py-3 font-medium">Varyant</th>
                   <th className="px-4 py-3 font-medium">Adet</th>
-                  <th className="px-4 py-3 text-right font-medium">
-                    Birim Fiyat
-                  </th>
+                  <th className="px-4 py-3 text-right font-medium">Birim Fiyat</th>
                   <th className="px-4 py-3 text-right font-medium">Toplam</th>
                   <th className="px-4 py-3" />
                 </tr>
@@ -227,8 +258,8 @@ function RequestList({ draft }: { draft: RequestDraft }) {
               <span>{formatPrice(draft.total)}</span>
             </div>
             <p className="mt-2 text-xs text-muted-foreground">
-              Fiyatlar KDV hariçtir. Nihai onay DENTech Medikal tarafından
-              WhatsApp üzerinden yapılır.
+              Fiyatlar KDV hariçtir. Talep gönderildikten sonra ekibimiz stok,
+              fiyat ve süreç detaylarıyla sizinle iletişime geçer.
             </p>
           </div>
           <form action={submitOrderDraftToWhatsAppAction}>
@@ -354,7 +385,7 @@ function RequestHistoryRow({ draft }: { draft: RequestDraft }) {
           </div>
         }
       />
-      <MobileLabel label="Durum" value={requestStatusLabel(draft.status)} />
+      <MobileLabel label="Durum" value={getRequestStatusLabel(draft.status)} />
       <MobileLabel label="Kalem" value={`${draft.items.length}`} />
       <MobileLabel label="Toplam" value={formatPrice(draft.total)} alignEnd />
       <MobileLabel label="Güncelleme" value={formatDate(draft.updated_at)} alignEnd />
@@ -376,7 +407,7 @@ function RequestTableRow({ item }: { item: RequestListItem }) {
         ) : null}
       </td>
       <td className="px-4 py-4">
-        <div className="font-medium">{variantCode ?? "JOTA varyant"}</div>
+        <div className="font-medium">{variantCode ?? "Standart varyant"}</div>
         <div className="mt-1 text-xs text-muted-foreground">
           {manufacturerRef ?? "Teknik kod gizlendi"}
         </div>
@@ -406,7 +437,7 @@ function RequestMobileCard({ item }: { item: RequestListItem }) {
         <div>
           <p className="font-medium">{item.product.product_name}</p>
           <p className="mt-1 text-xs text-muted-foreground">
-            {variantCode ?? "JOTA varyant"}
+            {variantCode ?? "Standart varyant"}
           </p>
         </div>
         <RemoveItemForm itemId={item.id} />
@@ -500,19 +531,6 @@ function formatDate(value: string) {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(value));
-}
-
-function requestStatusLabel(status: string) {
-  const labels: Record<string, string> = {
-    cancelled: "İptal",
-    confirmed: "Onaylandı",
-    contacted: "İletişime Geçildi",
-    payment_pending: "Ödeme Bekliyor",
-    submitted: "Gönderildi",
-    whatsapp_approval_pending: "Gönderildi",
-  };
-
-  return labels[status] ?? status;
 }
 
 function parseHistoryFilters(

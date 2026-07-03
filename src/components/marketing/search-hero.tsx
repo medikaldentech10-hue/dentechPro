@@ -17,22 +17,29 @@ import { Input } from "@/components/ui/input";
 import { getCommandSearchSuggestions } from "@/lib/search-suggestions";
 import { cn } from "@/lib/utils";
 
-const examples = ["JOT-801-FG-010", "014 FG", "Zirkonya polisaj", "Arkansas"];
+const examples = [
+  "RVG",
+  "Çocuk kronu",
+  "Frez",
+  "Zirkonya polisaj",
+  "Total protez",
+  "Ölçü materyali",
+];
 
 const benefits = [
   {
     title: "Onaylı Hesap Fiyatları",
-    description: "Size özel fiyatlarınızı görün, güvenli şekilde talep oluşturun.",
+    description: "Size özel fiyatlarınızı görün, güvenli şekilde teklif talebi oluşturun.",
     icon: CheckCircle2,
   },
   {
     title: "Geniş Ürün Yelpazesi",
-    description: "Klinik ve laboratuvar için ürünleri tek platformda inceleyin.",
+    description: "Klinik, laboratuvar ve görüntüleme gruplarını tek platformda inceleyin.",
     icon: Box,
   },
   {
-    title: "Hızlı Talep",
-    description: "Ürünleri bulun, talebinizi iletin, ekibimiz dönüş yapsın.",
+    title: "Hızlı Talep Akışı",
+    description: "Ürünleri bulun, listenizi oluşturun, ekibimiz sizinle hızlıca iletişime geçsin.",
     icon: Zap,
   },
   {
@@ -78,8 +85,9 @@ export function SearchHero() {
           Dental ürünleri daha hızlı bulun.
         </h1>
         <p className="mt-5 max-w-2xl text-base leading-7 text-slate-600 md:text-lg dark:text-slate-300">
-          JOTA frezler, klinik ve laboratuvar çözümleri, onaylı hesap
-          fiyatlarıyla. Aradığınız ürünü hızlıca bulun, talebinizi oluşturun.
+          DENTech Medikal profesyonel ürün kataloğunda frezler, cihazlar, sarf
+          ürünleri ve klinik/laboratuvar çözümlerini inceleyin. Aradığınız ürünü
+          hızlıca bulun, talep listenizi oluşturun.
         </p>
 
         <form
@@ -102,11 +110,11 @@ export function SearchHero() {
                 />
               </div>
               <button
-                type="submit"
                 className={cn(
                   buttonVariants(),
                   "m-1.5 h-[3.25rem] rounded-lg px-8 text-sm font-semibold sm:h-auto"
                 )}
+                type="submit"
               >
                 Ürün Ara
               </button>

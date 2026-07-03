@@ -1,4 +1,5 @@
 import { Box, ClipboardList, Headphones, Search } from "lucide-react";
+
 import { CategoryCard } from "@/components/marketing/category-card";
 import { SearchHero } from "@/components/marketing/search-hero";
 import { GradientBackground } from "@/components/premium/gradient-background";
@@ -6,33 +7,38 @@ import { GradientBackground } from "@/components/premium/gradient-background";
 const categories = [
   {
     title: "Frezler",
-    description: "JOTA frez kataloğu",
+    description: "Elmas, karbit ve teknik frez grupları",
     status: "active" as const,
     href: "/products",
     visual: "bur" as const,
   },
   {
     title: "Polisaj Ürünleri",
+    description: "Zirkonya, metal ve kompozit yüzey işlemleri",
     status: "coming-soon" as const,
     visual: "polish" as const,
   },
   {
     title: "Endodonti",
+    description: "Kanal tedavisi için seçili ürün grupları",
     status: "coming-soon" as const,
     visual: "endo" as const,
   },
   {
-    title: "Laboratuvar",
+    title: "Laboratuvar Çözümleri",
+    description: "Laboratuvar iş akışına uygun ürün grupları",
     status: "coming-soon" as const,
     visual: "lab" as const,
   },
   {
-    title: "Sarf Malzemeleri",
+    title: "Klinik Sarf",
+    description: "Günlük kullanım için temel sarf ürünleri",
     status: "coming-soon" as const,
     visual: "supply" as const,
   },
   {
     title: "Cihaz ve Ekipman",
+    description: "Görüntüleme ve klinik ekipman çözümleri",
     status: "coming-soon" as const,
     visual: "device" as const,
   },
@@ -40,23 +46,23 @@ const categories = [
 
 const steps = [
   {
-    title: "Ürün Ara",
-    description: "Ürün adı, kodu veya kategori ile aradığınız ürünü bulun.",
+    title: "Ürünleri İnceleyin",
+    description: "Ürün adı, kodu veya kategoriyle ihtiyacınıza uygun seçenekleri bulun.",
     icon: Search,
   },
   {
-    title: "Talep Oluştur",
-    description: "Ürünleri listenize ekleyin ve talebinizi oluşturun.",
+    title: "Talep Listesi Oluşturun",
+    description: "İlgilendiğiniz ürünleri listenize ekleyin ve miktarları netleştirin.",
     icon: ClipboardList,
   },
   {
-    title: "Onay & Teklif",
-    description: "Ekibimiz talebinizi inceler, size hızlıca dönüş sağlar.",
+    title: "Onay ve Teklif",
+    description: "Ekibimiz talebinizi inceleyip fiyat, stok ve süreç detaylarıyla dönüş sağlar.",
     icon: Headphones,
   },
   {
-    title: "Sipariş & Teslimat",
-    description: "Onay sonrası siparişiniz hazırlanır ve gönderilir.",
+    title: "Sipariş ve Teslimat",
+    description: "Onay sonrasında siparişiniz planlanır, hazırlanır ve teslimat süreci başlatılır.",
     icon: Box,
   },
 ];

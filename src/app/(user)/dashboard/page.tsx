@@ -10,12 +10,10 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { canViewPrices, requireDashboardAccess } from "@/lib/auth";
-import {
-  getActiveRequestDraft,
-  type RequestDraft,
-} from "@/lib/order-drafts";
+import { getActiveRequestDraft, type RequestDraft } from "@/lib/order-drafts";
 import { getPricedProductsForProfile } from "@/lib/products";
 import { getRequestDisplayNumber } from "@/lib/request-numbers";
+import { getRequestStatusLabel } from "@/lib/request-status";
 import type { Database } from "@/lib/supabase/database.types";
 import { getSupabaseAdminClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
@@ -54,8 +52,14 @@ export default async function DashboardPage() {
   return (
     <div className="flex flex-col gap-6">
       <PageTitle
-        title="Kullanıcı Paneli"
-        description="Hesap durumunuzu, talep geçmişinizi ve aktif JOTA katalog önerilerini takip edin."
+        title="DENTech Pro Paneli"
+        description="Hesap durumunuzu, talep hareketlerinizi ve profesyonel ürün kataloğuna hızlı erişimi tek ekranda yönetin."
+      />
+
+      <WelcomePanel
+        accountStatus={accountStatus.value}
+        latestRequest={data.latestRequests[0] ?? null}
+        profile={profile}
       />
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -68,9 +72,7 @@ export default async function DashboardPage() {
         <StatCard
           title="Toplam Talep"
           value={String(data.stats.total)}
-          description={
-            data.stats.total ? "Kayıtlı talep sayınız" : "Henüz talep yok"
-          }
+          description={data.stats.total ? "Kayıtlı talep sayınız" : "Henüz talep yok"}
           icon={ListChecks}
         />
         <StatCard
@@ -91,6 +93,7 @@ export default async function DashboardPage() {
         <div className="flex flex-col gap-5">
           <RequestSummaryCard
             activeDraft={data.activeDraft}
+            latestRequest={data.latestRequests[0] ?? null}
             stats={data.stats}
           />
           <LatestRequestsCard
@@ -111,14 +114,14 @@ async function getDashboardData(profile: DashboardProfile): Promise<DashboardDat
   try {
     const [activeDraft, requestStats, latestRequests, productResult] =
       await Promise.all([
-      getActiveRequestDraft(profile),
-      getRequestStats(profile.id),
-      getLatestUserRequests(profile.id),
-      getPricedProductsForProfile(profile, {
-        brand: "JOTA",
-        pageSize: 2,
-      }),
-    ]);
+        getActiveRequestDraft(profile),
+        getRequestStats(profile.id),
+        getLatestUserRequests(profile.id),
+        getPricedProductsForProfile(profile, {
+          brand: "JOTA",
+          pageSize: 2,
+        }),
+      ]);
 
     return {
       activeDraft,
@@ -259,9 +262,11 @@ function mergeActiveDraft(
 
 function RequestSummaryCard({
   activeDraft,
+  latestRequest,
   stats,
 }: {
   activeDraft: RequestDraft | null;
+  latestRequest: DashboardRequest | null;
   stats: RequestStats;
 }) {
   return (
@@ -269,10 +274,14 @@ function RequestSummaryCard({
       <CardHeader>
         <CardTitle>Talep Özeti</CardTitle>
       </CardHeader>
-      <CardContent className="grid gap-4 md:grid-cols-3">
+      <CardContent className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <SummaryItem label="Aktif Taslak" value={activeDraft ? "Var" : "Yok"} />
         <SummaryItem label="Takipte" value={String(stats.open)} />
         <SummaryItem label="Sonuçlanan" value={String(stats.completed)} />
+        <SummaryItem
+          label="Son Talep Durumu"
+          value={latestRequest ? getRequestStatusLabel(latestRequest.status) : "Henüz yok"}
+        />
       </CardContent>
     </SurfaceCard>
   );
@@ -288,9 +297,9 @@ function LatestRequestsCard({
   return (
     <SurfaceCard>
       <CardHeader className="flex flex-row items-center justify-between gap-3">
-        <CardTitle>Talep Listesi</CardTitle>
+        <CardTitle>Talep Hareketleri</CardTitle>
         <Link className={buttonVariants({ variant: "outline" })} href="/request">
-          Talep Sayfası
+          Talep Listem
         </Link>
       </CardHeader>
       <CardContent>
@@ -307,8 +316,8 @@ function LatestRequestsCard({
         ) : (
           <EmptyState
             actionHref="/products"
-            actionLabel="Kataloğu İncele"
-            description="Henüz talebiniz yok. Katalogdan ürün seçerek ilk talep listenizi oluşturabilirsiniz."
+            actionLabel="Ürünleri İncele"
+            description="Henüz talebiniz yok. Katalogdan ürün seçerek teklif sürecinizi başlatabilirsiniz."
             title="Henüz talebiniz yok"
           />
         )}
@@ -328,7 +337,7 @@ function FeaturedProductsCard({
     return (
       <SurfaceCard className="h-fit">
         <CardHeader>
-          <CardTitle>Öne Çıkan Ürünler</CardTitle>
+          <CardTitle>Öne Çıkan Kataloglar</CardTitle>
         </CardHeader>
         <CardContent>
           <EmptyState
@@ -345,14 +354,14 @@ function FeaturedProductsCard({
   return (
     <SurfaceCard className="h-fit">
       <CardHeader>
-        <CardTitle>Öne Çıkan Ürünler</CardTitle>
+        <CardTitle>Öne Çıkan JOTA Ürünleri</CardTitle>
       </CardHeader>
       <CardContent className="grid gap-4">
         {products.map((product) => (
           <ProductCard
             key={product.id}
-            product={product}
             priceVisibility={priceVisibility}
+            product={product}
           />
         ))}
       </CardContent>
@@ -400,7 +409,7 @@ function StatusBadge({ status }: { status: OrderDraftRow["status"] }) {
       )}
       variant="outline"
     >
-      {requestStatusLabel(status)}
+      {getRequestStatusLabel(status)}
     </Badge>
   );
 }
@@ -411,6 +420,62 @@ function SummaryItem({ label, value }: { label: string; value: string }) {
       <p className="text-xs text-muted-foreground">{label}</p>
       <p className="mt-2 text-xl font-semibold">{value}</p>
     </div>
+  );
+}
+
+function WelcomePanel({
+  accountStatus,
+  latestRequest,
+  profile,
+}: {
+  accountStatus: string;
+  latestRequest: DashboardRequest | null;
+  profile: DashboardProfile;
+}) {
+  const displayName = profile.full_name?.trim() || profile.email || "Merhaba";
+
+  return (
+    <SurfaceCard>
+      <CardContent className="flex flex-col gap-4 p-6 lg:flex-row lg:items-center lg:justify-between">
+        <div className="space-y-2">
+          <p className="text-sm font-medium text-primary">Hoş geldiniz</p>
+          <div>
+            <h2 className="text-2xl font-semibold tracking-normal text-slate-950 dark:text-slate-50">
+              {displayName}
+            </h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+              DENTech Pro üzerinden ürünleri inceleyebilir, talep listenizi
+              yönetebilir ve ekibimizle teklif sürecinizi takip edebilirsiniz.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+            <Badge className="border-primary/20 bg-primary/10 text-primary" variant="outline">
+              {accountStatus}
+            </Badge>
+            {latestRequest ? (
+              <span>
+                Son talep: {getRequestDisplayNumber(latestRequest)} ·{" "}
+                {getRequestStatusLabel(latestRequest.status)}
+              </span>
+            ) : (
+              <span>Henüz gönderilmiş talebiniz bulunmuyor.</span>
+            )}
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          <Link className={buttonVariants()} href="/products">
+            Ürünleri İncele
+          </Link>
+          <Link className={buttonVariants({ variant: "outline" })} href="/request">
+            Talep Listemi Görüntüle
+          </Link>
+          <Link className={buttonVariants({ variant: "secondary" })} href="/products">
+            Yeni Talep Oluştur
+          </Link>
+        </div>
+      </CardContent>
+    </SurfaceCard>
   );
 }
 
@@ -458,24 +523,6 @@ function getAccountStatus(profile: DashboardProfile) {
     description: "Hesap durumu profil rolüne göre okunur",
     value: "Aktif",
   };
-}
-
-function requestStatusLabel(status: OrderDraftRow["status"]) {
-  const labels: Record<OrderDraftRow["status"], string> = {
-    cancelled: "İptal",
-    completed: "Tamamlandı",
-    confirmed: "Onaylandı",
-    contacted: "İletişime Geçildi",
-    draft: "Taslak",
-    payment_pending: "Ödeme Bekliyor",
-    payment_received: "Ödeme Alındı",
-    preparing: "Hazırlanıyor",
-    shipped: "Gönderildi",
-    submitted: "Gönderildi",
-    whatsapp_approval_pending: "WhatsApp Onayı",
-  };
-
-  return labels[status] ?? status;
 }
 
 function formatPrice(value: number | null) {
