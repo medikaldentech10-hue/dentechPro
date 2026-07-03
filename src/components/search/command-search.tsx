@@ -3,9 +3,16 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
 import { useRouter } from "next/navigation";
-import { Command, CornerDownLeft, Search, XIcon } from "lucide-react";
+import {
+  ArrowUpRight,
+  Command,
+  CornerDownLeft,
+  Search,
+  XIcon,
+} from "lucide-react";
 
 import { buttonVariants } from "@/components/ui/button";
+import { getCommandSearchSuggestions } from "@/lib/search-suggestions";
 import { cn } from "@/lib/utils";
 
 const OPEN_COMMAND_SEARCH_EVENT = "dentech:open-command-search";
@@ -23,6 +30,9 @@ export function CommandSearch() {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const trimmedQuery = query.trim();
+  const suggestions = getCommandSearchSuggestions(query, 6);
+  const showFallbackRow = Boolean(trimmedQuery) && suggestions.length === 0;
 
   const openModal = useCallback(() => {
     setOpen(true);
@@ -142,6 +152,60 @@ export function CommandSearch() {
                   Ara
                 </button>
               </div>
+
+              {trimmedQuery ? (
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                    Öneriler
+                  </p>
+                  <div className="space-y-2">
+                    {suggestions.map((suggestion) => (
+                      <button
+                        className="flex w-full items-start justify-between gap-3 rounded-2xl border border-border/65 bg-card/70 px-3.5 py-3 text-left transition hover:border-primary/25 hover:bg-primary/5"
+                        key={`${suggestion.query}-${suggestion.label}`}
+                        onClick={() => submitQuery(suggestion.query)}
+                        type="button"
+                      >
+                        <div className="min-w-0">
+                          <div className="text-sm font-medium text-foreground">
+                            {suggestion.label}
+                          </div>
+                          {suggestion.helper ? (
+                            <div className="mt-1 text-xs leading-5 text-muted-foreground">
+                              {suggestion.helper}
+                            </div>
+                          ) : null}
+                        </div>
+                        <div className="mt-0.5 flex shrink-0 items-center gap-1 text-xs text-primary">
+                          <Search className="size-3.5" />
+                          <ArrowUpRight className="size-3.5" />
+                        </div>
+                      </button>
+                    ))}
+
+                    {showFallbackRow ? (
+                      <button
+                        className="flex w-full items-center justify-between gap-3 rounded-2xl border border-border/65 bg-card/70 px-3.5 py-3 text-left transition hover:border-primary/25 hover:bg-primary/5"
+                        onClick={() => submitQuery(trimmedQuery)}
+                        type="button"
+                      >
+                        <div className="min-w-0">
+                          <div className="text-sm font-medium text-foreground">
+                            Katalogda ara: {trimmedQuery}
+                          </div>
+                          <div className="mt-1 text-xs leading-5 text-muted-foreground">
+                            Yazdığınız ifadeyle katalog sonuçlarını açın.
+                          </div>
+                        </div>
+                        <div className="mt-0.5 flex shrink-0 items-center gap-1 text-xs text-primary">
+                          <Search className="size-3.5" />
+                          <ArrowUpRight className="size-3.5" />
+                        </div>
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+              ) : null}
 
               <div className="space-y-2">
                 <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
