@@ -1,8 +1,20 @@
+"use client";
+
 import Link from "next/link";
-import { Box, CheckCircle2, Headphones, Search, Zap } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useCallback, useState } from "react";
+import {
+  ArrowUpRight,
+  Box,
+  CheckCircle2,
+  Headphones,
+  Search,
+  Zap,
+} from "lucide-react";
 
 import { buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { getCommandSearchSuggestions } from "@/lib/search-suggestions";
 import { cn } from "@/lib/utils";
 
 const examples = ["JOT-801-FG-010", "014 FG", "Zirkonya polisaj", "Arkansas"];
@@ -31,6 +43,31 @@ const benefits = [
 ];
 
 export function SearchHero() {
+  const router = useRouter();
+  const [query, setQuery] = useState("");
+  const trimmedQuery = query.trim();
+  const suggestions = getCommandSearchSuggestions(query, 6);
+  const showFallbackRow = Boolean(trimmedQuery) && suggestions.length === 0;
+
+  const submitQuery = useCallback(
+    (rawQuery: string) => {
+      const trimmed = rawQuery.trim();
+
+      if (!trimmed) {
+        return false;
+      }
+
+      const params = new URLSearchParams({
+        page: "1",
+        q: trimmed,
+      });
+
+      router.push(`/products?${params.toString()}`);
+      return true;
+    },
+    [router]
+  );
+
   return (
     <section className="relative mx-auto flex w-full max-w-[1440px] flex-col items-center overflow-hidden px-4 pb-12 pt-10 text-center md:px-8 md:pb-14 md:pt-14">
       <HeroInstrumentCluster side="left" />
@@ -46,26 +83,86 @@ export function SearchHero() {
         </p>
 
         <form
-          action="/products"
-          className="mt-7 flex w-full max-w-3xl flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_16px_50px_rgb(15_23_42/0.08)] sm:flex-row dark:border-white/10 dark:bg-slate-950/80"
+          className="mt-7 w-full max-w-3xl"
+          onSubmit={(event) => {
+            event.preventDefault();
+            submitQuery(query);
+          }}
         >
-          <div className="flex min-h-16 flex-1 items-center gap-3 px-5">
-            <Search className="size-5 text-slate-500" />
-            <Input
-              className="h-12 border-0 bg-transparent px-0 text-base shadow-none focus-visible:ring-0"
-              name="q"
-              placeholder="Ürün adı, kodu veya kategori yazın..."
-            />
+          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_16px_50px_rgb(15_23_42/0.08)] dark:border-white/10 dark:bg-slate-950/80">
+            <div className="flex flex-col sm:flex-row">
+              <div className="flex min-h-16 flex-1 items-center gap-3 px-5">
+                <Search className="size-5 text-slate-500" />
+                <Input
+                  className="h-12 border-0 bg-transparent px-0 text-base shadow-none focus-visible:ring-0"
+                  name="q"
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="Ürün adı, kodu veya kategori yazın..."
+                  value={query}
+                />
+              </div>
+              <button
+                type="submit"
+                className={cn(
+                  buttonVariants(),
+                  "m-1.5 h-[3.25rem] rounded-lg px-8 text-sm font-semibold sm:h-auto"
+                )}
+              >
+                Ürün Ara
+              </button>
+            </div>
+
+            {trimmedQuery ? (
+              <div className="border-t border-slate-200/90 bg-slate-50/70 px-3 py-3 text-left dark:border-white/10 dark:bg-white/[0.03]">
+                <div className="space-y-2">
+                  {suggestions.map((suggestion) => (
+                    <button
+                      className="flex w-full items-start justify-between gap-3 rounded-xl border border-transparent bg-white/90 px-3.5 py-3 text-left transition hover:border-primary/20 hover:bg-primary/5 dark:bg-slate-950/60 dark:hover:bg-primary/10"
+                      key={`${suggestion.query}-${suggestion.label}`}
+                      onClick={() => submitQuery(suggestion.query)}
+                      type="button"
+                    >
+                      <div className="min-w-0">
+                        <div className="text-sm font-medium text-slate-950 dark:text-slate-50">
+                          {suggestion.label}
+                        </div>
+                        {suggestion.helper ? (
+                          <div className="mt-1 text-xs leading-5 text-muted-foreground">
+                            {suggestion.helper}
+                          </div>
+                        ) : null}
+                      </div>
+                      <div className="mt-0.5 flex shrink-0 items-center gap-1 text-xs text-primary">
+                        <Search className="size-3.5" />
+                        <ArrowUpRight className="size-3.5" />
+                      </div>
+                    </button>
+                  ))}
+
+                  {showFallbackRow ? (
+                    <button
+                      className="flex w-full items-center justify-between gap-3 rounded-xl border border-transparent bg-white/90 px-3.5 py-3 text-left transition hover:border-primary/20 hover:bg-primary/5 dark:bg-slate-950/60 dark:hover:bg-primary/10"
+                      onClick={() => submitQuery(trimmedQuery)}
+                      type="button"
+                    >
+                      <div className="min-w-0">
+                        <div className="text-sm font-medium text-slate-950 dark:text-slate-50">
+                          Katalogda ara: {trimmedQuery}
+                        </div>
+                        <div className="mt-1 text-xs leading-5 text-muted-foreground">
+                          Yazdığınız ifadeyle katalog sonuçlarını açın.
+                        </div>
+                      </div>
+                      <div className="mt-0.5 flex shrink-0 items-center gap-1 text-xs text-primary">
+                        <Search className="size-3.5" />
+                        <ArrowUpRight className="size-3.5" />
+                      </div>
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
           </div>
-          <button
-            type="submit"
-            className={cn(
-              buttonVariants(),
-              "m-1.5 h-[3.25rem] rounded-lg px-8 text-sm font-semibold sm:h-auto"
-            )}
-          >
-            Ürün Ara
-          </button>
         </form>
 
         <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
@@ -73,7 +170,7 @@ export function SearchHero() {
           {examples.map((example) => (
             <Link
               className="rounded-full border border-[var(--primary-border)] bg-white px-3.5 py-1.5 text-xs font-medium text-primary shadow-sm transition hover:bg-[var(--primary-soft)] dark:bg-slate-950/70"
-              href={`/products?q=${encodeURIComponent(example)}`}
+              href={`/products?q=${encodeURIComponent(example)}&page=1`}
               key={example}
             >
               {example}
