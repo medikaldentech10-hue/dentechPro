@@ -11,6 +11,7 @@ type VariantRow = Database["public"]["Tables"]["product_variants"]["Row"];
 
 export type AdminDashboardRequest = DraftRow & {
   customer: Pick<CustomerRow, "company_name" | "name"> | null;
+  requester: Pick<Profile, "email" | "full_name"> | null;
 };
 
 export type AdminDashboardLowStockVariant = Pick<
@@ -106,11 +107,17 @@ async function getLatestRequests(): Promise<AdminDashboardRequest[]> {
   const customersById = await getCustomersByIds(
     drafts.map((draft) => draft.customer_id)
   );
+  const profilesById = await getProfilesByIds(
+    drafts.map((draft) => draft.created_by_user_id)
+  );
 
   return drafts.map((draft) => ({
     ...draft,
     customer: draft.customer_id
       ? customersById.get(draft.customer_id) ?? null
+      : null,
+    requester: draft.created_by_user_id
+      ? profilesById.get(draft.created_by_user_id) ?? null
       : null,
   }));
 }
@@ -176,6 +183,34 @@ async function getCustomersByIds(ids: Array<string | null>) {
   }
 
   return customers;
+}
+
+async function getProfilesByIds(ids: Array<string | null>) {
+  const supabase = getSupabaseAdminClient();
+  const profileIds = [...new Set(ids.filter((id): id is string => Boolean(id)))];
+  const profiles = new Map<string, Pick<Profile, "email" | "full_name">>();
+
+  if (!profileIds.length) {
+    return profiles;
+  }
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id,email,full_name")
+    .in("id", profileIds);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  for (const profile of data ?? []) {
+    profiles.set(profile.id, {
+      email: profile.email,
+      full_name: profile.full_name,
+    });
+  }
+
+  return profiles;
 }
 
 async function countPendingUsers() {

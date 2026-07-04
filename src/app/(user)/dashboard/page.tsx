@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Clock3, ListChecks, PackageSearch, UserCheck } from "lucide-react";
+import { Clock3, ListChecks, PackageSearch } from "lucide-react";
 
 import { StatCard } from "@/components/dashboard/stat-card";
 import { ProductCard } from "@/components/products/product-card";
@@ -45,7 +45,6 @@ type DashboardData = {
 export default async function DashboardPage() {
   const profile = await requireDashboardAccess();
   const hasPriceAccess = canViewPrices(profile);
-  const accountStatus = getAccountStatus(profile);
   const data = await getDashboardData(profile);
   const priceVisibility = hasPriceAccess ? "approved" : "pending";
 
@@ -56,19 +55,9 @@ export default async function DashboardPage() {
         description="Hesap durumunuzu, talep geçmişinizi ve son işlemlerinizi buradan takip edin."
       />
 
-      <WelcomePanel
-        accountStatus={accountStatus.value}
-        latestRequest={data.latestRequests[0] ?? null}
-        profile={profile}
-      />
+      <WelcomePanel latestRequest={data.latestRequests[0] ?? null} profile={profile} />
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <StatCard
-          title="Hesap Durumu"
-          value={accountStatus.value}
-          description={accountStatus.description}
-          icon={UserCheck}
-        />
+      <div className="grid gap-4 md:grid-cols-3">
         <StatCard
           title="Toplam Talep"
           value={String(data.stats.total)}
@@ -424,11 +413,9 @@ function SummaryItem({ label, value }: { label: string; value: string }) {
 }
 
 function WelcomePanel({
-  accountStatus,
   latestRequest,
   profile,
 }: {
-  accountStatus: string;
   latestRequest: DashboardRequest | null;
   profile: DashboardProfile;
 }) {
@@ -448,81 +435,31 @@ function WelcomePanel({
               yönetebilir ve ekibimizle teklif sürecinizi takip edebilirsiniz.
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-            <Badge className="border-primary/20 bg-primary/10 text-primary" variant="outline">
-              {accountStatus}
-            </Badge>
-            {latestRequest ? (
-              <span>
-                Son talep: {getRequestDisplayNumber(latestRequest)} ·{" "}
+          {latestRequest ? (
+            <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+              <span>Son talep: {getRequestDisplayNumber(latestRequest)}</span>
+              <Badge className="border-primary/20 bg-primary/10 text-primary" variant="outline">
                 {getRequestStatusLabel(latestRequest.status)}
-              </span>
-            ) : (
-              <span>Henüz gönderilmiş talebiniz bulunmuyor.</span>
-            )}
-          </div>
+              </Badge>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Henüz gönderilmiş talebiniz bulunmuyor.
+            </p>
+          )}
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 lg:justify-end">
           <Link className={buttonVariants()} href="/products">
             Ürünleri İncele
           </Link>
           <Link className={buttonVariants({ variant: "outline" })} href="/request">
-            Talep Listemi Görüntüle
-          </Link>
-          <Link className={buttonVariants({ variant: "secondary" })} href="/products">
-            Yeni Talep Oluştur
+            Talep Listem
           </Link>
         </div>
       </CardContent>
     </SurfaceCard>
   );
-}
-
-function getAccountStatus(profile: DashboardProfile) {
-  if (profile.role === "pending_user") {
-    return {
-      description: "Hesap inceleme sürecinde",
-      value: "Onay Bekliyor",
-    };
-  }
-
-  if (
-    profile.role === "approved_doctor" ||
-    profile.role === "approved_lab" ||
-    profile.role === "approved_vet"
-  ) {
-    return {
-      description: "Fiyat ve talep erişimi aktif",
-      value: "Onaylı / Aktif",
-    };
-  }
-
-  if (profile.role === "sales_rep") {
-    return {
-      description: "Saha paneli erişimi aktif",
-      value: "Saha Temsilcisi",
-    };
-  }
-
-  if (profile.role === "admin") {
-    return {
-      description: "Yönetici erişimi aktif",
-      value: "Admin",
-    };
-  }
-
-  if (profile.role === "suspended_user") {
-    return {
-      description: "Hesap erişimi durduruldu",
-      value: "Askıya Alındı",
-    };
-  }
-
-  return {
-    description: "Hesap durumu profil rolüne göre okunur",
-    value: "Aktif",
-  };
 }
 
 function formatPrice(value: number | null) {

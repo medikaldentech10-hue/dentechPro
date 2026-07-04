@@ -306,19 +306,38 @@ export async function submitDraftToWhatsApp(profile: Profile) {
   const draft = await getActiveRequestDraft(profile);
 
   if (!draft || draft.items.length === 0) {
+    const latestSubmittedDraft = await findLatestSubmittedDraft(profile.id);
+
+    if (latestSubmittedDraft) {
+      return buildWhatsAppUrl(latestSubmittedDraft, profile);
+    }
+
     throw new Error("Talep listenizde ürün yok.");
   }
 
   const supabase = getSupabaseAdminClient();
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("order_drafts")
     .update({
       status: "whatsapp_approval_pending",
     })
-    .eq("id", draft.id);
+    .eq("id", draft.id)
+    .eq("status", "draft")
+    .select(REQUEST_DRAFT_COLUMNS)
+    .maybeSingle();
 
   if (error) {
     throw new Error(error.message);
+  }
+
+  if (!data) {
+    const latestSubmittedDraft = await findLatestSubmittedDraft(profile.id);
+
+    if (latestSubmittedDraft) {
+      return buildWhatsAppUrl(latestSubmittedDraft, profile);
+    }
+
+    throw new Error("Talep zaten gönderilmiş veya güncellenmiş.");
   }
 
   await writeDraftAuditLog({
@@ -363,7 +382,7 @@ async function getOrCreateDraft(profile: Profile) {
     throw new Error(error.message);
   }
 
-  return data;
+  return (await findDraft(profile.id)) ?? data;
 }
 
 async function findDraft(userId: string) {
@@ -374,6 +393,66 @@ async function findDraft(userId: string) {
     .eq("created_by_user_id", userId)
     .eq("status", "draft")
     .order("updated_at", { ascending: false })
+    .limit(10);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const drafts = data ?? [];
+
+  if (!drafts.length) {
+    return null;
+  }
+
+  const { data: items, error: itemsError } = await supabase
+    .from("order_items")
+    .select("order_draft_id")
+    .in(
+      "order_draft_id",
+      drafts.map((draft) => draft.id)
+    );
+
+  if (itemsError) {
+    throw new Error(itemsError.message);
+  }
+
+  const counts = new Map<string, number>();
+  for (const item of items ?? []) {
+    counts.set(item.order_draft_id, (counts.get(item.order_draft_id) ?? 0) + 1);
+  }
+
+  return [...drafts].sort((left, right) => {
+    const itemCountDiff = (counts.get(right.id) ?? 0) - (counts.get(left.id) ?? 0);
+
+    if (itemCountDiff !== 0) {
+      return itemCountDiff;
+    }
+
+    return (
+      new Date(right.updated_at).getTime() - new Date(left.updated_at).getTime()
+    );
+  })[0] ?? null;
+}
+
+async function findLatestSubmittedDraft(userId: string) {
+  const supabase = getSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("order_drafts")
+    .select(REQUEST_DRAFT_COLUMNS)
+    .eq("created_by_user_id", userId)
+    .in("status", [
+      "submitted",
+      "whatsapp_approval_pending",
+      "contacted",
+      "payment_pending",
+      "confirmed",
+      "completed",
+      "payment_received",
+      "preparing",
+      "shipped",
+    ])
+    .order("updated_at", { ascending: false })
     .limit(1)
     .maybeSingle();
 
@@ -381,7 +460,11 @@ async function findDraft(userId: string) {
     throw new Error(error.message);
   }
 
-  return data;
+  if (!data) {
+    return null;
+  }
+
+  return hydrateDraft(data);
 }
 
 async function hydrateDraft(draft: OrderDraftRow): Promise<RequestDraft> {

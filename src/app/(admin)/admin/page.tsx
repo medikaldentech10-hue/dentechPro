@@ -116,6 +116,8 @@ function LatestRequestsCard({ requests }: { requests: AdminDashboardRequest[] })
             const customerName =
               request.customer?.company_name ||
               request.customer?.name ||
+              request.requester?.full_name ||
+              request.requester?.email ||
               "Müşteri bilgisi yok";
 
             return (

@@ -1,6 +1,7 @@
 import { ListPlus } from "lucide-react";
 
 import { addToOrderDraftAction } from "@/app/(public)/request/actions";
+import { PendingSubmitButton } from "@/components/shared/pending-submit-button";
 import { Button } from "@/components/ui/button";
 
 type AddToRequestFormProps = {
@@ -39,8 +40,9 @@ export function AddToRequestForm({
         step={1}
         type="number"
       />
-      <Button
+      <PendingSubmitButton
         className="min-w-0 w-full rounded-full px-3 font-semibold shadow-sm"
+        pendingLabel="Ekleniyor..."
         type="submit"
       >
         <ListPlus className={submitLabel === "Ekle" ? "hidden sm:block" : ""} data-icon="inline-start" />
@@ -48,7 +50,7 @@ export function AddToRequestForm({
           <span className="sr-only">Talep Listesine Ekle</span>
         ) : null}
         {submitLabel}
-      </Button>
+      </PendingSubmitButton>
     </form>
   );
 }

@@ -10,6 +10,7 @@ import {
 } from "@/app/(public)/request/actions";
 import { SurfaceCard } from "@/components/premium/surface-card";
 import { PageTitle } from "@/components/shared/page-title";
+import { PendingSubmitButton } from "@/components/shared/pending-submit-button";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCurrentProfile, isSuspendedUser } from "@/lib/auth";
@@ -264,10 +265,10 @@ function RequestList({ draft }: { draft: RequestDraft }) {
             </p>
           </div>
           <form action={submitOrderDraftToWhatsAppAction}>
-            <Button className="w-full" type="submit">
+            <PendingSubmitButton className="w-full" pendingLabel="Gönderiliyor..." type="submit">
               <MessageCircle data-icon="inline-start" />
               Talebi WhatsApp ile Gönder
-            </Button>
+            </PendingSubmitButton>
           </form>
           <form action={clearOrderDraftAction}>
             <Button className="w-full" type="submit" variant="outline">
