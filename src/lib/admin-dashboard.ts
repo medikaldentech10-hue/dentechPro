@@ -17,7 +17,7 @@ export type AdminDashboardLowStockVariant = Pick<
   VariantRow,
   "id" | "manufacturer_ref" | "stock_quantity" | "variant_code"
 > & {
-  product: Pick<ProductRow, "id" | "product_group_code" | "product_name"> | null;
+  product: Pick<ProductRow, "brand" | "id" | "product_group_code" | "product_name"> | null;
 };
 
 export type AdminDashboardSummary = {
@@ -119,7 +119,7 @@ async function getLowStockVariants(): Promise<AdminDashboardLowStockVariant[]> {
   const supabase = getSupabaseAdminClient();
   const { data, error } = await supabase
     .from("product_variants")
-    .select("id,variant_code,manufacturer_ref,stock_quantity,product:products(id,product_group_code,product_name)")
+    .select("id,variant_code,manufacturer_ref,stock_quantity,product:products(id,brand,product_group_code,product_name)")
     .eq("is_active", true)
     .lte("stock_quantity", 5)
     .order("stock_quantity", { ascending: true })

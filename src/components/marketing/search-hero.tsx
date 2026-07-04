@@ -82,12 +82,11 @@ export function SearchHero() {
 
       <div className="relative z-10 flex w-full max-w-4xl flex-col items-center">
         <h1 className="max-w-4xl text-4xl font-semibold tracking-normal text-slate-950 md:text-6xl dark:text-slate-50">
-          Dental ürünleri daha hızlı bulun.
+          Dental ürünleri hızlıca bulun.
         </h1>
         <p className="mt-5 max-w-2xl text-base leading-7 text-slate-600 md:text-lg dark:text-slate-300">
-          DENTech Medikal profesyonel ürün kataloğunda frezler, cihazlar, sarf
-          ürünleri ve klinik/laboratuvar çözümlerini inceleyin. Aradığınız ürünü
-          hızlıca bulun, talep listenizi oluşturun.
+          DENTech Pro’da cihaz, sarf ürün, frez ve laboratuvar çözümlerini
+          inceleyin; onaylı hesabınızla fiyatları görüntüleyip talebinizi oluşturun.
         </p>
 
         <form

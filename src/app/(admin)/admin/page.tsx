@@ -18,7 +18,7 @@ import {
   type AdminDashboardLowStockVariant,
   type AdminDashboardRequest,
 } from "@/lib/admin-dashboard";
-import { requestSourceLabel, requestStatusLabel } from "@/lib/admin-requests";
+import { requestStatusLabel } from "@/lib/admin-requests";
 import { getRequestDisplayNumber } from "@/lib/request-numbers";
 import type { Profile } from "@/lib/types/auth";
 import { cn } from "@/lib/utils";
@@ -112,28 +112,36 @@ function LatestRequestsCard({ requests }: { requests: AdminDashboardRequest[] })
       </CardHeader>
       <CardContent className="grid gap-3">
         {requests.length ? (
-          requests.map((request) => (
-            <Link
-              className="rounded-xl border border-border/70 bg-background/60 p-3 transition hover:bg-muted/60"
-              href={`/admin/requests/${request.id}`}
-              key={request.id}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold">
-                    {request.customer?.company_name ||
-                      request.customer?.name ||
-                      getRequestDisplayNumber(request)}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {requestSourceLabel(request.source)} · {formatDate(request.created_at)}
-                  </p>
+          requests.map((request) => {
+            const customerName =
+              request.customer?.company_name ||
+              request.customer?.name ||
+              "Müşteri bilgisi yok";
+
+            return (
+              <Link
+                className="rounded-xl border border-border/70 bg-background/60 p-3 transition hover:bg-muted/60"
+                href={`/admin/requests/${request.id}`}
+                key={request.id}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold">{customerName}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {getRequestDisplayNumber(request)}
+                    </p>
+                  </div>
+                  <RequestStatusBadge status={request.status} />
                 </div>
-                <RequestStatusBadge status={request.status} />
-              </div>
-              <p className="mt-2 text-sm font-medium">{formatPrice(request.total)}</p>
-            </Link>
-          ))
+                <div className="mt-3 flex items-center justify-between gap-3 text-sm">
+                  <span className="font-medium">{formatPrice(request.total)}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {formatDate(request.created_at)}
+                  </span>
+                </div>
+              </Link>
+            );
+          })
         ) : (
           <EmptyListText>Henüz talep bulunmuyor.</EmptyListText>
         )}
@@ -155,37 +163,41 @@ function LowStockCard({
       </CardHeader>
       <CardContent className="grid gap-3">
         {variants.length ? (
-          variants.map((variant) => (
-            <Link
-              className="rounded-xl border border-border/70 bg-background/60 p-3 transition hover:bg-muted/60"
-              href={
-                variant.product?.id
-                  ? `/admin/products/${variant.product.id}`
-                  : "/admin/products"
-              }
-              key={variant.id}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold">
-                    {variant.product?.product_name ?? variant.variant_code}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {variant.variant_code}
-                    {variant.manufacturer_ref
-                      ? ` · ${variant.manufacturer_ref}`
-                      : ""}
-                  </p>
+          variants.map((variant) => {
+            const sku = getVisibleCode(variant.variant_code);
+            const fallbackCode = getVisibleCode(variant.manufacturer_ref);
+
+            return (
+              <Link
+                className="rounded-xl border border-border/70 bg-background/60 p-3 transition hover:bg-muted/60"
+                href={
+                  variant.product?.id
+                    ? `/admin/products/${variant.product.id}`
+                    : "/admin/products"
+                }
+                key={variant.id}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold">
+                      {variant.product?.product_name ?? "Ürün adı yok"}
+                    </p>
+                    <div className="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                      {variant.product?.brand ? <span>{variant.product.brand}</span> : null}
+                      {sku ? <span>SKU: {sku}</span> : null}
+                      {!sku && fallbackCode ? <span>Kod: {fallbackCode}</span> : null}
+                    </div>
+                  </div>
+                  <Badge
+                    className="border-destructive/30 bg-destructive/10 text-destructive"
+                    variant="outline"
+                  >
+                    {variant.stock_quantity}
+                  </Badge>
                 </div>
-                <Badge
-                  className="border-destructive/30 bg-destructive/10 text-destructive"
-                  variant="outline"
-                >
-                  {variant.stock_quantity}
-                </Badge>
-              </div>
-            </Link>
-          ))
+              </Link>
+            );
+          })
         ) : (
           <EmptyListText>Düşük stok varyantı bulunmuyor.</EmptyListText>
         )}
@@ -267,6 +279,24 @@ function RequestStatusBadge({ status }: { status: string }) {
 
 function EmptyListText({ children }: { children: React.ReactNode }) {
   return <p className="text-sm text-muted-foreground">{children}</p>;
+}
+
+function getVisibleCode(value: string | null | undefined) {
+  if (!value || isUuid(value) || isInternalSlug(value)) {
+    return null;
+  }
+
+  return value;
+}
+
+function isInternalSlug(value: string) {
+  return /^[a-z0-9]+(?:-[a-z0-9]+){2,}$/.test(value);
+}
+
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value
+  );
 }
 
 function formatNumber(value: number) {

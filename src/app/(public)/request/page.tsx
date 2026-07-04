@@ -73,8 +73,8 @@ export default async function RequestPage({ searchParams }: RequestPageProps) {
     <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-6 px-4 py-8 md:px-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <PageTitle
-          description="İlgilendiğiniz ürünleri talep listenize ekleyin, miktarları düzenleyin ve teklif talebinizi WhatsApp üzerinden DENTech Medikal ekibine iletin."
           title="Talep Listem"
+          description="İncelediğiniz ürünleri talep listenize ekleyin, miktarları düzenleyin ve teklif sürecini başlatın."
         />
         <Link
           className={cn(buttonVariants({ variant: "outline" }), "w-fit")}
@@ -193,7 +193,8 @@ function EmptyRequestList() {
         <div className="flex max-w-md flex-col gap-2">
           <h2 className="text-lg font-semibold">Talep listenizde henüz ürün yok.</h2>
           <p className="text-sm leading-6 text-muted-foreground">
-            Katalogdan ürün ekleyerek teklif sürecinizi başlatabilirsiniz.
+            Katalogdan ürün seçerek talep listenizi oluşturabilirsiniz. Ekibimiz
+            talebiniz sonrası sizinle iletişime geçecektir.
           </p>
         </div>
         <Link className={cn(buttonVariants())} href="/products">
@@ -402,9 +403,9 @@ function RequestTableRow({ item }: { item: RequestListItem }) {
     <tr className="align-top">
       <td className="px-4 py-4">
         <div className="font-medium">{item.product.product_name}</div>
-        {productCode ? (
-          <div className="mt-1 text-xs text-muted-foreground">{productCode}</div>
-        ) : null}
+        <div className="mt-1 text-xs text-muted-foreground">
+          {productCode ?? "SKU yok"}
+        </div>
       </td>
       <td className="px-4 py-4">
         <div className="font-medium">{variantCode ?? "Standart varyant"}</div>
@@ -429,6 +430,7 @@ function RequestTableRow({ item }: { item: RequestListItem }) {
 }
 
 function RequestMobileCard({ item }: { item: RequestListItem }) {
+  const productCode = getDisplayCode(item.product.product_group_code);
   const variantCode = getDisplayCode(item.variant.variant_code);
 
   return (
@@ -439,6 +441,7 @@ function RequestMobileCard({ item }: { item: RequestListItem }) {
           <p className="mt-1 text-xs text-muted-foreground">
             {variantCode ?? "Standart varyant"}
           </p>
+          <p className="mt-1 text-xs text-muted-foreground">{productCode ?? "SKU yok"}</p>
         </div>
         <RemoveItemForm itemId={item.id} />
       </div>
@@ -570,11 +573,15 @@ function getHistoryStatusParam(
 }
 
 function getDisplayCode(value: string | null | undefined) {
-  if (!value || isUuid(value)) {
+  if (!value || isUuid(value) || isInternalSlug(value)) {
     return null;
   }
 
   return value;
+}
+
+function isInternalSlug(value: string) {
+  return /^[a-z0-9]+(?:-[a-z0-9]+){2,}$/.test(value);
 }
 
 function isUuid(value: string) {

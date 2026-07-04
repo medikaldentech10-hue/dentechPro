@@ -52,8 +52,8 @@ export default async function DashboardPage() {
   return (
     <div className="flex flex-col gap-6">
       <PageTitle
-        title="DENTech Pro Paneli"
-        description="Hesap durumunuzu, talep hareketlerinizi ve profesyonel ürün kataloğuna hızlı erişimi tek ekranda yönetin."
+        title="Kullanıcı Paneli"
+        description="Hesap durumunuzu, talep geçmişinizi ve son işlemlerinizi buradan takip edin."
       />
 
       <WelcomePanel
