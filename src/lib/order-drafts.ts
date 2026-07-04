@@ -7,6 +7,7 @@ import {
   customerPaymentPreferenceLabel,
 } from "@/lib/customer-request-preferences";
 import { getRequestSearchTokens } from "@/lib/request-numbers";
+import { isCustomerCancellableStatus } from "@/lib/request-status";
 import type { Database, Json } from "@/lib/supabase/database.types";
 import { getSupabaseAdminClient } from "@/lib/supabase/server";
 import type { Profile } from "@/lib/types/auth";
@@ -373,6 +374,66 @@ export async function submitDraftToWhatsApp({
     },
     profile
   );
+}
+
+export async function cancelCustomerRequest({
+  profile,
+  requestId,
+}: {
+  profile: Profile;
+  requestId: string;
+}) {
+  assertCanCreateOrderRequest(profile);
+
+  const supabase = getSupabaseAdminClient();
+  const { data: draft, error } = await supabase
+    .from("order_drafts")
+    .select(REQUEST_DRAFT_COLUMNS)
+    .eq("id", requestId)
+    .eq("created_by_user_id", profile.id)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  if (!draft) {
+    throw new Error("Talep bulunamadı.");
+  }
+
+  if (!isCustomerCancellableStatus(draft.status)) {
+    throw new Error("Bu talep artık iptal edilemez.");
+  }
+
+  const { data: cancelledDraft, error: updateError } = await supabase
+    .from("order_drafts")
+    .update({ status: "cancelled" })
+    .eq("id", draft.id)
+    .eq("created_by_user_id", profile.id)
+    .eq("status", draft.status)
+    .select(REQUEST_DRAFT_COLUMNS)
+    .maybeSingle();
+
+  if (updateError) {
+    throw new Error(updateError.message);
+  }
+
+  if (!cancelledDraft) {
+    throw new Error("Talep durumu güncellenemedi.");
+  }
+
+  await writeDraftAuditLog({
+    action: "draft_cancelled_by_customer",
+    draftId: cancelledDraft.id,
+    userId: profile.id,
+    value: {
+      draft_id: cancelledDraft.id,
+      previous_status: draft.status,
+      next_status: cancelledDraft.status,
+    },
+  });
+
+  return cancelledDraft;
 }
 
 function assertCanCreateOrderRequest(profile: Profile | null) {

@@ -8,6 +8,7 @@ import {
   submitOrderDraftToWhatsAppAction,
   updateOrderItemQuantityAction,
 } from "@/app/(public)/request/actions";
+import { RequestHistoryList } from "@/components/request/request-history-list";
 import { SurfaceCard } from "@/components/premium/surface-card";
 import { PageTitle } from "@/components/shared/page-title";
 import { PendingSubmitButton } from "@/components/shared/pending-submit-button";
@@ -26,8 +27,6 @@ import {
   type RequestHistoryFilters,
   type RequestListItem,
 } from "@/lib/order-drafts";
-import { getRequestDisplayNumber } from "@/lib/request-numbers";
-import { getRequestStatusLabel } from "@/lib/request-status";
 import type { Database } from "@/lib/supabase/database.types";
 import { cn } from "@/lib/utils";
 
@@ -73,6 +72,7 @@ export default async function RequestPage({ searchParams }: RequestPageProps) {
     getUserRequestHistory(profile, filters),
   ]);
   const status = getStringParam(query.status);
+  const showPrices = Boolean(profile.can_view_prices);
 
   return (
     <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-6 px-4 py-8 md:px-6">
@@ -104,30 +104,19 @@ export default async function RequestPage({ searchParams }: RequestPageProps) {
 
       <section className="flex flex-col gap-4">
         <div className="flex flex-col gap-1">
-          <h2 className="text-xl font-semibold tracking-normal">Talep Geçmişi</h2>
+          <h2 className="text-xl font-semibold tracking-normal">
+            Geçmiş Taleplerim
+          </h2>
           <p className="text-sm leading-6 text-muted-foreground">
-            Gönderdiğiniz taleplerin durumunu ve son hareketlerini buradan takip
-            edebilirsiniz.
+            Gönderdiğiniz talepleri, notlarınızı ve süreç durumlarını buradan
+            takip edebilirsiniz.
           </p>
         </div>
         <RequestHistoryFilters filters={filters} />
         {history.length ? (
-          <RequestHistoryList drafts={history} />
+          <RequestHistoryList drafts={history} showPrices={showPrices} />
         ) : (
-          <SurfaceCard>
-            <CardContent className="flex min-h-40 flex-col items-center justify-center gap-2 p-6 text-center">
-              <p className="font-medium">Filtrelerle eşleşen talep bulunamadı.</p>
-              <p className="max-w-md text-sm leading-6 text-muted-foreground">
-                Gönderilmiş talepleriniz oluştuğunda burada listelenir.
-              </p>
-              <Link
-                className={cn(buttonVariants({ variant: "outline" }), "mt-2")}
-                href="/request"
-              >
-                Filtreleri Temizle
-              </Link>
-            </CardContent>
-          </SurfaceCard>
+          <RequestHistoryEmptyState />
         )}
       </section>
     </div>
@@ -137,6 +126,7 @@ export default async function RequestPage({ searchParams }: RequestPageProps) {
 function RequestStatusBanner({ status }: { status: string }) {
   const messages: Record<string, string> = {
     added: "Ürün talep listesine eklendi.",
+    cancelled: "Talep iptal edildi.",
     cleared: "Talep listesi temizlendi.",
     removed: "Ürün talep listesinden çıkarıldı.",
     updated: "Adet güncellendi.",
@@ -205,6 +195,20 @@ function EmptyRequestList() {
         <Link className={cn(buttonVariants())} href="/products">
           Kataloğu İncele
         </Link>
+      </CardContent>
+    </SurfaceCard>
+  );
+}
+
+function RequestHistoryEmptyState() {
+  return (
+    <SurfaceCard>
+      <CardContent className="flex min-h-40 flex-col items-center justify-center gap-2 p-6 text-center">
+        <p className="font-medium">Henüz geçmiş talebiniz bulunmuyor.</p>
+        <p className="max-w-md text-sm leading-6 text-muted-foreground">
+          Gönderdiğiniz talepler burada listelenir. Talep oluşturduktan sonra
+          durumunu ve detaylarını bu alandan takip edebilirsiniz.
+        </p>
       </CardContent>
     </SurfaceCard>
   );
@@ -301,7 +305,11 @@ function RequestList({ draft }: { draft: RequestDraft }) {
               </div>
             </div>
 
-            <PendingSubmitButton className="w-full" pendingLabel="Gönderiliyor..." type="submit">
+            <PendingSubmitButton
+              className="w-full"
+              pendingLabel="Gönderiliyor..."
+              type="submit"
+            >
               <MessageCircle data-icon="inline-start" />
               Talebi WhatsApp ile Gönder
             </PendingSubmitButton>
@@ -386,52 +394,6 @@ function RequestHistoryFilters({
   );
 }
 
-function RequestHistoryList({ drafts }: { drafts: RequestDraft[] }) {
-  return (
-    <SurfaceCard className="overflow-hidden">
-      <CardContent className="p-0">
-        <div className="hidden grid-cols-[1fr_0.75fr_0.65fr_0.75fr_0.75fr] gap-3 border-b border-border/70 px-4 py-3 text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground md:grid">
-          <span>Talep</span>
-          <span>Durum</span>
-          <span>Kalem</span>
-          <span className="text-right">Toplam</span>
-          <span className="text-right">Güncelleme</span>
-        </div>
-        <div className="divide-y divide-border/60">
-          {drafts.map((draft) => (
-            <RequestHistoryRow draft={draft} key={draft.id} />
-          ))}
-        </div>
-      </CardContent>
-    </SurfaceCard>
-  );
-}
-
-function RequestHistoryRow({ draft }: { draft: RequestDraft }) {
-  return (
-    <div className="grid gap-3 px-4 py-4 text-sm md:grid-cols-[1fr_0.75fr_0.65fr_0.75fr_0.75fr] md:items-center">
-      <MobileLabel
-        label="Talep"
-        value={
-          <div>
-            <p className="font-medium">{getRequestDisplayNumber(draft)}</p>
-            <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
-              {draft.items
-                .map((item) => item.product.product_name)
-                .filter(Boolean)
-                .join(", ") || "Ürün kalemi yok"}
-            </p>
-          </div>
-        }
-      />
-      <MobileLabel label="Durum" value={getRequestStatusLabel(draft.status)} />
-      <MobileLabel label="Kalem" value={`${draft.items.length}`} />
-      <MobileLabel label="Toplam" value={formatPrice(draft.total)} alignEnd />
-      <MobileLabel label="Güncelleme" value={formatDate(draft.updated_at)} alignEnd />
-    </div>
-  );
-}
-
 function RequestTableRow({ item }: { item: RequestListItem }) {
   const productCode = getDisplayCode(item.product.product_group_code);
   const variantCode = getDisplayCode(item.variant.variant_code);
@@ -500,32 +462,6 @@ function RequestMobileCard({ item }: { item: RequestListItem }) {
   );
 }
 
-function MobileLabel({
-  alignEnd = false,
-  label,
-  value,
-}: {
-  alignEnd?: boolean;
-  label: string;
-  value: React.ReactNode;
-}) {
-  return (
-    <div className="flex items-center justify-between gap-3 md:block">
-      <span className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground md:hidden">
-        {label}
-      </span>
-      <div
-        className={cn(
-          "min-w-0 text-right font-medium md:text-left",
-          alignEnd && "md:text-right"
-        )}
-      >
-        {value}
-      </div>
-    </div>
-  );
-}
-
 function QuantityForm({ item }: { item: RequestListItem }) {
   return (
     <form
@@ -565,13 +501,6 @@ function formatPrice(value: number | null) {
     currency: "TRY",
     style: "currency",
   }).format(value ?? 0)} + KDV`;
-}
-
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat("tr-TR", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
 }
 
 function parseHistoryFilters(

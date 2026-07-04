@@ -2,7 +2,8 @@ import type { Database } from "@/lib/supabase/database.types";
 
 type RequestStatus = Database["public"]["Tables"]["order_drafts"]["Row"]["status"];
 
-const REQUEST_STATUS_LABELS: Record<RequestStatus, string> = {
+const REQUEST_STATUS_LABELS: Record<string, string> = {
+  approved: "Onaylandı",
   cancelled: "İptal Edildi",
   completed: "Tamamlandı",
   confirmed: "Onaylandı",
@@ -10,12 +11,27 @@ const REQUEST_STATUS_LABELS: Record<RequestStatus, string> = {
   draft: "Taslak",
   payment_pending: "Ödeme Bekliyor",
   payment_received: "Ödeme Alındı",
+  pending_payment: "Ödeme Bekliyor",
   preparing: "Hazırlanıyor",
+  processing: "Hazırlanıyor",
+  rejected: "Reddedildi",
   shipped: "Gönderildi",
   submitted: "Gönderildi",
-  whatsapp_approval_pending: "WhatsApp Onayı",
+  whatsapp_approval_pending: "Gönderildi",
 };
 
+const CUSTOMER_CANCELLABLE_STATUSES = new Set<string>([
+  "draft",
+  "submitted",
+  "payment_pending",
+  "pending_payment",
+  "whatsapp_approval_pending",
+]);
+
 export function getRequestStatusLabel(status: RequestStatus | string) {
-  return REQUEST_STATUS_LABELS[status as RequestStatus] ?? status;
+  return REQUEST_STATUS_LABELS[status] ?? status;
+}
+
+export function isCustomerCancellableStatus(status: RequestStatus | string) {
+  return CUSTOMER_CANCELLABLE_STATUSES.has(status);
 }

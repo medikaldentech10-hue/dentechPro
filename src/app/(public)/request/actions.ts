@@ -10,6 +10,7 @@ import {
 } from "@/lib/customer-request-preferences";
 import {
   addVariantToDraft,
+  cancelCustomerRequest,
   clearDraft,
   removeDraftItem,
   submitDraftToWhatsApp,
@@ -86,6 +87,19 @@ export async function submitOrderDraftToWhatsAppAction(formData: FormData) {
 
   revalidateRequestPaths();
   redirect(whatsAppUrl);
+}
+
+export async function cancelCustomerRequestAction(formData: FormData) {
+  const profile = await getRequiredProfile();
+  const requestId = getRequiredString(formData, "request_id");
+
+  if (!requestId) {
+    throw new Error("Talep bulunamadı.");
+  }
+
+  await cancelCustomerRequest({ profile, requestId });
+  revalidateRequestPaths();
+  redirect("/request?status=cancelled");
 }
 
 async function getRequiredProfile() {
