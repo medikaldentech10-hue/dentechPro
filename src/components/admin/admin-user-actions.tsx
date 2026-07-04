@@ -1,84 +1,150 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { ShieldAlert, ShieldCheck, UserRoundCog, UserRoundX } from "lucide-react";
 
 import { reviewUserAction } from "@/app/(admin)/admin/users/actions";
 import { Button } from "@/components/ui/button";
+import type { Profile } from "@/lib/types/auth";
+
+export type ReviewIntent =
+  | "approve_doctor"
+  | "approve_lab"
+  | "approve_vet"
+  | "approve_sales_rep"
+  | "reject"
+  | "suspend"
+  | "reactivate";
 
 type AdminUserActionsProps = {
-  userId: string;
-  fullName: string | null;
   canReactivate: boolean;
+  fullName: string | null;
+  role: Profile["role"];
+  userId: string;
+  userType: Profile["user_type"];
 };
 
-const approveActions = [
-  { intent: "approve_doctor", label: "Doktor Olarak Onayla" },
-  { intent: "approve_lab", label: "Lab Olarak Onayla" },
-  { intent: "approve_vet", label: "Vet Olarak Onayla" },
-  { intent: "approve_sales_rep", label: "Saha Temsilcisi Yap" },
+const approvalOptions: Array<{
+  intent: Extract<
+    ReviewIntent,
+    "approve_doctor" | "approve_lab" | "approve_vet" | "approve_sales_rep"
+  >;
+  label: string;
+  shortLabel: string;
+}> = [
+  { intent: "approve_doctor", label: "Hekim Olarak Onayla", shortLabel: "Hekim" },
+  {
+    intent: "approve_lab",
+    label: "Laboratuvar Olarak Onayla",
+    shortLabel: "Laboratuvar",
+  },
+  { intent: "approve_vet", label: "Veteriner Olarak Onayla", shortLabel: "Veteriner" },
+  {
+    intent: "approve_sales_rep",
+    label: "Saha Temsilcisi Olarak Onayla",
+    shortLabel: "Saha Temsilcisi",
+  },
 ] as const;
 
 export function AdminUserActions({
-  userId,
-  fullName,
   canReactivate,
+  fullName,
+  role,
+  userId,
+  userType,
 }: AdminUserActionsProps) {
   const [note, setNote] = useState("");
   const displayName = fullName ?? "bu kullanıcı";
+  const suggestedApprovalIntent = useMemo(
+    () => getSuggestedApprovalIntent(userType, role),
+    [role, userType]
+  );
 
   return (
-    <div className="flex flex-col gap-3">
-      <label className="flex flex-col gap-2 text-sm font-medium">
-        İşlem Notu
+    <div className="grid gap-4 rounded-2xl border border-border/70 bg-muted/20 p-4">
+      <div className="grid gap-2">
+        <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+          İşlem Notu
+        </p>
         <textarea
           value={note}
           onChange={(event) => setNote(event.target.value)}
-          className="min-h-20 rounded-lg border border-input bg-transparent px-3 py-2 text-sm font-normal outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
-          placeholder="Opsiyonel onay/reddetme notu"
+          className="min-h-24 rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
+          placeholder="Opsiyonel açıklama notu"
         />
-      </label>
-      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-        {approveActions.map((action) => (
-          <ReviewForm
-            key={action.intent}
-            intent={action.intent}
-            note={note}
-            userId={userId}
-          >
-            <Button className="w-full" type="submit">
-              {action.label}
-            </Button>
-          </ReviewForm>
-        ))}
       </div>
-      <div className="grid gap-2 sm:grid-cols-3">
+
+      <div className="grid gap-2">
+        <p className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+          Rol ve Onay İşlemleri
+        </p>
+        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+          {approvalOptions.map((action) => (
+            <ReviewForm
+              intent={action.intent}
+              key={action.intent}
+              note={note}
+              userId={userId}
+            >
+              <Button
+                className="w-full justify-center"
+                size="sm"
+                type="submit"
+                variant={action.intent === suggestedApprovalIntent ? "default" : "outline"}
+              >
+                <UserRoundCog data-icon="inline-start" />
+                {action.shortLabel}
+              </Button>
+            </ReviewForm>
+          ))}
+        </div>
+      </div>
+
+      <div className="grid gap-2 border-t border-border/70 pt-4 sm:grid-cols-3">
         <ReviewForm
-          confirmMessage={`${displayName} için kayıt talebini reddetmek istediğinize emin misiniz?`}
+          confirmMessage={`${displayName} için başvuruyu reddetmek istediğinize emin misiniz?`}
           intent="reject"
           note={note}
           userId={userId}
         >
-          <Button className="w-full" type="submit" variant="outline">
+          <Button className="w-full justify-center" size="sm" type="submit" variant="ghost">
+            <UserRoundX data-icon="inline-start" />
             Reddet
           </Button>
         </ReviewForm>
+
         <ReviewForm
           confirmMessage={`${displayName} hesabını askıya almak istediğinize emin misiniz?`}
           intent="suspend"
           note={note}
           userId={userId}
         >
-          <Button className="w-full" type="submit" variant="destructive">
+          <Button
+            className="w-full justify-center"
+            size="sm"
+            type="submit"
+            variant="destructive"
+          >
+            <ShieldAlert data-icon="inline-start" />
             Askıya Al
           </Button>
         </ReviewForm>
+
         {canReactivate ? (
           <ReviewForm intent="reactivate" note={note} userId={userId}>
-            <Button className="w-full" type="submit" variant="secondary">
-              Yeniden Aktifleştir
+            <Button
+              className="w-full justify-center"
+              size="sm"
+              type="submit"
+              variant="secondary"
+            >
+              <ShieldCheck data-icon="inline-start" />
+              Yeniden Aktif Et
             </Button>
           </ReviewForm>
-        ) : null}
+        ) : (
+          <div />
+        )}
       </div>
     </div>
   );
@@ -93,7 +159,7 @@ function ReviewForm({
 }: {
   children: React.ReactNode;
   confirmMessage?: string;
-  intent: string;
+  intent: ReviewIntent;
   note: string;
   userId: string;
 }) {
@@ -112,4 +178,23 @@ function ReviewForm({
       {children}
     </form>
   );
+}
+
+export function getSuggestedApprovalIntent(
+  userType: Profile["user_type"],
+  role: Profile["role"]
+): ReviewIntent {
+  if (role === "sales_rep" || userType === "sales") {
+    return "approve_sales_rep";
+  }
+
+  if (userType === "lab") {
+    return "approve_lab";
+  }
+
+  if (userType === "vet") {
+    return "approve_vet";
+  }
+
+  return "approve_doctor";
 }
