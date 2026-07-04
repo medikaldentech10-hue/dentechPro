@@ -198,6 +198,13 @@ export type Database = {
           request_number: string | null;
           created_by_user_id: string | null;
           customer_id: string | null;
+          customer_note: string | null;
+          customer_payment_preference:
+            | "bank_transfer"
+            | "credit_card_link"
+            | "cash"
+            | "discuss_later"
+            | null;
           source: "web" | "sales" | "whatsapp" | "admin";
           status:
             | "draft"
@@ -223,6 +230,13 @@ export type Database = {
           request_number?: string | null;
           created_by_user_id?: string | null;
           customer_id?: string | null;
+          customer_note?: string | null;
+          customer_payment_preference?:
+            | "bank_transfer"
+            | "credit_card_link"
+            | "cash"
+            | "discuss_later"
+            | null;
           source?: "web" | "sales" | "whatsapp" | "admin";
           status?:
             | "draft"

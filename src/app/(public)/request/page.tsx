@@ -15,6 +15,10 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCurrentProfile, isSuspendedUser } from "@/lib/auth";
 import {
+  customerPaymentPreferenceLabel,
+  customerPaymentPreferenceOptions,
+} from "@/lib/customer-request-preferences";
+import {
   canCreateOrderRequest,
   getActiveRequestDraft,
   getUserRequestHistory,
@@ -264,12 +268,45 @@ function RequestList({ draft }: { draft: RequestDraft }) {
               fiyat ve süreç detaylarıyla sizinle iletişime geçer.
             </p>
           </div>
-          <form action={submitOrderDraftToWhatsAppAction}>
+
+          <form action={submitOrderDraftToWhatsAppAction} className="grid gap-4">
+            <div className="rounded-xl border border-border/70 bg-background/60 p-4">
+              <div className="grid gap-4">
+                <div className="grid gap-2">
+                  <p className="text-sm font-semibold">Ödeme Tercihi</p>
+                  <select
+                    className="h-10 rounded-lg border border-input bg-background px-3 text-sm"
+                    defaultValue={draft.customer_payment_preference ?? "discuss_later"}
+                    name="customer_payment_preference"
+                    required
+                  >
+                    {customerPaymentPreferenceOptions.map((option) => (
+                      <option key={option} value={option}>
+                        {customerPaymentPreferenceLabel(option)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <label className="grid gap-2 text-sm font-medium">
+                  Talep Notu
+                  <textarea
+                    className="min-h-24 rounded-lg border border-input bg-background px-3 py-2 text-sm"
+                    defaultValue={draft.customer_note ?? ""}
+                    maxLength={1000}
+                    name="customer_note"
+                    placeholder="Teslimat, fatura, ürün alternatifi veya ödeme hakkında belirtmek istediğiniz detayları yazabilirsiniz."
+                  />
+                </label>
+              </div>
+            </div>
+
             <PendingSubmitButton className="w-full" pendingLabel="Gönderiliyor..." type="submit">
               <MessageCircle data-icon="inline-start" />
               Talebi WhatsApp ile Gönder
             </PendingSubmitButton>
           </form>
+
           <form action={clearOrderDraftAction}>
             <Button className="w-full" type="submit" variant="outline">
               Listeyi Temizle

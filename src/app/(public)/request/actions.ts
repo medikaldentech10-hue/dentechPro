@@ -5,6 +5,10 @@ import { redirect } from "next/navigation";
 
 import { getCurrentProfile } from "@/lib/auth";
 import {
+  isCustomerPaymentPreference,
+  type CustomerPaymentPreference,
+} from "@/lib/customer-request-preferences";
+import {
   addVariantToDraft,
   clearDraft,
   removeDraftItem,
@@ -61,9 +65,24 @@ export async function clearOrderDraftAction() {
   redirect("/request?status=cleared");
 }
 
-export async function submitOrderDraftToWhatsAppAction() {
+export async function submitOrderDraftToWhatsAppAction(formData: FormData) {
   const profile = await getRequiredProfile();
-  const whatsAppUrl = await submitDraftToWhatsApp(profile);
+  const rawPreference = getRequiredString(formData, "customer_payment_preference");
+  const customerNote = getRequiredString(formData, "customer_note");
+
+  if (!isCustomerPaymentPreference(rawPreference)) {
+    throw new Error("Geçersiz ödeme tercihi.");
+  }
+
+  if (customerNote.length > 1000) {
+    throw new Error("Talep notu en fazla 1000 karakter olabilir.");
+  }
+
+  const whatsAppUrl = await submitDraftToWhatsApp({
+    customerNote: customerNote || null,
+    customerPaymentPreference: rawPreference as CustomerPaymentPreference,
+    profile,
+  });
 
   revalidateRequestPaths();
   redirect(whatsAppUrl);

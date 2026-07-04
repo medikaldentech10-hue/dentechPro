@@ -1,6 +1,10 @@
 import "server-only";
 
 import { DENTECH_WHATSAPP_NUMBER } from "@/lib/config";
+import {
+  customerPaymentPreferenceLabel,
+  type CustomerPaymentPreference,
+} from "@/lib/customer-request-preferences";
 import { getRequestDisplayNumber, getRequestSearchTokens } from "@/lib/request-numbers";
 import type { Database, Json } from "@/lib/supabase/database.types";
 import { getSupabaseAdminClient } from "@/lib/supabase/server";
@@ -27,7 +31,7 @@ type AdminRequestCustomer = Pick<
 
 const PAYMENT_NOTE_MARKER = "\n\n---DENTECH_ADMIN_PAYMENT---\n";
 const ADMIN_REQUEST_DRAFT_COLUMNS =
-  "id,request_number,created_by_user_id,customer_id,discount_total,note,source,status,subtotal,total,created_at,updated_at";
+  "id,request_number,created_by_user_id,customer_id,customer_note,customer_payment_preference,discount_total,note,source,status,subtotal,total,created_at,updated_at";
 const ADMIN_REQUEST_ITEM_COLUMNS =
   "id,order_draft_id,variant_id,quantity,unit_price,line_total,created_at,updated_at";
 
@@ -89,6 +93,8 @@ export type AdminRequestLine = ItemRow & {
 
 export type AdminRequestDetail = DraftRow & {
   customer: AdminRequestCustomer | null;
+  customerNote: string | null;
+  customerPaymentPreference: CustomerPaymentPreference | null;
   items: AdminRequestLine[];
   paymentInfo: AdminPaymentInfo;
   requestNote: string | null;
@@ -159,6 +165,12 @@ export function paymentMethodLabel(method: AdminPaymentMethod | null) {
   };
 
   return method ? labels[method] : "Belirtilmedi";
+}
+
+export function customerPaymentPreferenceDisplay(
+  value: CustomerPaymentPreference | null
+) {
+  return customerPaymentPreferenceLabel(value) ?? "Belirtilmedi";
 }
 
 export function isAdminPaymentMethod(
@@ -327,6 +339,8 @@ export async function getAdminRequestDetail(
   return {
     ...draft,
     customer,
+    customerNote: draft.customer_note?.trim() || null,
+    customerPaymentPreference: draft.customer_payment_preference,
     items,
     paymentInfo: extractAdminPaymentInfo(draft.note),
     requestNote: extractRequestNote(draft.note),

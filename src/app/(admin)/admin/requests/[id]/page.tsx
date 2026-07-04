@@ -16,6 +16,7 @@ import {
   adminRequestStatuses,
   buildAdminRequestWhatsAppMessage,
   buildAdminRequestWhatsAppUrl,
+  customerPaymentPreferenceDisplay,
   getAdminRequestDetail,
   paymentMethodLabel,
   requestSourceLabel,
@@ -76,6 +77,7 @@ export default async function AdminRequestDetailPage({
         <div className="flex flex-col gap-6">
           <RequestParties request={request} />
           <RequestLines request={request} />
+          <CustomerPreferencesSection request={request} />
           <PaymentSection request={request} />
         </div>
         <RequestSummary request={request} />
@@ -151,6 +153,33 @@ function RequestParties({ request }: { request: AdminRequestDetail }) {
   );
 }
 
+function CustomerPreferencesSection({
+  request,
+}: {
+  request: AdminRequestDetail;
+}) {
+  if (!request.customerNote && !request.customerPaymentPreference) {
+    return null;
+  }
+
+  return (
+    <SurfaceCard>
+      <CardHeader>
+        <CardTitle>Müşteri Tercihleri</CardTitle>
+      </CardHeader>
+      <CardContent className="grid gap-4">
+        <div className="grid gap-3 rounded-xl border border-border/70 bg-background/60 p-4 text-sm md:grid-cols-2">
+          <Info
+            label="Ödeme Tercihi"
+            value={customerPaymentPreferenceDisplay(request.customerPaymentPreference)}
+          />
+          <Info label="Talep Notu" value={request.customerNote} />
+        </div>
+      </CardContent>
+    </SurfaceCard>
+  );
+}
+
 function PaymentSection({ request }: { request: AdminRequestDetail }) {
   return (
     <SurfaceCard>
@@ -172,7 +201,7 @@ function PaymentSection({ request }: { request: AdminRequestDetail }) {
                 : null
             }
           />
-          <Info label="Talep Notu" value={request.requestNote} />
+          <Info label="İç Not" value={request.requestNote} />
         </div>
 
         {request.paymentInfo.note ? (
@@ -224,7 +253,7 @@ function PaymentSection({ request }: { request: AdminRequestDetail }) {
             />
           </label>
           <label className="grid gap-2 text-sm font-medium">
-            Talep Notu
+            İç Not
             <textarea
               className="min-h-24 rounded-lg border border-input bg-background px-3 py-2 text-sm"
               defaultValue={request.requestNote ?? ""}
@@ -290,11 +319,9 @@ function RequestLineRow({ item }: { item: AdminRequestLine }) {
         label="Varyant"
         value={
           <div className="flex flex-col gap-1">
-            <span className="font-medium">
-              {item.variant?.variant_code ?? "-"}
-            </span>
+            <span className="font-medium">{item.variant?.variant_code ?? "-"}</span>
             <span className="text-xs text-muted-foreground">
-              {item.variant?.manufacturer_ref ?? "JOTA varyant"}
+              {item.variant?.manufacturer_ref ?? "Üretici referansı yok"}
             </span>
           </div>
         }

@@ -2,6 +2,10 @@ import "server-only";
 
 import { canViewPrices, isAdmin, isApprovedUser, isSalesRep } from "@/lib/auth";
 import { DENTECH_WHATSAPP_NUMBER } from "@/lib/config";
+import {
+  type CustomerPaymentPreference,
+  customerPaymentPreferenceLabel,
+} from "@/lib/customer-request-preferences";
 import { getRequestSearchTokens } from "@/lib/request-numbers";
 import type { Database, Json } from "@/lib/supabase/database.types";
 import { getSupabaseAdminClient } from "@/lib/supabase/server";
@@ -49,7 +53,7 @@ type DraftItemQueryRow = OrderItemRow & {
 };
 
 const REQUEST_DRAFT_COLUMNS =
-  "id,request_number,created_by_user_id,customer_id,discount_total,note,source,status,subtotal,total,created_at,updated_at";
+  "id,request_number,created_by_user_id,customer_id,customer_note,customer_payment_preference,discount_total,note,source,status,subtotal,total,created_at,updated_at";
 const REQUEST_ITEM_COLUMNS =
   "id,order_draft_id,variant_id,quantity,unit_price,line_total,created_at,updated_at";
 
@@ -300,7 +304,15 @@ export async function clearDraft(profile: Profile) {
   });
 }
 
-export async function submitDraftToWhatsApp(profile: Profile) {
+export async function submitDraftToWhatsApp({
+  customerNote,
+  customerPaymentPreference,
+  profile,
+}: {
+  customerNote: string | null;
+  customerPaymentPreference: CustomerPaymentPreference;
+  profile: Profile;
+}) {
   assertCanCreateOrderRequest(profile);
 
   const draft = await getActiveRequestDraft(profile);
@@ -319,6 +331,8 @@ export async function submitDraftToWhatsApp(profile: Profile) {
   const { data, error } = await supabase
     .from("order_drafts")
     .update({
+      customer_note: customerNote,
+      customer_payment_preference: customerPaymentPreference,
       status: "whatsapp_approval_pending",
     })
     .eq("id", draft.id)
@@ -351,7 +365,14 @@ export async function submitDraftToWhatsApp(profile: Profile) {
     },
   });
 
-  return buildWhatsAppUrl(draft, profile);
+  return buildWhatsAppUrl(
+    {
+      ...draft,
+      customer_note: customerNote,
+      customer_payment_preference: customerPaymentPreference,
+    },
+    profile
+  );
 }
 
 function assertCanCreateOrderRequest(profile: Profile | null) {
@@ -596,6 +617,11 @@ async function writeDraftAuditLog({
 }
 
 function buildWhatsAppUrl(draft: RequestDraft, profile: Profile) {
+  const paymentPreferenceLabel = customerPaymentPreferenceLabel(
+    draft.customer_payment_preference
+  );
+  const customerNote = draft.customer_note?.trim();
+
   const lines = [
     "Merhaba DENTech Medikal,",
     "Aşağıdaki ürünler için sipariş/teklif talebi oluşturmak istiyorum:",
@@ -610,6 +636,8 @@ function buildWhatsAppUrl(draft: RequestDraft, profile: Profile) {
     ]),
     `Genel Toplam: ${formatPlainAmount(draft.total)} TRY`,
     "",
+    `Ödeme Tercihi: ${paymentPreferenceLabel ?? "Daha sonra görüşülsün"}`,
+    ...(customerNote ? ["Talep Notu:", customerNote, ""] : []),
     "Müşteri Bilgileri:",
     `Ad Soyad: ${profile.full_name ?? "-"}`,
     `E-posta: ${profile.email ?? "-"}`,

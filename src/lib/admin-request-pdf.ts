@@ -5,9 +5,8 @@ import path from "node:path";
 import PDFDocument from "pdfkit";
 
 import {
-  paymentMethodLabel,
+  customerPaymentPreferenceDisplay,
   requestStatusLabel,
-  type AdminPaymentMethod,
   type AdminRequestDetail,
   type AdminRequestLine,
 } from "@/lib/admin-requests";
@@ -313,7 +312,7 @@ function drawAmountRow(
 }
 
 function drawCustomerNote(doc: PDFKit.PDFDocument, request: AdminRequestDetail) {
-  const note = getCustomerFacingNote(request.requestNote);
+  const note = getCustomerFacingNote(request.customerNote);
 
   if (!note) {
     return;
@@ -389,32 +388,14 @@ function drawPaymentInfo(doc: PDFKit.PDFDocument, request: AdminRequestDetail) {
 function getCustomerPaymentRows(
   request: AdminRequestDetail
 ): Array<[string, string]> {
-  const method = getCustomerFacingPaymentMethod(request.status, request.paymentInfo.method);
-
-  if (!method) {
+  if (!request.customerPaymentPreference) {
     return [];
   }
 
-  return [["Ödeme yöntemi", paymentMethodLabel(method)]];
-}
-
-function getCustomerFacingPaymentMethod(
-  status: string,
-  method: AdminPaymentMethod | null
-) {
-  if (!method) {
-    return null;
-  }
-
-  if (!CUSTOMER_VISIBLE_PAYMENT_STATUSES.has(status)) {
-    return null;
-  }
-
-  if (method === "other") {
-    return null;
-  }
-
-  return method;
+  return [[
+    "Ödeme tercihi",
+    customerPaymentPreferenceDisplay(request.customerPaymentPreference),
+  ]];
 }
 
 function getPaymentRowHeight(
@@ -466,12 +447,6 @@ function addPageFooters(doc: PDFKit.PDFDocument) {
   }
 }
 
-const CUSTOMER_VISIBLE_PAYMENT_STATUSES = new Set([
-  "confirmed",
-  "payment_received",
-  "completed",
-]);
-
 function getCustomerFacingSku(item: AdminRequestLine) {
   const variantCandidates = [item.variant?.variant_code, item.variant?.manufacturer_ref];
 
@@ -503,23 +478,6 @@ function getCustomerFacingNote(value: string | null | undefined) {
   const normalized = value?.trim();
 
   if (!normalized || !hasMeaningfulValue(normalized)) {
-    return null;
-  }
-
-  const lowered = normalized.toLocaleLowerCase("tr-TR");
-  const internalFragments = [
-    "hesaba yatır",
-    "bekleniyor",
-    "ödeme",
-    "iban",
-    "dekont",
-    "admin",
-    "internal",
-    "whatsapp",
-    "pos link",
-  ];
-
-  if (internalFragments.some((fragment) => lowered.includes(fragment))) {
     return null;
   }
 
