@@ -33,12 +33,21 @@ export default async function AdminCustomersPage({
   return (
     <div className="flex flex-col gap-6">
       <PageTitle
-        description="Saha ve admin talep akışlarında kullanılan ayrı müşteri kayıtlarını yönetin. Kayıtlı uygulama kullanıcıları /admin/users altında izlenir."
+        description="Kayıtlı hekim, laboratuvar ve veteriner kullanıcıları Kullanıcı Yönetimi altında takip edilir. Bu bölüm, manuel oluşturulan müşteri kayıtları için kullanılır."
         title="Müşteriler"
       />
 
       <SurfaceCard>
-        <CardContent className="p-4">
+        <CardContent className="grid gap-4 p-4">
+          <p className="text-sm leading-6 text-muted-foreground">
+            Satış veya operasyon ekibinin manuel açtığı müşteri kayıtlarını bu ekrandan
+            izleyebilirsiniz. Uygulamaya kayıtlı profesyonel kullanıcılar için
+            <Link className="ml-1 font-medium text-primary hover:underline" href="/admin/users">
+              Kullanıcı Yönetimi
+            </Link>
+            <span> ekranını kullanın.</span>
+          </p>
+
           <form className="grid gap-3 md:grid-cols-[1fr_auto_auto]">
             <Input
               defaultValue={filters.search}
@@ -79,17 +88,13 @@ export default async function AdminCustomersPage({
             <div className="p-6">
               <EmptyState
                 actionHref={filters.search ? "/admin/customers" : "/admin/users"}
-                actionLabel={filters.search ? "Filtreleri Temizle" : "Kullanıcıları Aç"}
+                actionLabel={filters.search ? "Filtreleri Temizle" : "Kullanıcı Yönetimine Git"}
                 description={
                   filters.search
                     ? "Seçili arama ile eşleşen manuel müşteri kaydı bulunamadı."
-                    : "Henüz manuel müşteri kaydı yok. Kayıtlı uygulama kullanıcıları için /admin/users ekranını kullanın."
+                    : "Henüz manuel müşteri kaydı yok. Kayıtlı uygulama kullanıcıları için Kullanıcı Yönetimi ekranını kullanın."
                 }
-                title={
-                  filters.search
-                    ? "Müşteri bulunamadı"
-                    : "Manuel müşteri kaydı yok"
-                }
+                title={filters.search ? "Müşteri bulunamadı" : "Manuel müşteri kaydı yok"}
               />
             </div>
           )}

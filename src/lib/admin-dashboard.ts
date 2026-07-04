@@ -144,7 +144,7 @@ async function getLatestPendingUsers() {
   const { data, error } = await supabase
     .from("profiles")
     .select(
-      "id,email,full_name,is_active,phone,role,user_type,verification_status,can_view_prices,created_at,updated_at"
+      "id,email,full_name,is_active,phone,requested_role,clinic_name,company_name,city,district,specialty,role,user_type,verification_status,can_view_prices,created_at,updated_at"
     )
     .or("verification_status.eq.pending,role.eq.pending_user")
     .order("created_at", { ascending: false })

@@ -5,6 +5,7 @@ import {
   Building2,
   ChevronDown,
   ChevronUp,
+  MapPin,
   Search,
   Shield,
   Stethoscope,
@@ -13,6 +14,7 @@ import {
   UserRound,
 } from "lucide-react";
 
+import { reviewUserAction } from "@/app/(admin)/admin/users/actions";
 import {
   AdminUserActions,
   getSuggestedApprovalIntent,
@@ -23,8 +25,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { reviewUserAction } from "@/app/(admin)/admin/users/actions";
-import type { Profile, UserRole, UserType, VerificationStatus } from "@/lib/types/auth";
+import type {
+  Profile,
+  RequestedRole,
+  UserRole,
+  UserType,
+  VerificationStatus,
+} from "@/lib/types/auth";
 import { cn } from "@/lib/utils";
 
 type AdminUsersPanelProps = {
@@ -50,13 +57,14 @@ const filterOptions: Array<{ key: FilterKey; label: string }> = [
   { key: "sales", label: "Saha" },
   { key: "admin", label: "Admin" },
   { key: "suspended", label: "Askıya Alınan" },
-];
+] as const;
 
 export function AdminUsersPanel({ profiles }: AdminUsersPanelProps) {
   const [activeFilter, setActiveFilter] = useState<FilterKey>("all");
   const [openUserId, setOpenUserId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const stats = useMemo(() => buildStats(profiles), [profiles]);
+
   const filteredProfiles = useMemo(() => {
     const query = normalizeForSearch(searchQuery);
 
@@ -74,7 +82,13 @@ export function AdminUsersPanel({ profiles }: AdminUsersPanelProps) {
           profile.full_name,
           profile.email,
           profile.phone,
+          profile.clinic_name,
+          profile.company_name,
+          profile.city,
+          profile.district,
+          profile.specialty,
           getRoleLabel(profile.role),
+          getRequestedRoleLabel(profile.requested_role),
           getRequestedRoleLabel(profile.user_type),
           getStatusLabel(profile.verification_status),
           getUserTypeDescription(profile.user_type),
@@ -109,7 +123,7 @@ export function AdminUsersPanel({ profiles }: AdminUsersPanelProps) {
                 <Input
                   className="h-10 pl-9"
                   onChange={(event) => setSearchQuery(event.target.value)}
-                  placeholder="Ad, e-posta, telefon veya rol ara"
+                  placeholder="Ad, e-posta, telefon, kurum veya şehir ara"
                   value={searchQuery}
                 />
               </span>
@@ -134,8 +148,10 @@ export function AdminUsersPanel({ profiles }: AdminUsersPanelProps) {
           </div>
 
           <p className="text-sm leading-6 text-muted-foreground">
-            Hekim, laboratuvar ve veteriner kullanıcıları müşteri ilişkileri açısından
-            da takip edilir. Admin ve saha temsilcileri operasyon yetkisi taşır.
+            Hekim, laboratuvar ve veteriner başvurularında kurum ve lokasyon bilgileri
+            profil üzerinde tutulur. Manuel müşteri kayıtları ise ayrı olarak
+            <span className="font-medium text-foreground"> Müşteriler </span>
+            ekranında izlenir.
           </p>
         </CardContent>
       </SurfaceCard>
@@ -144,9 +160,9 @@ export function AdminUsersPanel({ profiles }: AdminUsersPanelProps) {
         <CardContent className="p-0">
           {filteredProfiles.length ? (
             <div>
-              <div className="hidden grid-cols-[minmax(0,1.4fr)_0.9fr_0.9fr_0.9fr_0.9fr_auto] gap-4 border-b border-border/70 px-5 py-3 text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground lg:grid">
+              <div className="hidden grid-cols-[minmax(0,1.45fr)_0.95fr_0.95fr_0.95fr_0.95fr_auto] gap-4 border-b border-border/70 px-5 py-3 text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground lg:grid">
                 <span>Kullanıcı</span>
-                <span>Kayıt Tipi</span>
+                <span>Talep Edilen Rol</span>
                 <span>Mevcut Rol</span>
                 <span>Durum</span>
                 <span>Kayıt Tarihi</span>
@@ -160,7 +176,7 @@ export function AdminUsersPanel({ profiles }: AdminUsersPanelProps) {
 
                   return (
                     <div className="px-4 py-4 lg:px-5" key={profile.id}>
-                      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_0.9fr_0.9fr_0.9fr_0.9fr_auto] lg:items-center">
+                      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.45fr)_0.95fr_0.95fr_0.95fr_0.95fr_auto] lg:items-center">
                         <div className="min-w-0">
                           <div className="flex items-start gap-3">
                             <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-accent text-primary">
@@ -173,14 +189,25 @@ export function AdminUsersPanel({ profiles }: AdminUsersPanelProps) {
                               <div className="mt-1 grid gap-1 text-sm text-muted-foreground">
                                 <span className="truncate">{profile.email || "E-posta yok"}</span>
                                 {profile.phone ? <span>{profile.phone}</span> : null}
+                                {profile.clinic_name || profile.company_name ? (
+                                  <span className="truncate font-medium text-foreground/80">
+                                    {profile.clinic_name ?? profile.company_name}
+                                  </span>
+                                ) : null}
+                                {profile.city || profile.district ? (
+                                  <span className="inline-flex items-center gap-1">
+                                    <MapPin className="size-3.5" />
+                                    {formatLocation(profile.city, profile.district)}
+                                  </span>
+                                ) : null}
                               </div>
                             </div>
                           </div>
                         </div>
 
                         <CompactInfo
-                          label="Kayıt Tipi"
-                          value={getRequestedRoleLabel(profile.user_type)}
+                          label="Talep Edilen Rol"
+                          value={getRequestedRoleDisplay(profile)}
                         />
                         <CompactInfo label="Mevcut Rol" value={getRoleLabel(profile.role)} />
                         <StatusCell profile={profile} />
@@ -220,22 +247,39 @@ export function AdminUsersPanel({ profiles }: AdminUsersPanelProps) {
                               value={getUserTypeDescription(profile.user_type)}
                             />
                             <ExpandedInfo
+                              label="Talep Edilen Rol"
+                              value={getRequestedRoleDisplay(profile)}
+                            />
+                            <ExpandedInfo
+                              label="Kurum / Klinik"
+                              value={profile.clinic_name ?? profile.company_name ?? "Belirtilmedi"}
+                            />
+                            <ExpandedInfo
+                              label="Şehir / İlçe"
+                              value={formatLocation(profile.city, profile.district)}
+                            />
+                            <ExpandedInfo
+                              label="Uzmanlık"
+                              value={profile.specialty ?? "Belirtilmedi"}
+                            />
+                            <ExpandedInfo
                               label="Onay Durumu"
                               value={getStatusLabel(profile.verification_status)}
                             />
                             <ExpandedInfo
-                              label="Rol Değişikliği"
-                              value="Alternatif roller aşağıdan seçilebilir."
-                            />
-                            <ExpandedInfo
                               label="Hesap"
                               value={profile.is_active ? "Aktif" : "Pasif"}
+                            />
+                            <ExpandedInfo
+                              label="Not"
+                              value="Alternatif roller aşağıdaki işlem alanından seçilebilir."
                             />
                           </div>
 
                           <AdminUserActions
                             canReactivate={!profile.is_active}
                             fullName={profile.full_name}
+                            requestedRole={profile.requested_role}
                             role={profile.role}
                             userId={profile.id}
                             userType={profile.user_type}
@@ -334,7 +378,11 @@ function StatusCell({ profile }: { profile: Profile }) {
 }
 
 function PrimaryApprovalButton({ profile }: { profile: Profile }) {
-  const intent = getSuggestedApprovalIntent(profile.user_type, profile.role);
+  const intent = getSuggestedApprovalIntent(
+    profile.requested_role,
+    profile.user_type,
+    profile.role
+  );
   const label = getApprovalLabel(intent);
 
   return (
@@ -409,17 +457,17 @@ function getRoleLabel(role: UserRole) {
   return labels[role];
 }
 
-function getRequestedRoleLabel(userType: UserType | null) {
+function getRequestedRoleLabel(value: RequestedRole | UserType | null) {
   const labels: Partial<Record<UserType, string>> = {
     admin: "Admin",
-    doctor: "Hekim Başvurusu",
-    lab: "Laboratuvar Başvurusu",
+    doctor: "Hekim",
+    lab: "Laboratuvar",
     other: "Genel Başvuru",
-    sales: "Saha Temsilcisi Başvurusu",
-    vet: "Veteriner Başvurusu",
+    sales: "Saha Temsilcisi",
+    vet: "Veteriner",
   };
 
-  return labels[userType ?? "other"] ?? "Başvuru tipi belirtilmedi";
+  return value ? labels[value] ?? "Belirtilmedi" : "Belirtilmedi";
 }
 
 function getUserTypeDescription(userType: UserType | null) {
@@ -480,16 +528,40 @@ function getUserIcon(profile: Profile) {
   return <UserRound className="size-4" />;
 }
 
+function getRequestedRoleDisplay(profile: Profile) {
+  if (profile.requested_role) {
+    return `${getRequestedRoleLabel(profile.requested_role)} Başvurusu`;
+  }
+
+  if (profile.user_type) {
+    return `${getRequestedRoleLabel(profile.user_type)} Başvurusu`;
+  }
+
+  return "Başvuru tipi belirtilmedi";
+}
+
+function formatLocation(city: string | null, district: string | null) {
+  if (city && district) {
+    return `${district} / ${city}`;
+  }
+
+  if (city) {
+    return city;
+  }
+
+  if (district) {
+    return district;
+  }
+
+  return "Belirtilmedi";
+}
+
 function normalizeForSearch(value: string) {
   return value
     .trim()
     .toLocaleLowerCase("tr-TR")
-    .replace(/ı/g, "i")
-    .replace(/ğ/g, "g")
-    .replace(/ü/g, "u")
-    .replace(/ş/g, "s")
-    .replace(/ö/g, "o")
-    .replace(/ç/g, "c");
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "");
 }
 
 function formatDate(value: string) {

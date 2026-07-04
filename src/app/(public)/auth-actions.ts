@@ -4,12 +4,14 @@ import { redirect } from "next/navigation";
 
 import {
   createDefaultProfileForUser,
-  getProfileForUser,
   getPostLoginRedirect,
+  getProfileForUser,
   isAllowedUserType,
   logAuthRedirect,
+  type RegistrationProfileFields,
 } from "@/lib/auth";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
+import type { RegistrationUserType } from "@/lib/types/auth";
 
 export type AuthActionState = {
   error?: string;
@@ -55,34 +57,19 @@ export async function signUpAction(
   _previousState: AuthActionState,
   formData: FormData
 ): Promise<AuthActionState> {
-  const fullName = getRequiredString(formData, "full_name");
-  const email = getRequiredString(formData, "email");
-  const phone = getRequiredString(formData, "phone");
-  const password = getRequiredString(formData, "password");
-  const userTypeValue = getRequiredString(formData, "user_type");
+  const registration = parseRegistrationFormData(formData);
 
-  if (!fullName || !email || !phone || !password || !userTypeValue) {
-    return { error: "Tüm alanları doldurun." };
+  if ("error" in registration) {
+    return { error: registration.error };
   }
 
-  if (!isAllowedUserType(userTypeValue)) {
-    return { error: "Geçerli bir kullanıcı tipi seçin." };
-  }
-
-  if (password.length < 6) {
-    return { error: "Şifre en az 6 karakter olmalıdır." };
-  }
-
+  const { email, password, profileFields } = registration;
   const supabase = await getSupabaseServerClient();
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
-      data: {
-        full_name: fullName,
-        phone,
-        user_type: userTypeValue,
-      },
+      data: profileFields,
     },
   });
 
@@ -103,9 +90,93 @@ export async function signOutAction() {
   redirect("/");
 }
 
+function parseRegistrationFormData(
+  formData: FormData
+):
+  | {
+      email: string;
+      password: string;
+      profileFields: RegistrationProfileFields;
+    }
+  | { error: string } {
+  const email = getRequiredString(formData, "email");
+  const password = getRequiredString(formData, "password");
+  const fullName = getRequiredString(formData, "full_name");
+  const phone = getRequiredString(formData, "phone");
+  const userTypeValue = getRequiredString(formData, "user_type");
+  const city = getRequiredString(formData, "city");
+  const district = getRequiredString(formData, "district");
+  const clinicName = getRequiredString(formData, "clinic_name");
+  const companyName = getRequiredString(formData, "company_name");
+  const specialty = getOptionalString(formData, "specialty");
+
+  if (!email || !password || !fullName || !phone || !userTypeValue || !city || !district) {
+    return { error: "Zorunlu alanları doldurun." };
+  }
+
+  if (!isAllowedUserType(userTypeValue)) {
+    return { error: "Geçerli bir kullanıcı tipi seçin." };
+  }
+
+  if (password.length < 6) {
+    return { error: "Şifre en az 6 karakter olmalıdır." };
+  }
+
+  const organizationValidation = validateOrganizationFields({
+    clinicName,
+    companyName,
+    userType: userTypeValue,
+  });
+
+  if (organizationValidation) {
+    return { error: organizationValidation };
+  }
+
+  return {
+    email,
+    password,
+    profileFields: {
+      city,
+      clinic_name: clinicName || null,
+      company_name: companyName || null,
+      district,
+      full_name: fullName,
+      phone,
+      requested_role: userTypeValue,
+      specialty,
+      user_type: userTypeValue,
+    },
+  };
+}
+
+function validateOrganizationFields({
+  clinicName,
+  companyName,
+  userType,
+}: {
+  clinicName: string;
+  companyName: string;
+  userType: RegistrationUserType;
+}) {
+  if (userType === "lab" && !companyName) {
+    return "Laboratuvar adı zorunludur.";
+  }
+
+  if ((userType === "doctor" || userType === "vet") && !clinicName) {
+    return "Klinik adı zorunludur.";
+  }
+
+  return null;
+}
+
 function getRequiredString(formData: FormData, key: string) {
   const value = formData.get(key);
   return typeof value === "string" ? value.trim() : "";
+}
+
+function getOptionalString(formData: FormData, key: string) {
+  const value = getRequiredString(formData, key);
+  return value || null;
 }
 
 function logSignInError({

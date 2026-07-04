@@ -19,6 +19,7 @@ export type ReviewIntent =
 type AdminUserActionsProps = {
   canReactivate: boolean;
   fullName: string | null;
+  requestedRole: Profile["requested_role"];
   role: Profile["role"];
   userId: string;
   userType: Profile["user_type"];
@@ -32,16 +33,12 @@ const approvalOptions: Array<{
   label: string;
   shortLabel: string;
 }> = [
-  { intent: "approve_doctor", label: "Hekim Olarak Onayla", shortLabel: "Hekim" },
-  {
-    intent: "approve_lab",
-    label: "Laboratuvar Olarak Onayla",
-    shortLabel: "Laboratuvar",
-  },
-  { intent: "approve_vet", label: "Veteriner Olarak Onayla", shortLabel: "Veteriner" },
+  { intent: "approve_doctor", label: "Hekim olarak onayla", shortLabel: "Hekim" },
+  { intent: "approve_lab", label: "Laboratuvar olarak onayla", shortLabel: "Laboratuvar" },
+  { intent: "approve_vet", label: "Veteriner olarak onayla", shortLabel: "Veteriner" },
   {
     intent: "approve_sales_rep",
-    label: "Saha Temsilcisi Olarak Onayla",
+    label: "Saha temsilcisi olarak onayla",
     shortLabel: "Saha Temsilcisi",
   },
 ] as const;
@@ -49,6 +46,7 @@ const approvalOptions: Array<{
 export function AdminUserActions({
   canReactivate,
   fullName,
+  requestedRole,
   role,
   userId,
   userType,
@@ -56,8 +54,8 @@ export function AdminUserActions({
   const [note, setNote] = useState("");
   const displayName = fullName ?? "bu kullanıcı";
   const suggestedApprovalIntent = useMemo(
-    () => getSuggestedApprovalIntent(userType, role),
-    [role, userType]
+    () => getSuggestedApprovalIntent(requestedRole, userType, role),
+    [requestedRole, role, userType]
   );
 
   return (
@@ -89,6 +87,7 @@ export function AdminUserActions({
               <Button
                 className="w-full justify-center"
                 size="sm"
+                title={action.label}
                 type="submit"
                 variant={action.intent === suggestedApprovalIntent ? "default" : "outline"}
               >
@@ -181,9 +180,22 @@ function ReviewForm({
 }
 
 export function getSuggestedApprovalIntent(
+  requestedRole: Profile["requested_role"],
   userType: Profile["user_type"],
   role: Profile["role"]
 ): ReviewIntent {
+  if (requestedRole === "lab") {
+    return "approve_lab";
+  }
+
+  if (requestedRole === "vet") {
+    return "approve_vet";
+  }
+
+  if (requestedRole === "doctor") {
+    return "approve_doctor";
+  }
+
   if (role === "sales_rep" || userType === "sales") {
     return "approve_sales_rep";
   }

@@ -89,7 +89,7 @@ export async function reviewUserAction(formData: FormData) {
   const note = getString(formData, "note") || null;
 
   if (!targetUserId || !isReviewIntent(intentValue)) {
-    throw new Error("Geçersiz kullanıcı onay işlemi.");
+    throw new Error("Geçersiz kullanıcı yönetimi işlemi.");
   }
 
   const supabase = getSupabaseAdminClient();
@@ -117,10 +117,10 @@ export async function reviewUserAction(formData: FormData) {
 
   const { error: approvalError } = await supabase.from("user_approvals").insert({
     user_id: targetUserId,
-    reviewed_by_user_id: adminProfile.id,
-    status: config.approvalStatus,
-    note,
     reviewed_at: new Date().toISOString(),
+    reviewed_by_user_id: adminProfile.id,
+    note,
+    status: config.approvalStatus,
   });
 
   if (approvalError) {

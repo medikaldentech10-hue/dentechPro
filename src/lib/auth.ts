@@ -13,8 +13,21 @@ import type {
   Profile,
   PublicRole,
   RegistrationUserType,
+  RequestedRole,
   UserRole,
 } from "@/lib/types/auth";
+
+export type RegistrationProfileFields = {
+  city: string;
+  clinic_name: string | null;
+  company_name: string | null;
+  district: string;
+  full_name: string;
+  phone: string;
+  requested_role: RequestedRole;
+  specialty: string | null;
+  user_type: RegistrationUserType;
+};
 
 export const approvedUserRoles: readonly UserRole[] = [
   "approved_doctor",
@@ -80,9 +93,7 @@ export function isSalesRep(profile: Profile | null) {
 }
 
 export function isApprovedUser(profile: Profile | null) {
-  return Boolean(
-    profile?.is_active && approvedUserRoles.includes(profile.role)
-  );
+  return Boolean(profile?.is_active && approvedUserRoles.includes(profile.role));
 }
 
 export function isPendingUser(profile: Profile | null) {
@@ -247,12 +258,19 @@ export async function createDefaultProfileForUser(user: User) {
   const userType = isAllowedUserType(submittedUserType)
     ? submittedUserType
     : "other";
+  const requestedRole = normalizeRequestedRole(metadata.requested_role, userType);
 
   const profile: Database["public"]["Tables"]["profiles"]["Insert"] = {
     id: user.id,
     full_name: nullableString(metadata.full_name),
     email: user.email ?? nullableString(metadata.email),
     phone: nullableString(metadata.phone),
+    requested_role: requestedRole,
+    clinic_name: nullableString(metadata.clinic_name),
+    company_name: nullableString(metadata.company_name),
+    city: nullableString(metadata.city),
+    district: nullableString(metadata.district),
+    specialty: nullableString(metadata.specialty),
     role: "pending_user",
     user_type: userType,
     verification_status: "pending",
@@ -300,6 +318,17 @@ export async function createDefaultProfileForUser(user: User) {
   });
 
   return data;
+}
+
+function normalizeRequestedRole(
+  value: unknown,
+  fallback: RegistrationUserType
+): RequestedRole {
+  if (typeof value === "string" && isAllowedUserType(value)) {
+    return value;
+  }
+
+  return fallback;
 }
 
 function nullableString(value: unknown) {

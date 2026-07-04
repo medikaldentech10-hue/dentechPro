@@ -33,8 +33,7 @@ export default function RegisterPage() {
           Hesap başvurusu
         </h1>
         <p className="text-sm leading-6 text-muted-foreground">
-          Fiyat bilgilerine erişmek ve ürün talebi oluşturmak için hesap
-          başvurusu yapın.
+          Fiyat bilgilerine erişmek ve ürün talebi oluşturmak için hesap başvurusu yapın.
         </p>
         <div className="grid gap-3">
           {registrationSteps.map(({ description, icon: Icon, title }) => (
@@ -47,9 +46,7 @@ export default function RegisterPage() {
                   <Icon className="size-4" />
                 </span>
                 <span>
-                  <span className="block font-medium text-foreground">
-                    {title}
-                  </span>
+                  <span className="block font-medium text-foreground">{title}</span>
                   <span className="mt-1 block text-sm leading-6 text-muted-foreground">
                     {description}
                   </span>
@@ -64,8 +61,8 @@ export default function RegisterPage() {
           <p className="text-sm font-medium text-primary">Dentech Pro</p>
           <CardTitle>Kayıt Talebi Oluştur</CardTitle>
           <p className="text-sm leading-6 text-muted-foreground">
-            Başvurunuz değerlendirme için alınır; fiyat ve talep erişimi
-            onaydan sonra açılır.
+            Başvurunuz değerlendirme için alınır; fiyat ve talep erişimi onaydan sonra
+            açılır.
           </p>
         </CardHeader>
         <RegisterForm />

@@ -18,6 +18,12 @@ export type Database = {
           full_name?: string | null;
           email?: string | null;
           phone?: string | null;
+          requested_role?: "doctor" | "lab" | "vet" | "other" | null;
+          clinic_name?: string | null;
+          company_name?: string | null;
+          city?: string | null;
+          district?: string | null;
+          specialty?: string | null;
           role?: UserRole;
           user_type?: UserType | null;
           verification_status?: VerificationStatus;
