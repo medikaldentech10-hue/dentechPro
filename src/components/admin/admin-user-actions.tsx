@@ -65,10 +65,10 @@ export function AdminUserActions({
           İşlem Notu
         </p>
         <textarea
-          value={note}
-          onChange={(event) => setNote(event.target.value)}
           className="min-h-24 rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
+          onChange={(event) => setNote(event.target.value)}
           placeholder="Opsiyonel açıklama notu"
+          value={note}
         />
       </div>
 

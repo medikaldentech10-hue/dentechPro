@@ -1,11 +1,11 @@
 import Link from "next/link";
-import { Eye } from "lucide-react";
+import { Download, Eye } from "lucide-react";
 
 import { SurfaceCard } from "@/components/premium/surface-card";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageTitle } from "@/components/shared/page-title";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
@@ -33,20 +33,30 @@ export default async function AdminCustomersPage({
   return (
     <div className="flex flex-col gap-6">
       <PageTitle
-        description="Kayıtlı hekim, laboratuvar ve veteriner kullanıcıları Kullanıcı Yönetimi altında takip edilir. Bu bölüm, manuel oluşturulan müşteri kayıtları için kullanılır."
+        description="Kayıtlı hekim, laboratuvar ve veteriner kullanıcıları Kullanıcı Yönetimi altında takip edilir. CSV dışa aktarımı Kullanıcı Yönetimi ekranından yapılabilir."
         title="Müşteriler"
       />
 
       <SurfaceCard>
         <CardContent className="grid gap-4 p-4">
-          <p className="text-sm leading-6 text-muted-foreground">
-            Satış veya operasyon ekibinin manuel açtığı müşteri kayıtlarını bu ekrandan
-            izleyebilirsiniz. Uygulamaya kayıtlı profesyonel kullanıcılar için
-            <Link className="ml-1 font-medium text-primary hover:underline" href="/admin/users">
-              Kullanıcı Yönetimi
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
+              Satış veya operasyon ekibinin manuel açtığı müşteri kayıtlarını bu
+              ekrandan izleyebilirsiniz. Uygulamaya kayıtlı profesyonel kullanıcılar ve
+              CSV dışa aktarımı için{" "}
+              <Link className="font-medium text-primary hover:underline" href="/admin/users">
+                Kullanıcı Yönetimi
+              </Link>{" "}
+              ekranını kullanın.
+            </p>
+            <Link
+              className={cn(buttonVariants({ size: "sm", variant: "outline" }))}
+              href="/admin/users/export"
+            >
+              <Download data-icon="inline-start" />
+              CSV Dışa Aktar
             </Link>
-            <span> ekranını kullanın.</span>
-          </p>
+          </div>
 
           <form className="grid gap-3 md:grid-cols-[1fr_auto_auto]">
             <Input

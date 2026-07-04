@@ -1,10 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import {
   Building2,
   ChevronDown,
   ChevronUp,
+  Download,
   MapPin,
   Search,
   Shield,
@@ -15,91 +17,64 @@ import {
 } from "lucide-react";
 
 import { reviewUserAction } from "@/app/(admin)/admin/users/actions";
-import {
-  AdminUserActions,
-  getSuggestedApprovalIntent,
-  type ReviewIntent,
-} from "@/components/admin/admin-user-actions";
+import { AdminUserActions, getSuggestedApprovalIntent } from "@/components/admin/admin-user-actions";
+import { AdminUserProfileForm } from "@/components/admin/admin-user-profile-form";
 import { SurfaceCard } from "@/components/premium/surface-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import type {
-  Profile,
-  RequestedRole,
-  UserRole,
-  UserType,
-  VerificationStatus,
-} from "@/lib/types/auth";
+import {
+  adminUsersFilterOptions,
+  type AdminUsersFilterKey,
+  filterAdminUsers,
+  formatAdminUserDate,
+  formatAdminUserLocation,
+  getRequestedRoleDisplay,
+  getRoleLabel,
+  getStatusLabel,
+  getUserTypeDescription,
+  isPendingReview,
+} from "@/lib/admin-users";
+import type { Profile } from "@/lib/types/auth";
 import { cn } from "@/lib/utils";
 
 type AdminUsersPanelProps = {
   profiles: Profile[];
 };
 
-type FilterKey =
-  | "all"
-  | "pending"
-  | "doctor"
-  | "lab"
-  | "vet"
-  | "sales"
-  | "admin"
-  | "suspended";
-
-const filterOptions: Array<{ key: FilterKey; label: string }> = [
-  { key: "all", label: "Tümü" },
-  { key: "pending", label: "Onay Bekleyen" },
-  { key: "doctor", label: "Hekimler" },
-  { key: "lab", label: "Laboratuvarlar" },
-  { key: "vet", label: "Veterinerler" },
-  { key: "sales", label: "Saha" },
-  { key: "admin", label: "Admin" },
-  { key: "suspended", label: "Askıya Alınan" },
-] as const;
-
 export function AdminUsersPanel({ profiles }: AdminUsersPanelProps) {
-  const [activeFilter, setActiveFilter] = useState<FilterKey>("all");
+  const [activeFilter, setActiveFilter] = useState<AdminUsersFilterKey>("all");
   const [openUserId, setOpenUserId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const stats = useMemo(() => buildStats(profiles), [profiles]);
 
-  const filteredProfiles = useMemo(() => {
-    const query = normalizeForSearch(searchQuery);
+  const filteredProfiles = useMemo(
+    () =>
+      filterAdminUsers({
+        filter: activeFilter,
+        profiles,
+        search: searchQuery,
+      }),
+    [activeFilter, profiles, searchQuery]
+  );
 
-    return profiles.filter((profile) => {
-      if (!matchesFilter(profile, activeFilter)) {
-        return false;
-      }
+  const exportHref = useMemo(() => {
+    const params = new URLSearchParams();
 
-      if (!query) {
-        return true;
-      }
+    if (searchQuery.trim()) {
+      params.set("q", searchQuery.trim());
+    }
 
-      const haystack = normalizeForSearch(
-        [
-          profile.full_name,
-          profile.email,
-          profile.phone,
-          profile.clinic_name,
-          profile.company_name,
-          profile.city,
-          profile.district,
-          profile.specialty,
-          getRoleLabel(profile.role),
-          getRequestedRoleLabel(profile.requested_role),
-          getRequestedRoleLabel(profile.user_type),
-          getStatusLabel(profile.verification_status),
-          getUserTypeDescription(profile.user_type),
-        ]
-          .filter(Boolean)
-          .join(" ")
-      );
+    if (activeFilter !== "all") {
+      params.set("filter", activeFilter);
+    }
 
-      return haystack.includes(query);
-    });
-  }, [activeFilter, profiles, searchQuery]);
+    return params.size
+      ? `/admin/users/export?${params.toString()}`
+      : "/admin/users/export";
+  }, [activeFilter, searchQuery]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -115,7 +90,7 @@ export function AdminUsersPanel({ profiles }: AdminUsersPanelProps) {
 
       <SurfaceCard>
         <CardContent className="grid gap-4 p-5">
-          <div className="grid gap-3 lg:grid-cols-[minmax(0,360px)_1fr] lg:items-end">
+          <div className="grid gap-3 lg:grid-cols-[minmax(0,360px)_1fr_auto] lg:items-end">
             <label className="grid gap-2 text-sm font-medium">
               Kullanıcı Ara
               <span className="relative">
@@ -132,7 +107,7 @@ export function AdminUsersPanel({ profiles }: AdminUsersPanelProps) {
             <div className="grid gap-2">
               <p className="text-sm font-medium">Filtreler</p>
               <div className="flex flex-wrap gap-2">
-                {filterOptions.map((option) => (
+                {adminUsersFilterOptions.map((option) => (
                   <Button
                     className="rounded-full"
                     key={option.key}
@@ -145,13 +120,25 @@ export function AdminUsersPanel({ profiles }: AdminUsersPanelProps) {
                 ))}
               </div>
             </div>
+
+            <div className="grid gap-2 lg:justify-self-end">
+              <p className="text-sm font-medium">Dışa Aktarım</p>
+              <Link
+                className={cn(buttonVariants({ size: "sm", variant: "outline" }))}
+                href={exportHref}
+              >
+                <Download data-icon="inline-start" />
+                CSV Dışa Aktar
+              </Link>
+            </div>
           </div>
 
           <p className="text-sm leading-6 text-muted-foreground">
             Hekim, laboratuvar ve veteriner başvurularında kurum ve lokasyon bilgileri
             profil üzerinde tutulur. Manuel müşteri kayıtları ise ayrı olarak
             <span className="font-medium text-foreground"> Müşteriler </span>
-            ekranında izlenir.
+            ekranında izlenir. CSV dışa aktarımı, mevcut filtreyi kullanır; filtre
+            seçilmediyse profesyonel kullanıcıları indirir.
           </p>
         </CardContent>
       </SurfaceCard>
@@ -197,7 +184,7 @@ export function AdminUsersPanel({ profiles }: AdminUsersPanelProps) {
                                 {profile.city || profile.district ? (
                                   <span className="inline-flex items-center gap-1">
                                     <MapPin className="size-3.5" />
-                                    {formatLocation(profile.city, profile.district)}
+                                    {formatAdminUserLocation(profile.city, profile.district)}
                                   </span>
                                 ) : null}
                               </div>
@@ -213,7 +200,7 @@ export function AdminUsersPanel({ profiles }: AdminUsersPanelProps) {
                         <StatusCell profile={profile} />
                         <CompactInfo
                           label="Kayıt Tarihi"
-                          value={formatDate(profile.created_at)}
+                          value={formatAdminUserDate(profile.created_at)}
                         />
 
                         <div className="flex flex-wrap items-center justify-end gap-2">
@@ -256,7 +243,7 @@ export function AdminUsersPanel({ profiles }: AdminUsersPanelProps) {
                             />
                             <ExpandedInfo
                               label="Şehir / İlçe"
-                              value={formatLocation(profile.city, profile.district)}
+                              value={formatAdminUserLocation(profile.city, profile.district)}
                             />
                             <ExpandedInfo
                               label="Uzmanlık"
@@ -272,9 +259,11 @@ export function AdminUsersPanel({ profiles }: AdminUsersPanelProps) {
                             />
                             <ExpandedInfo
                               label="Not"
-                              value="Alternatif roller aşağıdaki işlem alanından seçilebilir."
+                              value="Talep edilen rol bu alanda düzenlenebilir; mevcut onaylı rol yalnızca işlem butonlarıyla değişir."
                             />
                           </div>
+
+                          <AdminUserProfileForm profile={profile} />
 
                           <AdminUserActions
                             canReactivate={!profile.is_active}
@@ -413,89 +402,8 @@ function buildStats(profiles: Profile[]) {
   };
 }
 
-function matchesFilter(profile: Profile, filter: FilterKey) {
-  switch (filter) {
-    case "pending":
-      return isPendingReview(profile);
-    case "doctor":
-      return profile.role === "approved_doctor";
-    case "lab":
-      return profile.role === "approved_lab";
-    case "vet":
-      return profile.role === "approved_vet";
-    case "sales":
-      return profile.role === "sales_rep";
-    case "admin":
-      return profile.role === "admin";
-    case "suspended":
-      return (
-        profile.role === "suspended_user" ||
-        profile.verification_status === "suspended"
-      );
-    default:
-      return true;
-  }
-}
-
-function isPendingReview(profile: Profile) {
-  return (
-    profile.verification_status === "pending" || profile.role === "pending_user"
-  );
-}
-
-function getRoleLabel(role: UserRole) {
-  const labels: Record<UserRole, string> = {
-    admin: "Admin",
-    approved_doctor: "Hekim",
-    approved_lab: "Laboratuvar",
-    approved_vet: "Veteriner",
-    pending_user: "Onay Bekliyor",
-    sales_rep: "Saha Temsilcisi",
-    suspended_user: "Askıya Alındı",
-  };
-
-  return labels[role];
-}
-
-function getRequestedRoleLabel(value: RequestedRole | UserType | null) {
-  const labels: Partial<Record<UserType, string>> = {
-    admin: "Admin",
-    doctor: "Hekim",
-    lab: "Laboratuvar",
-    other: "Genel Başvuru",
-    sales: "Saha Temsilcisi",
-    vet: "Veteriner",
-  };
-
-  return value ? labels[value] ?? "Belirtilmedi" : "Belirtilmedi";
-}
-
-function getUserTypeDescription(userType: UserType | null) {
-  const descriptions: Partial<Record<UserType, string>> = {
-    admin: "Operasyon yetkisine sahip hesap",
-    doctor: "Klinik / hekim kullanıcısı",
-    lab: "Laboratuvar kullanıcısı",
-    other: "Ek doğrulama gerektirebilecek kayıt tipi",
-    sales: "Saha operasyon hesabı",
-    vet: "Veteriner kullanıcı",
-  };
-
-  return descriptions[userType ?? "other"] ?? "Kayıt tipi belirtilmedi";
-}
-
-function getStatusLabel(status: VerificationStatus) {
-  const labels: Record<VerificationStatus, string> = {
-    approved: "Onaylı",
-    pending: "Onay Bekliyor",
-    rejected: "Reddedildi",
-    suspended: "Askıya Alındı",
-  };
-
-  return labels[status];
-}
-
-function getApprovalLabel(intent: ReviewIntent) {
-  const labels: Record<ReviewIntent, string> = {
+function getApprovalLabel(intent: ReturnType<typeof getSuggestedApprovalIntent>) {
+  const labels = {
     approve_doctor: "Hekim Olarak Onayla",
     approve_lab: "Laboratuvar Olarak Onayla",
     approve_sales_rep: "Saha Olarak Onayla",
@@ -503,7 +411,7 @@ function getApprovalLabel(intent: ReviewIntent) {
     reactivate: "Yeniden Aktif Et",
     reject: "Reddet",
     suspend: "Askıya Al",
-  };
+  } as const;
 
   return labels[intent];
 }
@@ -526,47 +434,4 @@ function getUserIcon(profile: Profile) {
   }
 
   return <UserRound className="size-4" />;
-}
-
-function getRequestedRoleDisplay(profile: Profile) {
-  if (profile.requested_role) {
-    return `${getRequestedRoleLabel(profile.requested_role)} Başvurusu`;
-  }
-
-  if (profile.user_type) {
-    return `${getRequestedRoleLabel(profile.user_type)} Başvurusu`;
-  }
-
-  return "Başvuru tipi belirtilmedi";
-}
-
-function formatLocation(city: string | null, district: string | null) {
-  if (city && district) {
-    return `${district} / ${city}`;
-  }
-
-  if (city) {
-    return city;
-  }
-
-  if (district) {
-    return district;
-  }
-
-  return "Belirtilmedi";
-}
-
-function normalizeForSearch(value: string) {
-  return value
-    .trim()
-    .toLocaleLowerCase("tr-TR")
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "");
-}
-
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat("tr-TR", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
 }

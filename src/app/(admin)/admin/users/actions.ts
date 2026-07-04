@@ -18,6 +18,11 @@ type ReviewIntent =
 
 type ProfilePatch = Database["public"]["Tables"]["profiles"]["Update"];
 
+export type UpdateUserProfileActionState = {
+  error?: string;
+  success?: string;
+};
+
 const reviewConfig: Record<
   ReviewIntent,
   {
@@ -144,6 +149,67 @@ export async function reviewUserAction(formData: FormData) {
   revalidatePath("/admin/users");
 }
 
+export async function updateUserProfileAction(
+  _previousState: UpdateUserProfileActionState,
+  formData: FormData
+): Promise<UpdateUserProfileActionState> {
+  const adminProfile = await requireAdmin();
+  const userId = getString(formData, "user_id");
+
+  if (!userId) {
+    return { error: "Güncellenecek kullanıcı bulunamadı." };
+  }
+
+  const patch = parseProfilePatch(formData);
+
+  if ("error" in patch) {
+    return patch;
+  }
+
+  const supabase = getSupabaseAdminClient();
+  const { data: oldProfile, error: oldProfileError } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", userId)
+    .single();
+
+  if (oldProfileError) {
+    return { error: oldProfileError.message };
+  }
+
+  const { data: newProfile, error: updateError } = await supabase
+    .from("profiles")
+    .update(patch)
+    .eq("id", userId)
+    .select("*")
+    .single();
+
+  if (updateError) {
+    return { error: updateError.message };
+  }
+
+  const changes = summarizeProfileChanges(oldProfile, newProfile);
+
+  if (Object.keys(changes).length > 0) {
+    const { error: auditError } = await supabase.from("audit_logs").insert({
+      action: "profile_updated",
+      entity_id: userId,
+      entity_type: "profile",
+      new_value: toJson(changes),
+      user_id: adminProfile.id,
+    });
+
+    if (auditError) {
+      return { error: auditError.message };
+    }
+  }
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/users");
+
+  return { success: "Profil bilgileri güncellendi." };
+}
+
 function activeProfilePatch(role: UserRole): ProfilePatch {
   return {
     role,
@@ -162,6 +228,127 @@ function getString(formData: FormData, key: string) {
   return typeof value === "string" ? value.trim() : "";
 }
 
-function toJson(value: Profile): Json {
+function getNullableString(formData: FormData, key: string, maxLength: number) {
+  const value = getString(formData, key);
+
+  if (!value) {
+    return null;
+  }
+
+  if (value.length > maxLength) {
+    throw new Error(`${key} alanı çok uzun.`);
+  }
+
+  return value;
+}
+
+function parseProfilePatch(
+  formData: FormData
+): ProfilePatch | UpdateUserProfileActionState {
+  try {
+    const fullName = getNullableString(formData, "full_name", 120);
+    const phone = getNullableString(formData, "phone", 40);
+    const clinicName = getNullableString(formData, "clinic_name", 160);
+    const companyName = getNullableString(formData, "company_name", 160);
+    const city = getNullableString(formData, "city", 80);
+    const district = getNullableString(formData, "district", 80);
+    const specialty = getNullableString(formData, "specialty", 120);
+    const requestedRoleValue = getString(formData, "requested_role");
+
+    if (
+      requestedRoleValue &&
+      requestedRoleValue !== "doctor" &&
+      requestedRoleValue !== "lab" &&
+      requestedRoleValue !== "vet" &&
+      requestedRoleValue !== "other"
+    ) {
+      return { error: "Talep edilen rol geçersiz." };
+    }
+
+    const requestedRole: ProfilePatch["requested_role"] =
+      requestedRoleValue === "doctor" ||
+      requestedRoleValue === "lab" ||
+      requestedRoleValue === "vet" ||
+      requestedRoleValue === "other"
+        ? requestedRoleValue
+        : null;
+
+    return {
+      city,
+      clinic_name: clinicName,
+      company_name: companyName,
+      district,
+      full_name: fullName,
+      phone,
+      requested_role: requestedRole,
+      specialty,
+    };
+  } catch (error) {
+    return {
+      error: error instanceof Error ? mapProfileFieldError(error.message) : "Profil güncellenemedi.",
+    };
+  }
+}
+
+function mapProfileFieldError(message: string) {
+  if (message.includes("full_name")) {
+    return "Ad soyad alanı çok uzun.";
+  }
+
+  if (message.includes("phone")) {
+    return "Telefon alanı çok uzun.";
+  }
+
+  if (message.includes("clinic_name")) {
+    return "Klinik adı alanı çok uzun.";
+  }
+
+  if (message.includes("company_name")) {
+    return "Firma / laboratuvar adı alanı çok uzun.";
+  }
+
+  if (message.includes("city")) {
+    return "İl alanı çok uzun.";
+  }
+
+  if (message.includes("district")) {
+    return "İlçe alanı çok uzun.";
+  }
+
+  if (message.includes("specialty")) {
+    return "Uzmanlık alanı çok uzun.";
+  }
+
+  return "Profil bilgileri kaydedilemedi.";
+}
+
+function summarizeProfileChanges(oldProfile: Profile, newProfile: Profile) {
+  const fields: Array<keyof Profile> = [
+    "full_name",
+    "phone",
+    "clinic_name",
+    "company_name",
+    "city",
+    "district",
+    "specialty",
+    "requested_role",
+  ];
+
+  return fields.reduce<Record<string, { from: unknown; to: unknown }>>(
+    (changes, field) => {
+      if (JSON.stringify(oldProfile[field]) !== JSON.stringify(newProfile[field])) {
+        changes[field] = {
+          from: oldProfile[field],
+          to: newProfile[field],
+        };
+      }
+
+      return changes;
+    },
+    {}
+  );
+}
+
+function toJson(value: unknown): Json {
   return JSON.parse(JSON.stringify(value)) as Json;
 }
