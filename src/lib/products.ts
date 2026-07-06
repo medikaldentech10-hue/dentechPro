@@ -460,28 +460,85 @@ async function getGroupedProductDetailRow(row: ProductQueryRow) {
   }
 
   const supabase = getSupabaseAdminClient();
-  const { data, error } = await supabase
-    .from("products")
-    .select(PRODUCT_DETAIL_SELECT)
-    .eq("is_active", true)
-    .eq("brand", row.brand)
-    .eq("category_id", row.category_id)
-    .ilike("product_name", `%${escapeLikePattern(family.remainder)}%`)
-    .limit(100);
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  const familyRows = normalizeProductRows(data ?? []).filter(
-    (candidate) => getProductFamilyKey(candidate) === getProductFamilyKey(row)
-  );
+  const familyRows = await getProductDetailFamilyRows({
+    baseCode: family.baseCode,
+    brand: row.brand,
+    categoryId: row.category_id,
+    remainder: family.remainder,
+    supabase,
+  });
 
   if (familyRows.length <= 1) {
     return row;
   }
 
   return mergeProductFamilyRows(familyRows);
+}
+
+async function getProductDetailFamilyRows({
+  baseCode,
+  brand,
+  categoryId,
+  remainder,
+  supabase,
+}: {
+  baseCode: string;
+  brand: string;
+  categoryId: string;
+  remainder: string;
+  supabase: ReturnType<typeof getSupabaseAdminClient>;
+}) {
+  const familyKey = [
+    normalizeSearchText(brand),
+    categoryId,
+    baseCode,
+    normalizeSearchText(remainder),
+  ].join("|");
+  const codeMatchedRows = await getFamilyRowsByQuery(
+    supabase
+      .from("products")
+      .select(PRODUCT_DETAIL_SELECT)
+      .eq("is_active", true)
+      .eq("brand", brand)
+      .eq("category_id", categoryId)
+      .ilike("product_group_code", `${escapeLikePattern(baseCode)}%`)
+      .limit(24),
+    familyKey
+  );
+
+  if (codeMatchedRows.length > 1) {
+    return codeMatchedRows;
+  }
+
+  return getFamilyRowsByQuery(
+    supabase
+      .from("products")
+      .select(PRODUCT_DETAIL_SELECT)
+      .eq("is_active", true)
+      .eq("brand", brand)
+      .eq("category_id", categoryId)
+      .ilike("product_name", `%${escapeLikePattern(remainder)}%`)
+      .limit(40),
+    familyKey
+  );
+}
+
+async function getFamilyRowsByQuery(
+  query: PromiseLike<{
+    data: unknown[] | null;
+    error: { message: string } | null;
+  }>,
+  familyKey: string
+) {
+  const { data, error } = await query;
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return normalizeProductRows(data ?? []).filter(
+    (candidate) => getProductFamilyKey(candidate) === familyKey
+  );
 }
 
 function normalizeListProductRows(rows: unknown[]): Omit<ProductQueryRow, "variants">[] {

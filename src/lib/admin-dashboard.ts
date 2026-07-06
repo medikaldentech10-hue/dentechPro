@@ -104,12 +104,10 @@ async function getLatestRequests(): Promise<AdminDashboardRequest[]> {
   }
 
   const drafts = data ?? [];
-  const customersById = await getCustomersByIds(
-    drafts.map((draft) => draft.customer_id)
-  );
-  const profilesById = await getProfilesByIds(
-    drafts.map((draft) => draft.created_by_user_id)
-  );
+  const [customersById, profilesById] = await Promise.all([
+    getCustomersByIds(drafts.map((draft) => draft.customer_id)),
+    getProfilesByIds(drafts.map((draft) => draft.created_by_user_id)),
+  ]);
 
   return drafts.map((draft) => ({
     ...draft,

@@ -2,6 +2,7 @@ import "server-only";
 
 import type { User } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
+import { cache } from "react";
 
 import {
   getSupabaseAdminClient,
@@ -47,16 +48,16 @@ export function isAllowedUserType(value: string): value is RegistrationUserType 
   return allowedUserTypes.includes(value as RegistrationUserType);
 }
 
-export async function getCurrentUser() {
+export const getCurrentUser = cache(async function getCurrentUser() {
   const supabase = await getSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   return user;
-}
+});
 
-export async function getCurrentProfile() {
+export const getCurrentProfile = cache(async function getCurrentProfile() {
   const user = await getCurrentUser();
 
   if (!user) {
@@ -69,7 +70,7 @@ export async function getCurrentProfile() {
   }
 
   return getProfileForUser(user);
-}
+});
 
 export async function getUserRole(): Promise<PublicRole> {
   const profile = await getCurrentProfile();
@@ -220,7 +221,7 @@ async function requireActiveProfile() {
   return profile;
 }
 
-export async function getProfileForUser(user: User) {
+export const getProfileForUser = cache(async function getProfileForUser(user: User) {
   const supabase = await getSupabaseServerClient();
   const { data, error } = await supabase
     .from("profiles")
@@ -249,7 +250,7 @@ export async function getProfileForUser(user: User) {
   });
 
   return createDefaultProfileForUser(user);
-}
+});
 
 export async function createDefaultProfileForUser(user: User) {
   const admin = getSupabaseAdminClient();

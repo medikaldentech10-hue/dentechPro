@@ -1,15 +1,32 @@
 import type { ReactNode } from "react";
-import { SpeedInsights } from "@vercel/speed-insights/next"
-import { AppShell } from "@/components/shared/app-shell";
+import { Suspense } from "react";
+
+import { SpeedInsights } from "@vercel/speed-insights/next";
+import { Footer } from "@/components/shared/footer";
+import { Header } from "@/components/shared/header";
 import { getCurrentProfile } from "@/lib/auth";
 
-export default async function PublicLayout({ children }: { children: ReactNode }) {
-  const profile = await getCurrentProfile();
+export default function PublicLayout({ children }: { children: ReactNode }) {
+  const profilePromise = getCurrentProfile();
 
   return (
-    <AppShell profile={profile} variant="public">
+    <div className="min-h-dvh">
+      <Suspense fallback={<Header />}>
+        <PublicHeader profilePromise={profilePromise} />
+      </Suspense>
+      <main>{children}</main>
+      <Footer />
       <SpeedInsights />
-      {children}
-    </AppShell>
+    </div>
   );
+}
+
+async function PublicHeader({
+  profilePromise,
+}: {
+  profilePromise: ReturnType<typeof getCurrentProfile>;
+}) {
+  const profile = await profilePromise;
+
+  return <Header profile={profile} />;
 }

@@ -52,8 +52,7 @@ const SEARCH_SUGGESTIONS = [
 const MOBILE_SEARCH_SUGGESTIONS = SEARCH_SUGGESTIONS.slice(0, 7);
 
 export default async function ProductsPage({ searchParams }: ProductsPageProps) {
-  const params = await searchParams;
-  const profile = await getCurrentProfile();
+  const [params, profile] = await Promise.all([searchParams, getCurrentProfile()]);
   const filters: ProductFilters = {
     brand: params.brand || "JOTA",
     category: params.category,

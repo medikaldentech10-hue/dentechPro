@@ -35,10 +35,12 @@ export default async function ProductDetailPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const { id } = await params;
-  const query = await searchParams;
+  const [{ id }, query, profile] = await Promise.all([
+    params,
+    searchParams,
+    getCurrentProfile(),
+  ]);
   const selectedVariantId = getStringParam(query.variant);
-  const profile = await getCurrentProfile();
   const product = await getPricedProductByIdForProfile(profile, id);
 
   if (!product) {
