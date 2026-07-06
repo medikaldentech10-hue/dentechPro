@@ -128,6 +128,8 @@ type ProductRowsResult = {
 
 const PRODUCT_DETAIL_SELECT =
   "id,brand,category_id,description,image_url,is_active,product_group_code,product_name,usage_area,category:categories(id,name,slug,sort_order),variants:product_variants(id,product_id,variant_code,manufacturer_ref,connection_type,color,currency,diameter,grit,image_url,is_active,package_quantity,price,stock_quantity,stock_status)";
+const PRODUCT_CARD_SELECT =
+  "id,brand,category_id,product_group_code,product_name,image_url,is_active,category:categories(id,name,slug,sort_order)";
 
 type CatalogSearch = {
   diameterValues: number[];
@@ -235,6 +237,13 @@ async function getProductRows(
   options: ProductQueryOptions = {}
 ): Promise<ProductRowsResult> {
   const startedAt = performance.now();
+  const checkpoints: Record<string, number> = {};
+  const measureCheckpoint = async <T>(label: string, work: () => Promise<T>) => {
+    const checkpointStartedAt = performance.now();
+    const result = await work();
+    checkpoints[label] = Math.round(performance.now() - checkpointStartedAt);
+    return result;
+  };
   const supabase = getSupabaseAdminClient();
   const normalizedBrand = filters.brand?.trim() || "JOTA";
   const normalizedCategory = filters.category?.trim();
@@ -243,27 +252,38 @@ async function getProductRows(
   const normalizedUsage = filters.usage?.trim();
   const pageSize = clampInteger(filters.pageSize, 24, 1, 60);
   const page = clampInteger(filters.page, 1, 1, 10_000);
-  const categoryId = normalizedCategory
-    ? await getCategoryIdBySlug(normalizedCategory)
-    : null;
   const exactSku = search?.exactSku ?? null;
-  const [matchingVariantProductIds, matchingCategoryIds, matchingProductIds] = search
-    ? exactSku
-      ? [await getExactSkuVariantProductIds(exactSku), [], []]
-      : await Promise.all([
+  const [categoryId, [matchingVariantProductIds, matchingCategoryIds, matchingProductIds], priceFilteredProductIds] =
+    await Promise.all([
+      measureCheckpoint("categoryLookupMs", async () =>
+        normalizedCategory ? getCategoryIdBySlug(normalizedCategory) : null
+      ),
+      measureCheckpoint<[string[], string[], string[]]>("searchCandidateMs", async () => {
+        if (!search) {
+          return [[], [], []];
+        }
+
+        if (exactSku) {
+          return [await getExactSkuVariantProductIds(exactSku), [], []];
+        }
+
+        return Promise.all([
           getMatchingVariantProductIds(search),
           getMatchingCategoryIds(search),
           getMatchingProductIds(search, normalizedBrand),
-        ])
-    : [[], [], []];
+        ]);
+      }),
+      measureCheckpoint("priceFilterMs", async () =>
+        options.includeSensitiveVariantFields
+          ? getPriceFilteredProductIds(filters.minPrice, filters.maxPrice)
+          : null
+      ),
+    ]);
   const searchCandidateProductIds = search
     ? uniqueStrings([
         ...matchingVariantProductIds,
         ...matchingProductIds,
       ])
-    : null;
-  const priceFilteredProductIds = options.includeSensitiveVariantFields
-    ? await getPriceFilteredProductIds(filters.minPrice, filters.maxPrice)
     : null;
 
   if (priceFilteredProductIds && priceFilteredProductIds.length === 0) {
@@ -276,26 +296,33 @@ async function getProductRows(
 
   let query = supabase
     .from("products")
-    .select(
-      "id,brand,category_id,product_group_code,product_name,description,usage_area,image_url,is_active,category:categories(id,name,slug,sort_order)",
-      { count: "exact" }
-    )
+    .select(PRODUCT_CARD_SELECT)
     .eq("is_active", true)
     .eq("brand", normalizedBrand)
     .order("product_name", { ascending: true });
 
+  let countQuery = supabase
+    .from("products")
+    .select("id", { count: "exact", head: true })
+    .eq("is_active", true)
+    .eq("brand", normalizedBrand);
+
   if (categoryId) {
     query = query.eq("category_id", categoryId);
+    countQuery = countQuery.eq("category_id", categoryId);
   }
 
   if (normalizedUsage) {
     query = query.eq("usage_area", normalizedUsage);
+    countQuery = countQuery.eq("usage_area", normalizedUsage);
   }
 
   if (priceFilteredProductIds) {
     query = query.in("id", priceFilteredProductIds);
+    countQuery = countQuery.in("id", priceFilteredProductIds);
   }
 
+  let totalCountFromQuery: number | null = null;
   if (search) {
     const productIds = uniqueStrings([
       ...(searchCandidateProductIds ?? []),
@@ -309,67 +336,113 @@ async function getProductRows(
     }
 
     query = query.in("id", productIds).limit(500);
+    countQuery = countQuery.in("id", productIds);
   } else {
     const rawFrom = (page - 1) * pageSize;
-    const rawTo = rawFrom + pageSize * 4 - 1;
+    const rawTo = rawFrom + pageSize * 2 - 1;
     query = query.range(rawFrom, rawTo);
   }
 
-  const { count, data, error } = await query;
+  const [productResult, countResult] = await Promise.all([
+    measureCheckpoint("productQueryMs", async () => query),
+    measureCheckpoint("countQueryMs", async () => countQuery),
+  ]);
+  const { data, error } = productResult;
 
   if (error) {
     throw new Error(error.message);
   }
 
+  if (countResult.error) {
+    throw new Error(countResult.error.message);
+  }
+
+  totalCountFromQuery = countResult.count ?? null;
+
   const productRows = normalizeListProductRows(data ?? []);
-  const variantSummaries = productRows.length
-    ? await getListVariantsForProducts(
-        productRows.map((row) => row.id),
-        Boolean(options.includeSensitiveVariantFields),
-        search
+  let paginatedRows: ProductQueryRow[];
+  let totalCount: number;
+
+  if (search) {
+    const variantSummaries = await measureCheckpoint("variantQueryMs", async () =>
+      productRows.length
+        ? getListVariantsForProducts(
+            productRows.map((row) => row.id),
+            Boolean(options.includeSensitiveVariantFields),
+            search
+          )
+        : new Map<string, CatalogVariantRow[]>()
+    );
+    const mappingStartedAt = performance.now();
+    const rows = productRows.map((product) => ({
+      ...product,
+      variants: variantSummaries.get(product.id) ?? [],
+    }));
+    const searchedRows = rows.filter((row) =>
+      rowMatchesCatalogSearch(row, search, {
+        matchingCategoryIds,
+        matchingVariantProductIds,
+      })
+    );
+    const groupedRows = groupCatalogProductRows(rows, searchedRows);
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize;
+    paginatedRows = groupedRows.slice(from, to);
+    totalCount = groupedRows.length;
+    checkpoints.mappingMs = Math.round(performance.now() - mappingStartedAt);
+  } else {
+    const visibleGroups = getVisibleProductGroups(productRows, pageSize);
+    const visibleProductIds = uniqueStrings(
+      visibleGroups.flatMap((group) => group.map((row) => row.id))
+    );
+    const variantSummaries = await measureCheckpoint("variantQueryMs", async () =>
+      visibleProductIds.length
+        ? getListVariantsForProducts(
+            visibleProductIds,
+            Boolean(options.includeSensitiveVariantFields)
+          )
+        : new Map<string, CatalogVariantRow[]>()
+    );
+    const mappingStartedAt = performance.now();
+    paginatedRows = visibleGroups.map((group) =>
+      mergeProductFamilyRows(
+        group.map((product) => ({
+          ...product,
+          variants: variantSummaries.get(product.id) ?? [],
+        }))
       )
-    : new Map<string, CatalogVariantRow[]>();
-  const rows = productRows.map((product) => ({
-    ...product,
-    variants: variantSummaries.get(product.id) ?? [],
-  }));
-  const searchedRows = search
-    ? rows.filter((row) =>
-        rowMatchesCatalogSearch(row, search, {
-          matchingCategoryIds,
-          matchingVariantProductIds,
-        })
-      )
-    : rows;
-  const groupedRows = groupCatalogProductRows(rows, searchedRows);
-  const totalCount = search ? groupedRows.length : (count ?? groupedRows.length);
-  const from = search ? (page - 1) * pageSize : 0;
-  const to = from + pageSize;
-  const paginatedRows = groupedRows.slice(from, to);
+    );
+    totalCount = totalCountFromQuery ?? paginatedRows.length;
+    checkpoints.mappingMs = Math.round(performance.now() - mappingStartedAt);
+  }
   const variantCount = paginatedRows.reduce(
     (sum, product) => sum + product.variants.length,
     0
   );
 
   logProductQuery("products.list", {
+    checkpoints,
     durationMs: Math.round(performance.now() - startedAt),
     includeSensitiveVariantFields: Boolean(options.includeSensitiveVariantFields),
     page,
     pageSize,
+    fetchedRowCount: productRows.length,
     productCount: paginatedRows.length,
-    rawProductCount: count ?? rows.length,
+    rawProductCount: productRows.length,
     totalCount,
     variantCount,
   });
 
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+
   return {
-    hasNextPage: to < totalCount,
+    hasNextPage: page < totalPages,
     hasPreviousPage: page > 1,
     page,
     pageSize,
     rows: paginatedRows,
     totalCount,
-    totalPages: Math.max(1, Math.ceil(totalCount / pageSize)),
+    totalPages,
   };
 }
 
@@ -551,13 +624,13 @@ function normalizeListProductRows(rows: unknown[]): Omit<ProductQueryRow, "varia
       brand: product.brand,
       category: product.category,
       category_id: product.category_id,
-      description: product.description,
+      description: product.description ?? null,
       id: product.id,
       image_url: product.image_url,
       is_active: product.is_active,
       product_group_code: product.product_group_code,
       product_name: product.product_name,
-      usage_area: product.usage_area,
+      usage_area: product.usage_area ?? null,
     };
   });
 }
@@ -739,6 +812,31 @@ function groupCatalogProductRows(
   return Array.from(groups.values())
     .map(mergeProductFamilyRows)
     .sort((left, right) => left.product_name.localeCompare(right.product_name, "tr-TR"));
+}
+
+function getVisibleProductGroups(
+  rows: Array<Omit<ProductQueryRow, "variants">>,
+  limit: number
+) {
+  const groups = rows.reduce((currentGroups, row) => {
+    const key = getProductFamilyKey(row);
+    const current = currentGroups.get(key) ?? [];
+    current.push(row);
+    currentGroups.set(key, current);
+    return currentGroups;
+  }, new Map<string, Array<Omit<ProductQueryRow, "variants">>>());
+
+  return Array.from(groups.values())
+    .sort((left, right) => {
+      const leftCanonical = getCanonicalGroupRow(left);
+      const rightCanonical = getCanonicalGroupRow(right);
+      return leftCanonical.product_name.localeCompare(rightCanonical.product_name, "tr-TR");
+    })
+    .slice(0, limit);
+}
+
+function getCanonicalGroupRow<T extends Pick<ProductQueryRow, "product_name">>(rows: T[]) {
+  return rows.find((row) => isBaseFamilyProductName(row.product_name)) ?? rows[0];
 }
 
 function mergeProductFamilyRows(rows: ProductQueryRow[]): ProductQueryRow {
@@ -1281,7 +1379,10 @@ function isUuid(value: string) {
 }
 
 function logProductQuery(event: string, payload: Record<string, unknown>) {
-  if (process.env.NODE_ENV !== "development") {
+  if (
+    process.env.NODE_ENV !== "development" &&
+    process.env.DENTECH_PERF_LOGS !== "true"
+  ) {
     return;
   }
 
