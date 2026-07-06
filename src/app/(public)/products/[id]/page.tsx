@@ -105,6 +105,7 @@ export default async function ProductDetailPage({
                         </span>
                       </div>
                     }
+                    priority
                     src={product.imageUrl ?? primaryVariant?.imageUrl ?? null}
                   />
                 </div>

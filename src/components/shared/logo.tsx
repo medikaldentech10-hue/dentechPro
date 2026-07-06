@@ -13,6 +13,7 @@ export function Logo() {
           alt="DENTech Medikal"
           fill
           className="h-full w-full object-contain"
+          priority
           sizes="218px"
           src="/brand/dentech-logo.png"
         />
