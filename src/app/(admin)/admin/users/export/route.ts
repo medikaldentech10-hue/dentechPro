@@ -42,8 +42,9 @@ export async function GET(request: Request) {
 
   const csv = buildAdminUsersCsv(filteredProfiles);
   const fileName = `dentech-musteriler-${formatDateToken(new Date())}.csv`;
+  const excelReadyCsv = `sep=;\r\n${csv}`;
 
-  return new NextResponse(`\uFEFF${csv}`, {
+  return new NextResponse(`\uFEFF${excelReadyCsv}`, {
     headers: {
       "Content-Disposition": `attachment; filename="${fileName}"`,
       "Content-Type": "text/csv; charset=utf-8",
