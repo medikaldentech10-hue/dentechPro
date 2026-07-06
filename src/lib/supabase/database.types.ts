@@ -396,6 +396,28 @@ export type Database = {
         };
         Relationships: [];
       };
+      rate_limit_events: {
+        Row: {
+          id: string;
+          user_id: string | null;
+          action: string;
+          ip_hash: string | null;
+          metadata: Json | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id?: string | null;
+          action: string;
+          ip_hash?: string | null;
+          metadata?: Json | null;
+          created_at?: string;
+        };
+        Update: Partial<
+          Omit<Database["public"]["Tables"]["rate_limit_events"]["Row"], "id">
+        >;
+        Relationships: [];
+      };
       audit_logs: {
         Row: {
           id: string;

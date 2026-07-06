@@ -4,13 +4,14 @@ import { AdminUsersPanel } from "@/components/admin/admin-users-panel";
 import { SurfaceCard } from "@/components/premium/surface-card";
 import { PageTitle } from "@/components/shared/page-title";
 import { CardContent } from "@/components/ui/card";
+import { ADMIN_PROFILE_SELECT } from "@/lib/admin-users";
 import { getSupabaseAdminClient } from "@/lib/supabase/server";
 
 export default async function AdminUsersPage() {
   const supabase = getSupabaseAdminClient();
   const { data: profiles, error } = await supabase
     .from("profiles")
-    .select("*")
+    .select(ADMIN_PROFILE_SELECT)
     .order("created_at", { ascending: false });
 
   if (error) {

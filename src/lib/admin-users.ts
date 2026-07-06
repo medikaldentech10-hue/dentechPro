@@ -16,6 +16,9 @@ export type AdminUsersFilterKey =
   | "admin"
   | "suspended";
 
+export const ADMIN_PROFILE_SELECT =
+  "id,full_name,email,phone,requested_role,clinic_name,company_name,city,district,specialty,role,user_type,verification_status,can_view_prices,is_active,created_at,updated_at";
+
 export const adminUsersFilterOptions: Array<{
   key: AdminUsersFilterKey;
   label: string;
@@ -239,9 +242,12 @@ export function formatAdminUserDate(value: string) {
 }
 
 export function escapeCsvValue(value: string) {
-  const normalized = value.replace(/\r?\n/g, " ").trim();
+  const normalized = value.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
   const escaped = normalized.replace(/"/g, "\"\"");
-  return `"${escaped}"`;
+  const shouldQuote =
+    escaped.includes(";") || escaped.includes('"') || escaped.includes("\n");
+
+  return shouldQuote ? `"${escaped}"` : escaped;
 }
 
 export function buildAdminUsersCsv(profiles: Profile[]) {
@@ -278,6 +284,6 @@ export function buildAdminUsersCsv(profiles: Profile[]) {
   ]);
 
   return [header, ...rows]
-    .map((columns) => columns.map((value) => escapeCsvValue(value)).join(","))
+    .map((columns) => columns.map((value) => escapeCsvValue(value)).join(";"))
     .join("\r\n");
 }

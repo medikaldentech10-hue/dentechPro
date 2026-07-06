@@ -3,6 +3,13 @@ import { NextResponse } from "next/server";
 import { getCurrentProfile, isAdmin } from "@/lib/auth";
 import { getAdminRequestDetail } from "@/lib/admin-requests";
 import { createAdminRequestQuotePdf } from "@/lib/admin-request-pdf";
+import {
+  assertRateLimit,
+  isRateLimitExceededError,
+  logRateLimitBlockedAttempt,
+  RATE_LIMIT_POLICIES,
+  recordRateLimitEvent,
+} from "@/lib/rate-limit";
 import { getRequestDisplayNumber } from "@/lib/request-numbers";
 
 export const dynamic = "force-dynamic";
@@ -24,6 +31,37 @@ export async function GET(_request: Request, { params }: QuoteRouteProps) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    try {
+      await assertRateLimit({
+        policy: RATE_LIMIT_POLICIES.adminQuotePdfDownload,
+        userId: profile.id,
+      });
+    } catch (error) {
+      if (isRateLimitExceededError(error)) {
+        await logRateLimitBlockedAttempt({
+          action: RATE_LIMIT_POLICIES.adminQuotePdfDownload.action,
+          metadata: null,
+          reason: error.reason,
+          userId: profile.id,
+        });
+
+        return NextResponse.json(
+          {
+            error:
+              "Çok fazla PDF indirme denemesi yapıldı. Lütfen biraz sonra tekrar deneyin.",
+          },
+          {
+            headers: {
+              "Retry-After": String(error.retryAfterSeconds),
+            },
+            status: 429,
+          }
+        );
+      }
+
+      throw error;
+    }
+
     const { id } = await params;
     const requestDetail = await getAdminRequestDetail(id);
 
@@ -33,6 +71,14 @@ export async function GET(_request: Request, { params }: QuoteRouteProps) {
 
     const pdf = await createAdminRequestQuotePdf(requestDetail);
     const fileName = `dentech-teklif-${getRequestDisplayNumber(requestDetail)}.pdf`;
+    await recordRateLimitEvent({
+      action: RATE_LIMIT_POLICIES.adminQuotePdfDownload.action,
+      metadata: {
+        request_id: requestDetail.id,
+        request_number: getRequestDisplayNumber(requestDetail),
+      },
+      userId: profile.id,
+    });
 
     return new Response(new Uint8Array(pdf), {
       headers: {

@@ -217,7 +217,7 @@ async function countPendingUsers() {
   const supabase = getSupabaseAdminClient();
   const { count, error } = await supabase
     .from("profiles")
-    .select("*", { count: "exact", head: true })
+    .select("id", { count: "exact", head: true })
     .or("verification_status.eq.pending,role.eq.pending_user");
 
   if (error) {
@@ -231,7 +231,7 @@ async function countActiveProducts() {
   const supabase = getSupabaseAdminClient();
   const { count, error } = await supabase
     .from("products")
-    .select("*", { count: "exact", head: true })
+    .select("id", { count: "exact", head: true })
     .eq("is_active", true);
 
   if (error) {
@@ -245,7 +245,7 @@ async function countLowStockVariants() {
   const supabase = getSupabaseAdminClient();
   const { count, error } = await supabase
     .from("product_variants")
-    .select("*", { count: "exact", head: true })
+    .select("id", { count: "exact", head: true })
     .eq("is_active", true)
     .lte("stock_quantity", 5);
 
@@ -260,7 +260,7 @@ async function countOpenRequests() {
   const supabase = getSupabaseAdminClient();
   const { count, error } = await supabase
     .from("order_drafts")
-    .select("*", { count: "exact", head: true })
+    .select("id", { count: "exact", head: true })
     .in("status", openRequestStatuses);
 
   if (error) {
@@ -274,7 +274,7 @@ async function countCustomers() {
   const supabase = getSupabaseAdminClient();
   const { count, error } = await supabase
     .from("customers")
-    .select("*", { count: "exact", head: true });
+    .select("id", { count: "exact", head: true });
 
   if (error) {
     throw new Error(error.message);

@@ -16,6 +16,12 @@ import {
   submitDraftToWhatsApp,
   updateDraftItemQuantity,
 } from "@/lib/order-drafts";
+import {
+  isRateLimitExceededError,
+  logRateLimitBlockedAttempt,
+  RATE_LIMIT_POLICIES,
+  type RateLimitAction,
+} from "@/lib/rate-limit";
 
 export async function addToOrderDraftAction(formData: FormData) {
   const profile = await getRequiredProfile();
@@ -26,7 +32,25 @@ export async function addToOrderDraftAction(formData: FormData) {
     throw new Error("Varyant bulunamadı.");
   }
 
-  await addVariantToDraft({ profile, quantity, variantId });
+  try {
+    await addVariantToDraft({ profile, quantity, variantId });
+  } catch (error) {
+    await handleRateLimitError({
+      action: RATE_LIMIT_POLICIES.requestItemMutation.action,
+      error,
+      metadata: {
+        quantity,
+        variant_id: variantId,
+      },
+      redirects: {
+        min_interval: "/request?error=item_rate_limited",
+        window_limit: "/request?error=item_rate_limited",
+      },
+      userId: profile.id,
+    });
+    throw error;
+  }
+
   revalidateRequestPaths();
   redirect("/request?status=added");
 }
@@ -40,7 +64,25 @@ export async function updateOrderItemQuantityAction(formData: FormData) {
     throw new Error("Talep kalemi bulunamadı.");
   }
 
-  await updateDraftItemQuantity({ itemId, profile, quantity });
+  try {
+    await updateDraftItemQuantity({ itemId, profile, quantity });
+  } catch (error) {
+    await handleRateLimitError({
+      action: RATE_LIMIT_POLICIES.requestItemMutation.action,
+      error,
+      metadata: {
+        item_id: itemId,
+        quantity,
+      },
+      redirects: {
+        min_interval: "/request?error=item_rate_limited",
+        window_limit: "/request?error=item_rate_limited",
+      },
+      userId: profile.id,
+    });
+    throw error;
+  }
+
   revalidateRequestPaths();
   redirect("/request?status=updated");
 }
@@ -53,7 +95,24 @@ export async function removeOrderItemAction(formData: FormData) {
     throw new Error("Talep kalemi bulunamadı.");
   }
 
-  await removeDraftItem({ itemId, profile });
+  try {
+    await removeDraftItem({ itemId, profile });
+  } catch (error) {
+    await handleRateLimitError({
+      action: RATE_LIMIT_POLICIES.requestItemMutation.action,
+      error,
+      metadata: {
+        item_id: itemId,
+      },
+      redirects: {
+        min_interval: "/request?error=item_rate_limited",
+        window_limit: "/request?error=item_rate_limited",
+      },
+      userId: profile.id,
+    });
+    throw error;
+  }
+
   revalidateRequestPaths();
   redirect("/request?status=removed");
 }
@@ -79,11 +138,29 @@ export async function submitOrderDraftToWhatsAppAction(formData: FormData) {
     throw new Error("Talep notu en fazla 1000 karakter olabilir.");
   }
 
-  const whatsAppUrl = await submitDraftToWhatsApp({
-    customerNote: customerNote || null,
-    customerPaymentPreference: rawPreference as CustomerPaymentPreference,
-    profile,
-  });
+  let whatsAppUrl: string;
+  try {
+    whatsAppUrl = await submitDraftToWhatsApp({
+      customerNote: customerNote || null,
+      customerPaymentPreference: rawPreference as CustomerPaymentPreference,
+      profile,
+    });
+  } catch (error) {
+    await handleRateLimitError({
+      action: RATE_LIMIT_POLICIES.customerRequestSubmit.action,
+      error,
+      metadata: {
+        customer_payment_preference: rawPreference,
+        note_length: customerNote.length,
+      },
+      redirects: {
+        min_interval: "/request?error=submit_rate_limited",
+        window_limit: "/request?error=submit_daily_limit",
+      },
+      userId: profile.id,
+    });
+    throw error;
+  }
 
   revalidateRequestPaths();
   redirect(whatsAppUrl);
@@ -129,4 +206,31 @@ function parseQuantity(formData: FormData) {
 function revalidateRequestPaths() {
   revalidatePath("/request");
   revalidatePath("/products");
+}
+
+async function handleRateLimitError({
+  action,
+  error,
+  metadata,
+  redirects,
+  userId,
+}: {
+  action: RateLimitAction;
+  error: unknown;
+  metadata: Record<string, string | number>;
+  redirects: Record<"min_interval" | "window_limit", string>;
+  userId: string;
+}) {
+  if (!isRateLimitExceededError(error)) {
+    return;
+  }
+
+  await logRateLimitBlockedAttempt({
+    action,
+    metadata,
+    reason: error.reason,
+    userId,
+  });
+
+  redirect(redirects[error.reason]);
 }

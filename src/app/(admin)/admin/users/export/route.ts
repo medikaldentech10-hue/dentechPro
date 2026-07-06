@@ -2,10 +2,18 @@ import { NextResponse } from "next/server";
 
 import { getCurrentProfile, isAdmin } from "@/lib/auth";
 import {
+  ADMIN_PROFILE_SELECT,
   buildAdminUsersCsv,
   filterAdminUsers,
   type AdminUsersFilterKey,
 } from "@/lib/admin-users";
+import {
+  assertRateLimit,
+  isRateLimitExceededError,
+  logRateLimitBlockedAttempt,
+  RATE_LIMIT_POLICIES,
+  recordRateLimitEvent,
+} from "@/lib/rate-limit";
 import { getSupabaseAdminClient } from "@/lib/supabase/server";
 import type { Profile } from "@/lib/types/auth";
 
@@ -14,8 +22,38 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   const profile = await getCurrentProfile();
 
-  if (!isAdmin(profile)) {
+  if (!profile || !isAdmin(profile)) {
     return new NextResponse("Forbidden", { status: 403 });
+  }
+
+  try {
+    await assertRateLimit({
+      policy: RATE_LIMIT_POLICIES.adminUsersCsvExport,
+      userId: profile.id,
+    });
+  } catch (error) {
+    if (isRateLimitExceededError(error)) {
+      await logRateLimitBlockedAttempt({
+        action: RATE_LIMIT_POLICIES.adminUsersCsvExport.action,
+        metadata: {
+          route: "/admin/users/export",
+        },
+        reason: error.reason,
+        userId: profile.id,
+      });
+
+      return new NextResponse(
+        "CSV dışa aktarım limiti aşıldı. Lütfen daha sonra tekrar deneyin.",
+        {
+          headers: {
+            "Retry-After": String(error.retryAfterSeconds),
+          },
+          status: 429,
+        }
+      );
+    }
+
+    throw error;
   }
 
   const { searchParams } = new URL(request.url);
@@ -26,7 +64,7 @@ export async function GET(request: Request) {
   const supabase = getSupabaseAdminClient();
   const { data, error } = await supabase
     .from("profiles")
-    .select("*")
+    .select(ADMIN_PROFILE_SELECT)
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -43,6 +81,15 @@ export async function GET(request: Request) {
   const csv = buildAdminUsersCsv(filteredProfiles);
   const fileName = `dentech-musteriler-${formatDateToken(new Date())}.csv`;
   const excelReadyCsv = `sep=;\r\n${csv}`;
+  await recordRateLimitEvent({
+    action: RATE_LIMIT_POLICIES.adminUsersCsvExport.action,
+    metadata: {
+      filter,
+      profile_count: filteredProfiles.length,
+      query,
+    },
+    userId: profile.id,
+  });
 
   return new NextResponse(`\uFEFF${excelReadyCsv}`, {
     headers: {

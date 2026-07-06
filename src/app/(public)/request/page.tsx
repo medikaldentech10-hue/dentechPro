@@ -71,6 +71,7 @@ export default async function RequestPage({ searchParams }: RequestPageProps) {
     getActiveRequestDraft(profile),
     getUserRequestHistory(profile, filters),
   ]);
+  const error = getStringParam(query.error);
   const status = getStringParam(query.status);
   const showPrices = Boolean(profile.can_view_prices);
 
@@ -90,7 +91,9 @@ export default async function RequestPage({ searchParams }: RequestPageProps) {
         </Link>
       </div>
 
-      {status ? <RequestStatusBanner status={status} /> : null}
+      {status || error ? (
+        <RequestFeedbackBanner error={error} status={status} />
+      ) : null}
       <RequestFlowSummary />
 
       <section className="flex flex-col gap-4">
@@ -143,6 +146,47 @@ function RequestStatusBanner({ status }: { status: string }) {
       {message}
     </div>
   );
+}
+
+function RequestFeedbackBanner({
+  error,
+  status,
+}: {
+  error?: string;
+  status?: string;
+}) {
+  if (error === "item_rate_limited") {
+    return (
+      <div className="rounded-xl border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive">
+        Çok kısa sürede fazla işlem yapıldı. Lütfen birkaç saniye sonra tekrar
+        deneyin.
+      </div>
+    );
+  }
+
+  if (error === "submit_rate_limited") {
+    return (
+      <div className="rounded-xl border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive">
+        Güvenlik nedeniyle kısa süre içinde tekrar talep gönderemezsiniz.
+        Lütfen biraz sonra tekrar deneyin.
+      </div>
+    );
+  }
+
+  if (error === "submit_daily_limit") {
+    return (
+      <div className="rounded-xl border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive">
+        Günlük talep limitine ulaştınız. Acil durumlar için DENTech Medikal ile
+        iletişime geçin.
+      </div>
+    );
+  }
+
+  if (!status) {
+    return null;
+  }
+
+  return <RequestStatusBanner status={status} />;
 }
 
 function RequestFlowSummary() {

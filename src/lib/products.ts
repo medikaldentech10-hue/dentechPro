@@ -462,7 +462,7 @@ async function getGroupedProductDetailRow(row: ProductQueryRow) {
   const supabase = getSupabaseAdminClient();
   const { data, error } = await supabase
     .from("products")
-    .select("*,category:categories(*),variants:product_variants(*)")
+    .select(PRODUCT_DETAIL_SELECT)
     .eq("is_active", true)
     .eq("brand", row.brand)
     .eq("category_id", row.category_id)

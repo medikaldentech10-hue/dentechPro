@@ -6,6 +6,11 @@ import {
   type CustomerPaymentPreference,
   customerPaymentPreferenceLabel,
 } from "@/lib/customer-request-preferences";
+import {
+  assertRateLimit,
+  RATE_LIMIT_POLICIES,
+  recordRateLimitEvent,
+} from "@/lib/rate-limit";
 import { getRequestSearchTokens } from "@/lib/request-numbers";
 import { isCustomerCancellableStatus } from "@/lib/request-status";
 import type { Database, Json } from "@/lib/supabase/database.types";
@@ -131,6 +136,10 @@ export async function addVariantToDraft({
 }) {
   assertCanCreateOrderRequest(profile);
   assertPositiveInteger(quantity, "Adet");
+  await assertRateLimit({
+    policy: RATE_LIMIT_POLICIES.requestItemMutation,
+    userId: profile.id,
+  });
 
   const supabase = getSupabaseAdminClient();
   const variant = await getVariantForDraft(variantId);
@@ -146,7 +155,7 @@ export async function addVariantToDraft({
   const draft = await getOrCreateDraft(profile);
   const { data: existingItem, error: existingItemError } = await supabase
     .from("order_items")
-    .select("*")
+    .select("id,quantity")
     .eq("order_draft_id", draft.id)
     .eq("variant_id", variant.id)
     .maybeSingle();
@@ -196,6 +205,15 @@ export async function addVariantToDraft({
       variant_code: variant.variant_code,
     },
   });
+  await recordRateLimitEvent({
+    action: RATE_LIMIT_POLICIES.requestItemMutation.action,
+    metadata: {
+      draft_id: draft.id,
+      quantity,
+      variant_id: variant.id,
+    },
+    userId: profile.id,
+  });
 
   return draft.id;
 }
@@ -211,6 +229,10 @@ export async function updateDraftItemQuantity({
 }) {
   assertCanCreateOrderRequest(profile);
   assertPositiveInteger(quantity, "Adet");
+  await assertRateLimit({
+    policy: RATE_LIMIT_POLICIES.requestItemMutation,
+    userId: profile.id,
+  });
 
   const supabase = getSupabaseAdminClient();
   const item = await getOwnedDraftItem(profile.id, itemId);
@@ -244,6 +266,16 @@ export async function updateDraftItemQuantity({
       variant_id: item.variant_id,
     },
   });
+  await recordRateLimitEvent({
+    action: RATE_LIMIT_POLICIES.requestItemMutation.action,
+    metadata: {
+      item_id: item.id,
+      order_draft_id: item.order_draft_id,
+      quantity,
+      variant_id: item.variant_id,
+    },
+    userId: profile.id,
+  });
 }
 
 export async function removeDraftItem({
@@ -254,6 +286,10 @@ export async function removeDraftItem({
   profile: Profile;
 }) {
   assertCanCreateOrderRequest(profile);
+  await assertRateLimit({
+    policy: RATE_LIMIT_POLICIES.requestItemMutation,
+    userId: profile.id,
+  });
 
   const supabase = getSupabaseAdminClient();
   const item = await getOwnedDraftItem(profile.id, itemId);
@@ -272,6 +308,15 @@ export async function removeDraftItem({
       item_id: item.id,
       variant_id: item.variant_id,
     },
+  });
+  await recordRateLimitEvent({
+    action: RATE_LIMIT_POLICIES.requestItemMutation.action,
+    metadata: {
+      item_id: item.id,
+      order_draft_id: item.order_draft_id,
+      variant_id: item.variant_id,
+    },
+    userId: profile.id,
   });
 }
 
@@ -315,6 +360,10 @@ export async function submitDraftToWhatsApp({
   profile: Profile;
 }) {
   assertCanCreateOrderRequest(profile);
+  await assertRateLimit({
+    policy: RATE_LIMIT_POLICIES.customerRequestSubmit,
+    userId: profile.id,
+  });
 
   const draft = await getActiveRequestDraft(profile);
 
@@ -364,6 +413,15 @@ export async function submitDraftToWhatsApp({
       item_count: draft.items.length,
       total: draft.total,
     },
+  });
+  await recordRateLimitEvent({
+    action: RATE_LIMIT_POLICIES.customerRequestSubmit.action,
+    metadata: {
+      draft_id: draft.id,
+      item_count: draft.items.length,
+      total: draft.total,
+    },
+    userId: profile.id,
   });
 
   return buildWhatsAppUrl(
