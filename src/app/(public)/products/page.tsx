@@ -87,7 +87,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
     await recordCatalogSearch({
       profile,
       query: params.q,
-      resultCount: productResult.totalCount,
+      resultCount: productResult.totalCount ?? productResult.products.length,
     });
   });
   const products = productResult.products;
@@ -274,15 +274,16 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
         <div className="min-w-0 flex-1">
           <div className="mb-3 flex flex-col gap-2 text-sm text-muted-foreground sm:mb-4 sm:flex-row sm:items-center sm:justify-between">
             <p>
-              {productResult.totalCount} ürün içinde sayfa {productResult.page} /{" "}
-              {productResult.totalPages}
+              {productResult.totalCount !== null
+                ? `${productResult.totalCount} ürün listeleniyor`
+                : "Bu sayfadaki ürünler"}
+              <span className="ml-1">· Sayfa {productResult.page}</span>
             </p>
             <PaginationLinks
               currentPage={productResult.page}
               hasNextPage={productResult.hasNextPage}
               hasPreviousPage={productResult.hasPreviousPage}
               params={params}
-              totalPages={productResult.totalPages}
             />
           </div>
           {products.length ? (
@@ -304,7 +305,6 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
                   hasNextPage={productResult.hasNextPage}
                   hasPreviousPage={productResult.hasPreviousPage}
                   params={params}
-                  totalPages={productResult.totalPages}
                 />
               </div>
             </>
@@ -483,21 +483,17 @@ function PaginationLinks({
   hasNextPage,
   hasPreviousPage,
   params,
-  totalPages,
 }: {
   currentPage: number;
   hasNextPage: boolean;
   hasPreviousPage: boolean;
   params: ProductsSearchParams;
-  totalPages: number;
 }) {
-  if (totalPages <= 1 && !hasPreviousPage && !hasNextPage) {
+  if (!hasPreviousPage && !hasNextPage) {
     return null;
   }
 
-  const safeTotalPages = Math.max(1, totalPages);
-  const safeCurrentPage = clampPage(currentPage, safeTotalPages);
-  const visiblePages = getVisiblePages(safeCurrentPage, safeTotalPages);
+  const safeCurrentPage = Math.max(1, currentPage);
 
   return (
     <nav
@@ -508,82 +504,36 @@ function PaginationLinks({
         <PageArrowLink
           direction="previous"
           disabled={!hasPreviousPage || safeCurrentPage <= 1}
-          href={getPageHref(params, safeCurrentPage - 1, safeTotalPages)}
+          href={getPageHref(params, safeCurrentPage - 1)}
         />
         <span className="text-xs font-medium text-muted-foreground">
-          Sayfa {safeCurrentPage} / {safeTotalPages}
+          Sayfa {safeCurrentPage}
         </span>
         <PageArrowLink
           direction="next"
-          disabled={!hasNextPage || safeCurrentPage >= safeTotalPages}
-          href={getPageHref(params, safeCurrentPage + 1, safeTotalPages)}
+          disabled={!hasNextPage}
+          href={getPageHref(params, safeCurrentPage + 1)}
         />
       </div>
       <div className="hidden items-center gap-2 sm:flex">
         {hasPreviousPage && safeCurrentPage > 1 ? (
           <Link
             className={cn(buttonVariants({ variant: "outline" }), "h-9 px-3 text-sm")}
-            href={getPageHref(params, safeCurrentPage - 1, safeTotalPages)}
+            href={getPageHref(params, safeCurrentPage - 1)}
           >
             Önceki
           </Link>
         ) : null}
-        <div className="flex items-center gap-1">
-          {visiblePages.map((page, index) => {
-            const previousPage = visiblePages[index - 1];
-            const hasGap = previousPage ? page - previousPage > 1 : false;
-
-            return (
-              <span className="flex items-center gap-1" key={page}>
-                {hasGap ? (
-                  <span className="px-1 text-xs text-muted-foreground" aria-hidden="true">
-                    ...
-                  </span>
-                ) : null}
-                <Link
-                  aria-current={page === safeCurrentPage ? "page" : undefined}
-                  className={cn(
-                    buttonVariants({
-                      variant: page === safeCurrentPage ? "default" : "outline",
-                    }),
-                    "size-9 px-0 text-sm"
-                  )}
-                  href={getPageHref(params, page, safeTotalPages)}
-                >
-                  {page}
-                </Link>
-              </span>
-            );
-          })}
-        </div>
-        {hasNextPage && safeCurrentPage < safeTotalPages ? (
+        <span className="text-sm font-medium text-muted-foreground">Sayfa {safeCurrentPage}</span>
+        {hasNextPage ? (
           <Link
             className={cn(buttonVariants({ variant: "outline" }), "h-9 px-3 text-sm")}
-            href={getPageHref(params, safeCurrentPage + 1, safeTotalPages)}
+            href={getPageHref(params, safeCurrentPage + 1)}
           >
             Sonraki
           </Link>
         ) : null}
       </div>
-      <form
-        className="flex w-full items-center justify-center gap-1 sm:w-auto"
-        action="/products"
-        key={`pagination-${getFilterUiStateKey(params)}-${safeCurrentPage}`}
-      >
-        <PreservedSearchParamInputs params={params} />
-        <Input
-          aria-label="Sayfa numarası"
-          className="h-8 w-14 px-2 text-center text-xs sm:h-9 sm:w-16 sm:text-sm"
-          defaultValue={safeCurrentPage}
-          max={safeTotalPages}
-          min={1}
-          name="page"
-          type="number"
-        />
-        <Button className="h-8 rounded-full px-3 text-xs sm:h-9 sm:rounded-md sm:text-sm" type="submit" variant="outline">
-          Git
-        </Button>
-      </form>
     </nav>
   );
 }
@@ -628,11 +578,10 @@ function PageArrowLink({
 
 function getPageHref(
   params: ProductsSearchParams,
-  page: number,
-  totalPages?: number
+  page: number
 ) {
   const nextParams = new URLSearchParams();
-  const safePage = totalPages ? clampPage(page, totalPages) : Math.max(1, page);
+  const safePage = Math.max(1, page);
 
   if (params.q) nextParams.set("q", params.q);
   if (params.brand) nextParams.set("brand", params.brand);
@@ -668,26 +617,6 @@ function PreservedSearchParamInputs({
       ) : null}
     </>
   );
-}
-
-function getVisiblePages(currentPage: number, totalPages: number) {
-  const pages = new Set<number>([1, totalPages]);
-
-  for (let page = currentPage - 2; page <= currentPage + 2; page += 1) {
-    if (page >= 1 && page <= totalPages) {
-      pages.add(page);
-    }
-  }
-
-  return Array.from(pages).sort((a, b) => a - b);
-}
-
-function clampPage(page: number, totalPages: number) {
-  if (!Number.isFinite(page)) {
-    return 1;
-  }
-
-  return Math.min(Math.max(1, Math.floor(page)), Math.max(1, totalPages));
 }
 
 function getFilterUiStateKey(params: ProductsSearchParams) {

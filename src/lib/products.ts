@@ -77,8 +77,8 @@ export type ProductListResult<TProduct> = {
   page: number;
   pageSize: number;
   products: TProduct[];
-  totalCount: number;
-  totalPages: number;
+  totalCount: number | null;
+  totalPages: number | null;
 };
 
 type CatalogVariantRow = Pick<
@@ -122,8 +122,8 @@ type ProductRowsResult = {
   page: number;
   pageSize: number;
   rows: ProductQueryRow[];
-  totalCount: number;
-  totalPages: number;
+  totalCount: number | null;
+  totalPages: number | null;
 };
 
 const PRODUCT_DETAIL_SELECT =
@@ -301,28 +301,18 @@ async function getProductRows(
     .eq("brand", normalizedBrand)
     .order("product_name", { ascending: true });
 
-  let countQuery = supabase
-    .from("products")
-    .select("id", { count: "exact", head: true })
-    .eq("is_active", true)
-    .eq("brand", normalizedBrand);
-
   if (categoryId) {
     query = query.eq("category_id", categoryId);
-    countQuery = countQuery.eq("category_id", categoryId);
   }
 
   if (normalizedUsage) {
     query = query.eq("usage_area", normalizedUsage);
-    countQuery = countQuery.eq("usage_area", normalizedUsage);
   }
 
   if (priceFilteredProductIds) {
     query = query.in("id", priceFilteredProductIds);
-    countQuery = countQuery.in("id", priceFilteredProductIds);
   }
 
-  let totalCountFromQuery: number | null = null;
   if (search) {
     const productIds = uniqueStrings([
       ...(searchCandidateProductIds ?? []),
@@ -336,32 +326,23 @@ async function getProductRows(
     }
 
     query = query.in("id", productIds).limit(500);
-    countQuery = countQuery.in("id", productIds);
   } else {
-    const rawFrom = (page - 1) * pageSize;
-    const rawTo = rawFrom + pageSize * 2 - 1;
+    const rawFrom = 0;
+    const rawTo = Math.max(pageSize * 2, page * pageSize * 2) - 1;
     query = query.range(rawFrom, rawTo);
   }
 
-  const [productResult, countResult] = await Promise.all([
-    measureCheckpoint("productQueryMs", async () => query),
-    measureCheckpoint("countQueryMs", async () => countQuery),
-  ]);
+  const productResult = await measureCheckpoint("productQueryMs", async () => query);
   const { data, error } = productResult;
 
   if (error) {
     throw new Error(error.message);
   }
 
-  if (countResult.error) {
-    throw new Error(countResult.error.message);
-  }
-
-  totalCountFromQuery = countResult.count ?? null;
-
   const productRows = normalizeListProductRows(data ?? []);
   let paginatedRows: ProductQueryRow[];
-  let totalCount: number;
+  let totalCount: number | null;
+  let hasNextPage: boolean;
 
   if (search) {
     const variantSummaries = await measureCheckpoint("variantQueryMs", async () =>
@@ -387,13 +368,19 @@ async function getProductRows(
     const groupedRows = groupCatalogProductRows(rows, searchedRows);
     const from = (page - 1) * pageSize;
     const to = from + pageSize;
+    const nextRow = groupedRows[to];
     paginatedRows = groupedRows.slice(from, to);
     totalCount = groupedRows.length;
+    hasNextPage = Boolean(nextRow);
     checkpoints.mappingMs = Math.round(performance.now() - mappingStartedAt);
   } else {
-    const visibleGroups = getVisibleProductGroups(productRows, pageSize);
+    const groupedRows = getVisibleProductGroups(productRows);
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize;
+    const currentGroups = groupedRows.slice(from, to);
+    const nextGroup = groupedRows[to];
     const visibleProductIds = uniqueStrings(
-      visibleGroups.flatMap((group) => group.map((row) => row.id))
+      currentGroups.flatMap((group) => group.map((row) => row.id))
     );
     const variantSummaries = await measureCheckpoint("variantQueryMs", async () =>
       visibleProductIds.length
@@ -404,7 +391,7 @@ async function getProductRows(
         : new Map<string, CatalogVariantRow[]>()
     );
     const mappingStartedAt = performance.now();
-    paginatedRows = visibleGroups.map((group) =>
+    paginatedRows = currentGroups.map((group) =>
       mergeProductFamilyRows(
         group.map((product) => ({
           ...product,
@@ -412,7 +399,8 @@ async function getProductRows(
         }))
       )
     );
-    totalCount = totalCountFromQuery ?? paginatedRows.length;
+    totalCount = null;
+    hasNextPage = Boolean(nextGroup);
     checkpoints.mappingMs = Math.round(performance.now() - mappingStartedAt);
   }
   const variantCount = paginatedRows.reduce(
@@ -429,20 +417,21 @@ async function getProductRows(
     fetchedRowCount: productRows.length,
     productCount: paginatedRows.length,
     rawProductCount: productRows.length,
+    countSkipped: !search,
+    hasNext: hasNextPage,
+    hasPrevious: page > 1,
     totalCount,
     variantCount,
   });
 
-  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
-
   return {
-    hasNextPage: page < totalPages,
+    hasNextPage,
     hasPreviousPage: page > 1,
     page,
     pageSize,
     rows: paginatedRows,
     totalCount,
-    totalPages,
+    totalPages: totalCount === null ? null : Math.max(1, Math.ceil(totalCount / pageSize)),
   };
 }
 
@@ -814,10 +803,7 @@ function groupCatalogProductRows(
     .sort((left, right) => left.product_name.localeCompare(right.product_name, "tr-TR"));
 }
 
-function getVisibleProductGroups(
-  rows: Array<Omit<ProductQueryRow, "variants">>,
-  limit: number
-) {
+function getVisibleProductGroups(rows: Array<Omit<ProductQueryRow, "variants">>) {
   const groups = rows.reduce((currentGroups, row) => {
     const key = getProductFamilyKey(row);
     const current = currentGroups.get(key) ?? [];
@@ -831,8 +817,7 @@ function getVisibleProductGroups(
       const leftCanonical = getCanonicalGroupRow(left);
       const rightCanonical = getCanonicalGroupRow(right);
       return leftCanonical.product_name.localeCompare(rightCanonical.product_name, "tr-TR");
-    })
-    .slice(0, limit);
+    });
 }
 
 function getCanonicalGroupRow<T extends Pick<ProductQueryRow, "product_name">>(rows: T[]) {
