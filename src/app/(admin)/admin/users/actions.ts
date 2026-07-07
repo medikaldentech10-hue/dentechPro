@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 
 import { requireAdmin } from "@/lib/auth";
 import type { Database, Json } from "@/lib/supabase/database.types";
@@ -88,6 +89,7 @@ const reviewConfig: Record<
 };
 
 export async function reviewUserAction(formData: FormData) {
+  const startedAt = performance.now();
   const adminProfile = await requireAdmin();
   const targetUserId = getString(formData, "user_id");
   const intentValue = getString(formData, "intent");
@@ -145,69 +147,35 @@ export async function reviewUserAction(formData: FormData) {
     throw new Error(auditError.message);
   }
 
-  revalidatePath("/admin");
   revalidatePath("/admin/users");
+  logAdminPerf("admin.reviewUser", {
+    action: intentValue,
+    durationMs: Math.round(performance.now() - startedAt),
+  });
 }
 
 export async function updateUserProfileAction(
   _previousState: UpdateUserProfileActionState,
   formData: FormData
 ): Promise<UpdateUserProfileActionState> {
-  const adminProfile = await requireAdmin();
-  const userId = getString(formData, "user_id");
+  const result = await persistUserProfileUpdate(formData);
 
-  if (!userId) {
-    return { error: "Güncellenecek kullanıcı bulunamadı." };
+  if (result.error) {
+    return { error: result.error };
   }
-
-  const patch = parseProfilePatch(formData);
-
-  if ("error" in patch) {
-    return patch;
-  }
-
-  const supabase = getSupabaseAdminClient();
-  const { data: oldProfile, error: oldProfileError } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", userId)
-    .single();
-
-  if (oldProfileError) {
-    return { error: oldProfileError.message };
-  }
-
-  const { data: newProfile, error: updateError } = await supabase
-    .from("profiles")
-    .update(patch)
-    .eq("id", userId)
-    .select("*")
-    .single();
-
-  if (updateError) {
-    return { error: updateError.message };
-  }
-
-  const changes = summarizeProfileChanges(oldProfile, newProfile);
-
-  if (Object.keys(changes).length > 0) {
-    const { error: auditError } = await supabase.from("audit_logs").insert({
-      action: "profile_updated",
-      entity_id: userId,
-      entity_type: "profile",
-      new_value: toJson(changes),
-      user_id: adminProfile.id,
-    });
-
-    if (auditError) {
-      return { error: auditError.message };
-    }
-  }
-
-  revalidatePath("/admin");
-  revalidatePath("/admin/users");
 
   return { success: "Profil bilgileri güncellendi." };
+}
+
+export async function updateUserProfileFormAction(formData: FormData) {
+  const result = await persistUserProfileUpdate(formData);
+  const returnTo = getSafeReturnTo(getString(formData, "return_to"));
+
+  if (result.error) {
+    throw new Error(result.error);
+  }
+
+  redirect(returnTo);
 }
 
 function activeProfilePatch(role: UserRole): ProfilePatch {
@@ -254,6 +222,7 @@ function parseProfilePatch(
     const district = getNullableString(formData, "district", 80);
     const specialty = getNullableString(formData, "specialty", 120);
     const requestedRoleValue = getString(formData, "requested_role");
+    const roleValue = getString(formData, "role");
 
     if (
       requestedRoleValue &&
@@ -263,6 +232,19 @@ function parseProfilePatch(
       requestedRoleValue !== "other"
     ) {
       return { error: "Talep edilen rol geçersiz." };
+    }
+
+    if (
+      roleValue &&
+      roleValue !== "admin" &&
+      roleValue !== "sales_rep" &&
+      roleValue !== "pending_user" &&
+      roleValue !== "approved_doctor" &&
+      roleValue !== "approved_lab" &&
+      roleValue !== "approved_vet" &&
+      roleValue !== "suspended_user"
+    ) {
+      return { error: "Mevcut rol geçersiz." };
     }
 
     const requestedRole: ProfilePatch["requested_role"] =
@@ -276,6 +258,7 @@ function parseProfilePatch(
     return {
       city,
       clinic_name: clinicName,
+      ...buildRolePatch(roleValue as UserRole | ""),
       company_name: companyName,
       district,
       full_name: fullName,
@@ -285,9 +268,83 @@ function parseProfilePatch(
     };
   } catch (error) {
     return {
-      error: error instanceof Error ? mapProfileFieldError(error.message) : "Profil güncellenemedi.",
+      error:
+        error instanceof Error
+          ? mapProfileFieldError(error.message)
+          : "Profil güncellenemedi.",
     };
   }
+}
+
+async function persistUserProfileUpdate(formData: FormData) {
+  const startedAt = performance.now();
+  const adminProfile = await requireAdmin();
+  const userId = getString(formData, "user_id");
+  const submittedRole = getString(formData, "role");
+
+  if (!userId) {
+    return { error: "Güncellenecek kullanıcı bulunamadı." };
+  }
+
+  const patch = parseProfilePatch(formData);
+
+  if ("error" in patch) {
+    return patch;
+  }
+
+  const supabase = getSupabaseAdminClient();
+  const { data: oldProfile, error: oldProfileError } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", userId)
+    .single();
+
+  if (oldProfileError) {
+    return { error: oldProfileError.message };
+  }
+
+  const { data: newProfile, error: updateError } = await supabase
+    .from("profiles")
+    .update(patch)
+    .eq("id", userId)
+    .select("*")
+    .single();
+
+  if (updateError) {
+    return { error: updateError.message };
+  }
+
+  const changes = summarizeProfileChanges(oldProfile, newProfile);
+
+  if (Object.keys(changes).length > 0) {
+    const action =
+      oldProfile.role !== newProfile.role ? "user_role_changed" : "profile_updated";
+    const { error: auditError } = await supabase.from("audit_logs").insert({
+      action,
+      entity_id: userId,
+      entity_type: "profile",
+      new_value: toJson(changes),
+      user_id: adminProfile.id,
+    });
+
+    if (auditError) {
+      return { error: auditError.message };
+    }
+  }
+
+  revalidatePath("/admin/users");
+  logAdminPerf("admin.roleChange.action", {
+    currentRole: oldProfile.role,
+    durationMs: Math.round(performance.now() - startedAt),
+    submittedRole,
+    updatedRole: newProfile.role,
+  });
+  logAdminPerf("admin.saveProfile", {
+    action: oldProfile.role !== newProfile.role ? "role_updated" : "profile_updated",
+    durationMs: Math.round(performance.now() - startedAt),
+  });
+
+  return { success: "Profil bilgileri güncellendi." };
 }
 
 function mapProfileFieldError(message: string) {
@@ -319,6 +376,10 @@ function mapProfileFieldError(message: string) {
     return "Uzmanlık alanı çok uzun.";
   }
 
+  if (message.includes("role")) {
+    return "Rol bilgisi kaydedilemedi.";
+  }
+
   return "Profil bilgileri kaydedilemedi.";
 }
 
@@ -332,6 +393,10 @@ function summarizeProfileChanges(oldProfile: Profile, newProfile: Profile) {
     "district",
     "specialty",
     "requested_role",
+    "role",
+    "verification_status",
+    "is_active",
+    "can_view_prices",
   ];
 
   return fields.reduce<Record<string, { from: unknown; to: unknown }>>(
@@ -349,6 +414,54 @@ function summarizeProfileChanges(oldProfile: Profile, newProfile: Profile) {
   );
 }
 
+function buildRolePatch(role: UserRole | ""): ProfilePatch {
+  switch (role) {
+    case "admin":
+    case "sales_rep":
+    case "approved_doctor":
+    case "approved_lab":
+    case "approved_vet":
+      return {
+        can_view_prices: true,
+        is_active: true,
+        role,
+        verification_status: "approved",
+      };
+    case "pending_user":
+      return {
+        can_view_prices: false,
+        is_active: true,
+        role,
+        verification_status: "pending",
+      };
+    case "suspended_user":
+      return {
+        can_view_prices: false,
+        is_active: false,
+        role,
+        verification_status: "suspended",
+      };
+    default:
+      return {};
+  }
+}
+
+function getSafeReturnTo(value: string) {
+  if (!value.startsWith("/admin/users")) {
+    return "/admin/users";
+  }
+
+  return value;
+}
+
 function toJson(value: unknown): Json {
   return JSON.parse(JSON.stringify(value)) as Json;
+}
+
+function logAdminPerf(event: string, payload: Record<string, unknown>) {
+  if (process.env.DENTECH_PERF_LOGS !== "true") {
+    return;
+  }
+
+  console.info(`[${event}]`, payload);
 }
