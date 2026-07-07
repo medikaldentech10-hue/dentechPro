@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import {
   createDefaultProfileForUser,
   getPostLoginRedirect,
-  getProfileForUser,
+  getRoutingProfileForUser,
   isAllowedUserType,
   logAuthRedirect,
   type RegistrationProfileFields,
@@ -21,6 +21,7 @@ export async function signInAction(
   _previousState: AuthActionState,
   formData: FormData
 ): Promise<AuthActionState> {
+  const startedAt = performance.now();
   const email = getRequiredString(formData, "email");
   const password = getRequiredString(formData, "password");
 
@@ -29,7 +30,7 @@ export async function signInAction(
   }
 
   const supabase = await getSupabaseServerClient();
-  const { error } = await supabase.auth.signInWithPassword({
+  const { data, error } = await supabase.auth.signInWithPassword({
     email,
     password,
   });
@@ -39,16 +40,19 @@ export async function signInAction(
     return { error: mapSignInError(error.message) };
   }
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = data.user;
 
   if (!user) {
     return { error: "Oturum başlatılamadı. Lütfen tekrar deneyin." };
   }
 
-  const profile = await getProfileForUser(user);
+  const profile = await getRoutingProfileForUser(user);
   logAuthRedirect("sign-in", profile);
+  logAuthPerf("login.action", {
+    durationMs: Math.round(performance.now() - startedAt),
+    redirectTarget: getPostLoginRedirect(profile),
+    role: profile.role,
+  });
 
   redirect(getPostLoginRedirect(profile));
 }
@@ -218,4 +222,12 @@ function mapSignInError(message: string) {
   }
 
   return "Giriş sırasında beklenmeyen bir hata oluştu.";
+}
+
+function logAuthPerf(event: string, payload: Record<string, unknown>) {
+  if (process.env.DENTECH_PERF_LOGS !== "true") {
+    return;
+  }
+
+  console.info(`[${event}]`, payload);
 }

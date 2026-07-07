@@ -38,6 +38,8 @@ export type RequestDraft = OrderDraftRow & {
   items: RequestListItem[];
 };
 
+export type RequestDraftTotals = Pick<OrderDraftRow, "subtotal" | "total">;
+
 export type RequestHistoryFilters = {
   createdFrom?: string;
   createdTo?: string;
@@ -75,13 +77,24 @@ export function canCreateOrderRequest(profile: Profile | null) {
 
 export async function getActiveRequestDraft(profile: Profile) {
   assertCanCreateOrderRequest(profile);
+  const startedAt = performance.now();
   const draft = await findDraft(profile.id);
 
   if (!draft) {
+    logRequestPerf("request.activeDraft", {
+      durationMs: Math.round(performance.now() - startedAt),
+      found: false,
+    });
     return null;
   }
 
-  return hydrateDraft(draft);
+  const hydratedDraft = await hydrateDraft(draft);
+  logRequestPerf("request.activeDraft", {
+    durationMs: Math.round(performance.now() - startedAt),
+    found: true,
+    itemCount: hydratedDraft.items.length,
+  });
+  return hydratedDraft;
 }
 
 export async function getUserRequestHistory(
@@ -89,6 +102,7 @@ export async function getUserRequestHistory(
   filters: RequestHistoryFilters = {}
 ) {
   assertCanCreateOrderRequest(profile);
+  const startedAt = performance.now();
 
   const supabase = getSupabaseAdminClient();
   let query = supabase
@@ -97,7 +111,7 @@ export async function getUserRequestHistory(
     .eq("created_by_user_id", profile.id)
     .neq("status", "draft")
     .order("updated_at", { ascending: false })
-    .limit(50);
+    .limit(10);
 
   if (filters.status && filters.status !== "all") {
     if (filters.status === "submitted") {
@@ -121,7 +135,13 @@ export async function getUserRequestHistory(
     throw new Error(error.message);
   }
 
-  const hydratedDrafts = await Promise.all((data ?? []).map(hydrateDraft));
+  const hydratedDrafts = await hydrateDrafts((data ?? []) as OrderDraftRow[]);
+  logRequestPerf("request.history", {
+    durationMs: Math.round(performance.now() - startedAt),
+    draftCount: hydratedDrafts.length,
+    filterStatus: filters.status ?? "all",
+    hasQuery: Boolean(filters.query),
+  });
   return filterRequestHistorySearch(hydratedDrafts, filters.query);
 }
 
@@ -255,7 +275,7 @@ export async function updateDraftItemQuantity({
     throw new Error(error.message);
   }
 
-  await recalculateDraftTotals(item.order_draft_id);
+  const totals = await recalculateDraftTotals(item.order_draft_id);
   await writeDraftAuditLog({
     action: "draft_item_quantity_updated",
     draftId: item.order_draft_id,
@@ -276,6 +296,15 @@ export async function updateDraftItemQuantity({
     },
     userId: profile.id,
   });
+
+  return {
+    itemId: item.id,
+    lineTotal: calculateLineTotal(variant.price, quantity),
+    quantity,
+    subtotal: totals.subtotal,
+    total: totals.total,
+    unitPrice: variant.price,
+  };
 }
 
 export async function removeDraftItem({
@@ -299,7 +328,7 @@ export async function removeDraftItem({
     throw new Error(error.message);
   }
 
-  await recalculateDraftTotals(item.order_draft_id);
+  const totals = await recalculateDraftTotals(item.order_draft_id);
   await writeDraftAuditLog({
     action: "draft_item_removed",
     draftId: item.order_draft_id,
@@ -318,6 +347,12 @@ export async function removeDraftItem({
     },
     userId: profile.id,
   });
+
+  return {
+    itemId: item.id,
+    subtotal: totals.subtotal,
+    total: totals.total,
+  };
 }
 
 export async function clearDraft(profile: Profile) {
@@ -608,37 +643,70 @@ async function findLatestSubmittedDraft(userId: string) {
 }
 
 async function hydrateDraft(draft: OrderDraftRow): Promise<RequestDraft> {
+  const drafts = await hydrateDrafts([draft]);
+  return drafts[0] ?? { ...draft, items: [] };
+}
+
+async function hydrateDrafts(drafts: OrderDraftRow[]): Promise<RequestDraft[]> {
+  if (!drafts.length) {
+    return [];
+  }
+
   const supabase = getSupabaseAdminClient();
   const { data, error } = await supabase
     .from("order_items")
     .select(
       `${REQUEST_ITEM_COLUMNS},variant:product_variants(currency,is_active,manufacturer_ref,stock_quantity,variant_code,product:products(id,product_group_code,product_name))`
     )
-    .eq("order_draft_id", draft.id)
+    .in(
+      "order_draft_id",
+      drafts.map((draft) => draft.id)
+    )
     .order("created_at", { ascending: true });
 
   if (error) {
     throw new Error(error.message);
   }
 
-  return {
+  const itemsByDraftId = ((data ?? []) as unknown as DraftItemQueryRow[]).reduce(
+    (currentItemsByDraftId, item) => {
+      const currentItems = currentItemsByDraftId.get(item.order_draft_id) ?? [];
+      currentItems.push({
+        ...item,
+        product: {
+          id: item.variant.product?.id ?? "",
+          product_group_code: item.variant.product?.product_group_code ?? "",
+          product_name: item.variant.product?.product_name ?? "Ürün",
+        },
+        variant: {
+          currency: item.variant.currency,
+          is_active: item.variant.is_active,
+          manufacturer_ref: item.variant.manufacturer_ref,
+          stock_quantity: item.variant.stock_quantity,
+          variant_code: item.variant.variant_code,
+        },
+      });
+      currentItemsByDraftId.set(item.order_draft_id, currentItems);
+      return currentItemsByDraftId;
+    },
+    new Map<string, RequestListItem[]>()
+  );
+
+  return drafts.map((draft) => ({
     ...draft,
-    items: ((data ?? []) as unknown as DraftItemQueryRow[]).map((item) => ({
-      ...item,
-      product: {
-        id: item.variant.product?.id ?? "",
-        product_group_code: item.variant.product?.product_group_code ?? "",
-        product_name: item.variant.product?.product_name ?? "Ürün",
-      },
-      variant: {
-        currency: item.variant.currency,
-        is_active: item.variant.is_active,
-        manufacturer_ref: item.variant.manufacturer_ref,
-        stock_quantity: item.variant.stock_quantity,
-        variant_code: item.variant.variant_code,
-      },
-    })),
-  };
+    items: itemsByDraftId.get(draft.id) ?? [],
+  }));
+}
+
+function logRequestPerf(event: string, payload: Record<string, unknown>) {
+  if (
+    process.env.NODE_ENV !== "development" &&
+    process.env.DENTECH_PERF_LOGS !== "true"
+  ) {
+    return;
+  }
+
+  console.info(`[${event}]`, payload);
 }
 
 async function getVariantForDraft(variantId: string) {
@@ -681,7 +749,7 @@ async function getOwnedDraftItem(userId: string, itemId: string) {
   return item;
 }
 
-async function recalculateDraftTotals(draftId: string) {
+async function recalculateDraftTotals(draftId: string): Promise<RequestDraftTotals> {
   const supabase = getSupabaseAdminClient();
   const { data, error } = await supabase
     .from("order_items")
@@ -697,17 +765,21 @@ async function recalculateDraftTotals(draftId: string) {
     0
   );
 
+  const totals: RequestDraftTotals = {
+    subtotal,
+    total: subtotal,
+  };
+
   const { error: updateError } = await supabase
     .from("order_drafts")
-    .update({
-      subtotal,
-      total: subtotal,
-    })
+    .update(totals)
     .eq("id", draftId);
 
   if (updateError) {
     throw new Error(updateError.message);
   }
+
+  return totals;
 }
 
 async function writeDraftAuditLog({

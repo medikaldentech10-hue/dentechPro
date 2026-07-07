@@ -18,6 +18,7 @@ import { getSupabaseAdminClient } from "@/lib/supabase/server";
 type DraftUpdate = Database["public"]["Tables"]["order_drafts"]["Update"];
 
 export async function updateRequestStatusAction(formData: FormData) {
+  const startedAt = performance.now();
   const adminProfile = await requireAdmin();
   const requestId = getString(formData, "request_id");
   const status = getString(formData, "status");
@@ -72,10 +73,15 @@ export async function updateRequestStatusAction(formData: FormData) {
 
   revalidatePath("/admin/requests");
   revalidatePath(`/admin/requests/${requestId}`);
+  logAdminPerf("admin.updateRequestStatus", {
+    durationMs: Math.round(performance.now() - startedAt),
+    status,
+  });
   redirect(`/admin/requests/${requestId}?status=updated`);
 }
 
 export async function updateRequestPaymentInfoAction(formData: FormData) {
+  const startedAt = performance.now();
   const adminProfile = await requireAdmin();
   const requestId = getString(formData, "request_id");
   const rawMethod = getString(formData, "payment_method");
@@ -119,10 +125,22 @@ export async function updateRequestPaymentInfoAction(formData: FormData) {
 
   revalidatePath("/admin/requests");
   revalidatePath(`/admin/requests/${requestId}`);
+  logAdminPerf("admin.updateRequestStatus", {
+    durationMs: Math.round(performance.now() - startedAt),
+    status: "payment_info_updated",
+  });
   redirect(`/admin/requests/${requestId}?payment=updated`);
 }
 
 function getString(formData: FormData, key: string) {
   const value = formData.get(key);
   return typeof value === "string" ? value.trim() : "";
+}
+
+function logAdminPerf(event: string, payload: Record<string, unknown>) {
+  if (process.env.DENTECH_PERF_LOGS !== "true") {
+    return;
+  }
+
+  console.info(`[${event}]`, payload);
 }

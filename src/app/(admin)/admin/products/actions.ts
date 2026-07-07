@@ -1,6 +1,6 @@
 "use server";
 
-import { refresh, revalidatePath } from "next/cache";
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { requireAdmin } from "@/lib/auth";
@@ -11,6 +11,7 @@ type ProductUpdate = Database["public"]["Tables"]["products"]["Update"];
 type VariantUpdate = Database["public"]["Tables"]["product_variants"]["Update"];
 
 export async function updateProductAction(formData: FormData) {
+  const startedAt = performance.now();
   const adminProfile = await requireApprovedAdmin();
   const productId = getRequiredString(formData, "product_id");
   const productGroupCode = getRequiredString(formData, "product_group_code");
@@ -69,6 +70,10 @@ export async function updateProductAction(formData: FormData) {
   });
 
   revalidateProductPaths(productId, newProduct.product_group_code);
+  logAdminPerf("admin.productSave", {
+    durationMs: Math.round(performance.now() - startedAt),
+    target: "product",
+  });
   redirect(`/admin/products/${productId}?status=product-updated`);
 }
 
@@ -116,6 +121,7 @@ export async function toggleProductActiveAction(formData: FormData) {
 }
 
 export async function updateVariantAction(formData: FormData) {
+  const startedAt = performance.now();
   const adminProfile = await requireApprovedAdmin();
   const productId = getRequiredString(formData, "product_id");
   const variantId = getRequiredString(formData, "variant_id");
@@ -179,6 +185,10 @@ export async function updateVariantAction(formData: FormData) {
   });
 
   await revalidateProductPathsForVariant(productId);
+  logAdminPerf("admin.updateProductQuantity", {
+    durationMs: Math.round(performance.now() - startedAt),
+    target: "variant",
+  });
   redirect(`/admin/products/${productId}?status=variant-updated`);
 }
 
@@ -342,7 +352,6 @@ function revalidateProductPaths(productId: string, productSlug?: string | null) 
   if (productSlug) {
     revalidatePath(`/products/${productSlug}`);
   }
-  refresh();
 }
 
 function getRequiredString(formData: FormData, key: string) {
@@ -435,4 +444,12 @@ function getStockStatus(stockQuantity: number) {
   }
 
   return "in_stock";
+}
+
+function logAdminPerf(event: string, payload: Record<string, unknown>) {
+  if (process.env.DENTECH_PERF_LOGS !== "true") {
+    return;
+  }
+
+  console.info(`[${event}]`, payload);
 }

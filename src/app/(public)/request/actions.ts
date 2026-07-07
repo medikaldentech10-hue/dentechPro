@@ -13,6 +13,7 @@ import {
   cancelCustomerRequest,
   clearDraft,
   removeDraftItem,
+  type RequestDraftTotals,
   submitDraftToWhatsApp,
   updateDraftItemQuantity,
 } from "@/lib/order-drafts";
@@ -87,6 +88,113 @@ export async function updateOrderItemQuantityAction(formData: FormData) {
   redirect("/request?status=updated");
 }
 
+export type RequestItemMutationResult = RequestDraftTotals & {
+  error?: string;
+  itemId?: string;
+  lineTotal?: number;
+  quantity?: number;
+  removed?: boolean;
+  success?: boolean;
+  unitPrice?: number | null;
+};
+
+export async function addToOrderDraftInlineAction(input: {
+  quantity: number;
+  variantId: string;
+}): Promise<{
+  error?: string;
+  success?: boolean;
+}> {
+  const startedAt = performance.now();
+
+  try {
+    const profile = await getRequiredProfile();
+    await addVariantToDraft({
+      profile,
+      quantity: input.quantity,
+      variantId: input.variantId,
+    });
+
+    revalidateRequestPaths();
+    logRequestActionPerf("request.addItem", {
+      durationMs: Math.round(performance.now() - startedAt),
+      quantity: input.quantity,
+      success: true,
+    });
+
+    return { success: true };
+  } catch (error) {
+    const message = await getInlineMutationErrorMessage({
+      action: RATE_LIMIT_POLICIES.requestItemMutation.action,
+      error,
+      metadata: {
+        quantity: input.quantity,
+        variant_id: input.variantId,
+      },
+    });
+
+    logRequestActionPerf("request.addItem", {
+      durationMs: Math.round(performance.now() - startedAt),
+      quantity: input.quantity,
+      success: false,
+    });
+
+    return { error: message };
+  }
+}
+
+export async function updateOrderItemQuantityInlineAction(
+  input: {
+    itemId: string;
+    quantity: number;
+  }
+): Promise<RequestItemMutationResult> {
+  const startedAt = performance.now();
+
+  try {
+    const profile = await getRequiredProfile();
+    const result = await updateDraftItemQuantity({
+      itemId: input.itemId,
+      profile,
+      quantity: input.quantity,
+    });
+
+    revalidatePath("/request");
+    logRequestActionPerf("request.updateQuantity", {
+      durationMs: Math.round(performance.now() - startedAt),
+      quantity: input.quantity,
+      success: true,
+    });
+
+    return {
+      ...result,
+      success: true,
+    };
+  } catch (error) {
+    const message = await getInlineMutationErrorMessage({
+      action: RATE_LIMIT_POLICIES.requestItemMutation.action,
+      error,
+      metadata: {
+        item_id: input.itemId,
+        quantity: input.quantity,
+      },
+    });
+    logRequestActionPerf("request.updateQuantity", {
+      durationMs: Math.round(performance.now() - startedAt),
+      quantity: input.quantity,
+      success: false,
+    });
+
+    return {
+      error: message,
+      itemId: input.itemId,
+      quantity: input.quantity,
+      subtotal: 0,
+      total: 0,
+    };
+  }
+}
+
 export async function removeOrderItemAction(formData: FormData) {
   const profile = await getRequiredProfile();
   const itemId = getRequiredString(formData, "item_id");
@@ -117,6 +225,51 @@ export async function removeOrderItemAction(formData: FormData) {
   redirect("/request?status=removed");
 }
 
+export async function removeOrderItemInlineAction(input: {
+  itemId: string;
+}): Promise<RequestItemMutationResult> {
+  const startedAt = performance.now();
+
+  try {
+    const profile = await getRequiredProfile();
+    const result = await removeDraftItem({
+      itemId: input.itemId,
+      profile,
+    });
+
+    revalidatePath("/request");
+    logRequestActionPerf("request.removeItem", {
+      durationMs: Math.round(performance.now() - startedAt),
+      success: true,
+    });
+
+    return {
+      ...result,
+      removed: true,
+      success: true,
+    };
+  } catch (error) {
+    const message = await getInlineMutationErrorMessage({
+      action: RATE_LIMIT_POLICIES.requestItemMutation.action,
+      error,
+      metadata: {
+        item_id: input.itemId,
+      },
+    });
+    logRequestActionPerf("request.removeItem", {
+      durationMs: Math.round(performance.now() - startedAt),
+      success: false,
+    });
+
+    return {
+      error: message,
+      itemId: input.itemId,
+      subtotal: 0,
+      total: 0,
+    };
+  }
+}
+
 export async function clearOrderDraftAction() {
   const profile = await getRequiredProfile();
 
@@ -126,6 +279,7 @@ export async function clearOrderDraftAction() {
 }
 
 export async function submitOrderDraftToWhatsAppAction(formData: FormData) {
+  const startedAt = performance.now();
   const profile = await getRequiredProfile();
   const rawPreference = getRequiredString(formData, "customer_payment_preference");
   const customerNote = getRequiredString(formData, "customer_note");
@@ -163,6 +317,10 @@ export async function submitOrderDraftToWhatsAppAction(formData: FormData) {
   }
 
   revalidateRequestPaths();
+  logRequestActionPerf("request.submit", {
+    durationMs: Math.round(performance.now() - startedAt),
+    success: true,
+  });
   redirect(whatsAppUrl);
 }
 
@@ -233,4 +391,38 @@ async function handleRateLimitError({
   });
 
   redirect(redirects[error.reason]);
+}
+
+async function getInlineMutationErrorMessage({
+  action,
+  error,
+  metadata,
+}: {
+  action: RateLimitAction;
+  error: unknown;
+  metadata: Record<string, string | number>;
+}) {
+  if (!isRateLimitExceededError(error)) {
+    return error instanceof Error ? error.message : "İşlem tamamlanamadı.";
+  }
+
+  const profile = await getCurrentProfile();
+  if (profile) {
+    await logRateLimitBlockedAttempt({
+      action,
+      metadata,
+      reason: error.reason,
+      userId: profile.id,
+    });
+  }
+
+  return "Çok kısa sürede fazla işlem yapıldı. Lütfen birkaç saniye sonra tekrar deneyin.";
+}
+
+function logRequestActionPerf(event: string, payload: Record<string, unknown>) {
+  if (process.env.DENTECH_PERF_LOGS !== "true") {
+    return;
+  }
+
+  console.info(`[${event}]`, payload);
 }

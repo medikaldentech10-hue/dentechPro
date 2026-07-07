@@ -18,6 +18,11 @@ import type {
   UserRole,
 } from "@/lib/types/auth";
 
+type RoutingProfile = Pick<
+  Profile,
+  "can_view_prices" | "id" | "is_active" | "role" | "verification_status"
+>;
+
 export type RegistrationProfileFields = {
   city: string;
   clinic_name: string | null;
@@ -29,6 +34,11 @@ export type RegistrationProfileFields = {
   specialty: string | null;
   user_type: RegistrationUserType;
 };
+
+type AuthRoutingProfileLike = Pick<
+  Profile,
+  "can_view_prices" | "id" | "is_active" | "role" | "verification_status"
+>;
 
 export const approvedUserRoles: readonly UserRole[] = [
   "approved_doctor",
@@ -77,7 +87,49 @@ export async function getUserRole(): Promise<PublicRole> {
   return profile?.role ?? "public";
 }
 
-export function canViewPrices(profile: Profile | null) {
+export async function getRoutingProfileForUser(user: User): Promise<RoutingProfile> {
+  const startedAt = performance.now();
+  const supabase = await getSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id,role,is_active,verification_status,can_view_prices")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  if (data) {
+    logAuthPerf("auth.profile.routing", {
+      durationMs: Math.round(performance.now() - startedAt),
+      profileFound: true,
+      role: data.role,
+      userId: user.id,
+    });
+    return data;
+  }
+
+  const createdProfile = await createDefaultProfileForUser(user);
+  const routingProfile: RoutingProfile = {
+    can_view_prices: createdProfile.can_view_prices,
+    id: createdProfile.id,
+    is_active: createdProfile.is_active,
+    role: createdProfile.role,
+    verification_status: createdProfile.verification_status,
+  };
+
+  logAuthPerf("auth.profile.routing", {
+    durationMs: Math.round(performance.now() - startedAt),
+    profileFound: false,
+    role: routingProfile.role,
+    userId: user.id,
+  });
+
+  return routingProfile;
+}
+
+export function canViewPrices(profile: AuthRoutingProfileLike | null) {
   return Boolean(
     profile?.is_active &&
       profile.can_view_prices &&
@@ -85,19 +137,19 @@ export function canViewPrices(profile: Profile | null) {
   );
 }
 
-export function isAdmin(profile: Profile | null) {
+export function isAdmin(profile: AuthRoutingProfileLike | null) {
   return profile?.is_active === true && profile.role === "admin";
 }
 
-export function isSalesRep(profile: Profile | null) {
+export function isSalesRep(profile: AuthRoutingProfileLike | null) {
   return profile?.is_active === true && profile.role === "sales_rep";
 }
 
-export function isApprovedUser(profile: Profile | null) {
+export function isApprovedUser(profile: AuthRoutingProfileLike | null) {
   return Boolean(profile?.is_active && approvedUserRoles.includes(profile.role));
 }
 
-export function isPendingUser(profile: Profile | null) {
+export function isPendingUser(profile: AuthRoutingProfileLike | null) {
   return (
     profile?.is_active === true &&
     profile.role === "pending_user" &&
@@ -105,7 +157,7 @@ export function isPendingUser(profile: Profile | null) {
   );
 }
 
-export function isSuspendedUser(profile: Profile | null) {
+export function isSuspendedUser(profile: AuthRoutingProfileLike | null) {
   return (
     profile?.is_active === false ||
     profile?.role === "suspended_user" ||
@@ -113,7 +165,7 @@ export function isSuspendedUser(profile: Profile | null) {
   );
 }
 
-export function getPostLoginRedirect(profile: Profile | null) {
+export function getPostLoginRedirect(profile: AuthRoutingProfileLike | null) {
   if (isSuspendedUser(profile)) {
     return "/account-suspended";
   }
@@ -133,7 +185,7 @@ export function getPostLoginRedirect(profile: Profile | null) {
   return "/pending-approval";
 }
 
-export function logAuthRedirect(context: string, profile: Profile | null) {
+export function logAuthRedirect(context: string, profile: AuthRoutingProfileLike | null) {
   logAuthDebug("redirect", {
     context,
     profileFound: Boolean(profile),
@@ -342,4 +394,12 @@ function logAuthDebug(event: string, payload: Record<string, unknown>) {
   }
 
   console.info(`[auth.${event}]`, payload);
+}
+
+function logAuthPerf(event: string, payload: Record<string, unknown>) {
+  if (process.env.DENTECH_PERF_LOGS !== "true") {
+    return;
+  }
+
+  console.info(`[${event}]`, payload);
 }

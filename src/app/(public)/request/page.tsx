@@ -1,31 +1,23 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { MessageCircle, PackageSearch, Search, Trash2 } from "lucide-react";
+import { Suspense } from "react";
+import { PackageSearch, Search } from "lucide-react";
 
 import {
-  clearOrderDraftAction,
-  removeOrderItemAction,
-  submitOrderDraftToWhatsAppAction,
-  updateOrderItemQuantityAction,
 } from "@/app/(public)/request/actions";
+import { RequestDraftClient } from "@/components/request/request-draft-client";
 import { RequestHistoryList } from "@/components/request/request-history-list";
 import { SurfaceCard } from "@/components/premium/surface-card";
 import { PageTitle } from "@/components/shared/page-title";
-import { PendingSubmitButton } from "@/components/shared/pending-submit-button";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CardContent } from "@/components/ui/card";
 import { getCurrentProfile, isSuspendedUser } from "@/lib/auth";
-import {
-  customerPaymentPreferenceLabel,
-  customerPaymentPreferenceOptions,
-} from "@/lib/customer-request-preferences";
 import {
   canCreateOrderRequest,
   getActiveRequestDraft,
   getUserRequestHistory,
   type RequestDraft,
   type RequestHistoryFilters,
-  type RequestListItem,
 } from "@/lib/order-drafts";
 import type { Database } from "@/lib/supabase/database.types";
 import { cn } from "@/lib/utils";
@@ -51,7 +43,7 @@ const historyStatusOptions: Array<{
 ];
 
 export default async function RequestPage({ searchParams }: RequestPageProps) {
-  const profile = await getCurrentProfile();
+  const [profile, query] = await Promise.all([getCurrentProfile(), searchParams]);
 
   if (!profile) {
     redirect("/login");
@@ -65,12 +57,8 @@ export default async function RequestPage({ searchParams }: RequestPageProps) {
     redirect("/pending-approval");
   }
 
-  const query = await searchParams;
   const filters = parseHistoryFilters(query);
-  const [draft, history] = await Promise.all([
-    getActiveRequestDraft(profile),
-    getUserRequestHistory(profile, filters),
-  ]);
+  const draft = await getActiveRequestDraft(profile);
   const error = getStringParam(query.error);
   const status = getStringParam(query.status);
   const showPrices = Boolean(profile.can_view_prices);
@@ -116,14 +104,34 @@ export default async function RequestPage({ searchParams }: RequestPageProps) {
           </p>
         </div>
         <RequestHistoryFilters filters={filters} />
-        {history.length ? (
-          <RequestHistoryList drafts={history} showPrices={showPrices} />
-        ) : (
-          <RequestHistoryEmptyState />
-        )}
+        <Suspense fallback={<RequestHistorySkeleton />}>
+          <RequestHistorySection
+            filters={filters}
+            profile={profile}
+            showPrices={showPrices}
+          />
+        </Suspense>
       </section>
     </div>
   );
+}
+
+async function RequestHistorySection({
+  filters,
+  profile,
+  showPrices,
+}: {
+  filters: RequestHistoryFilters;
+  profile: NonNullable<Awaited<ReturnType<typeof getCurrentProfile>>>;
+  showPrices: boolean;
+}) {
+  const history = await getUserRequestHistory(profile, filters);
+
+  if (!history.length) {
+    return <RequestHistoryEmptyState />;
+  }
+
+  return <RequestHistoryList drafts={history} showPrices={showPrices} />;
 }
 
 function RequestStatusBanner({ status }: { status: string }) {
@@ -258,116 +266,35 @@ function RequestHistoryEmptyState() {
   );
 }
 
-function RequestList({ draft }: { draft: RequestDraft }) {
+function RequestHistorySkeleton() {
   return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
-      <SurfaceCard>
-        <CardHeader>
-          <CardTitle>Ürünler</CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          <div className="hidden border-t border-border/70 md:block">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-muted/50 text-xs uppercase tracking-wide text-muted-foreground">
-                <tr>
-                  <th className="px-4 py-3 font-medium">Ürün</th>
-                  <th className="px-4 py-3 font-medium">Varyant</th>
-                  <th className="px-4 py-3 font-medium">Adet</th>
-                  <th className="px-4 py-3 text-right font-medium">Birim Fiyat</th>
-                  <th className="px-4 py-3 text-right font-medium">Toplam</th>
-                  <th className="px-4 py-3" />
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/70">
-                {draft.items.map((item) => (
-                  <RequestTableRow item={item} key={item.id} />
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="flex flex-col gap-3 border-t border-border/70 p-4 md:hidden">
-            {draft.items.map((item) => (
-              <RequestMobileCard item={item} key={item.id} />
-            ))}
-          </div>
-        </CardContent>
-      </SurfaceCard>
-
-      <SurfaceCard className="h-fit lg:sticky lg:top-24">
-        <CardHeader>
-          <CardTitle>Talep Özeti</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          <div className="rounded-xl border border-border/70 bg-background/60 p-4">
-            <div className="flex items-center justify-between text-sm text-muted-foreground">
-              <span>Ürün kalemi</span>
-              <span>{draft.items.length}</span>
-            </div>
-            <div className="mt-3 flex items-center justify-between text-sm text-muted-foreground">
-              <span>Ara toplam</span>
-              <span>{formatPrice(draft.subtotal)}</span>
-            </div>
-            <div className="mt-4 flex items-center justify-between border-t border-border/70 pt-4 text-base font-semibold">
-              <span>Toplam</span>
-              <span>{formatPrice(draft.total)}</span>
-            </div>
-            <p className="mt-2 text-xs text-muted-foreground">
-              Fiyatlar KDV hariçtir. Talep gönderildikten sonra ekibimiz stok,
-              fiyat ve süreç detaylarıyla sizinle iletişime geçer.
-            </p>
-          </div>
-
-          <form action={submitOrderDraftToWhatsAppAction} className="grid gap-4">
-            <div className="rounded-xl border border-border/70 bg-background/60 p-4">
-              <div className="grid gap-4">
-                <div className="grid gap-2">
-                  <p className="text-sm font-semibold">Ödeme Tercihi</p>
-                  <select
-                    className="h-10 rounded-lg border border-input bg-background px-3 text-sm"
-                    defaultValue={draft.customer_payment_preference ?? "discuss_later"}
-                    name="customer_payment_preference"
-                    required
-                  >
-                    {customerPaymentPreferenceOptions.map((option) => (
-                      <option key={option} value={option}>
-                        {customerPaymentPreferenceLabel(option)}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <label className="grid gap-2 text-sm font-medium">
-                  Talep Notu
-                  <textarea
-                    className="min-h-24 rounded-lg border border-input bg-background px-3 py-2 text-sm"
-                    defaultValue={draft.customer_note ?? ""}
-                    maxLength={1000}
-                    name="customer_note"
-                    placeholder="Teslimat, fatura, ürün alternatifi veya ödeme hakkında belirtmek istediğiniz detayları yazabilirsiniz."
-                  />
-                </label>
+    <SurfaceCard>
+      <CardContent className="grid gap-3 p-4">
+        {Array.from({ length: 3 }, (_, index) => (
+          <div
+            className="rounded-2xl border border-border/70 bg-background/70 p-4 shadow-sm"
+            key={index}
+          >
+            <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+              <div className="min-w-0 flex-1 space-y-2">
+                <div className="h-5 w-40 animate-pulse rounded bg-muted" />
+                <div className="h-4 w-56 animate-pulse rounded bg-muted/80" />
+                <div className="h-4 w-full max-w-xl animate-pulse rounded bg-muted/60" />
+              </div>
+              <div className="flex gap-2">
+                <div className="h-9 w-20 animate-pulse rounded-lg bg-muted" />
+                <div className="h-9 w-24 animate-pulse rounded-lg bg-muted/80" />
               </div>
             </div>
-
-            <PendingSubmitButton
-              className="w-full"
-              pendingLabel="Gönderiliyor..."
-              type="submit"
-            >
-              <MessageCircle data-icon="inline-start" />
-              Talebi WhatsApp ile Gönder
-            </PendingSubmitButton>
-          </form>
-
-          <form action={clearOrderDraftAction}>
-            <Button className="w-full" type="submit" variant="outline">
-              Listeyi Temizle
-            </Button>
-          </form>
-        </CardContent>
-      </SurfaceCard>
-    </div>
+          </div>
+        ))}
+      </CardContent>
+    </SurfaceCard>
   );
+}
+
+function RequestList({ draft }: { draft: RequestDraft }) {
+  return <RequestDraftClient draft={draft} />;
 }
 
 function RequestHistoryFilters({
@@ -438,115 +365,6 @@ function RequestHistoryFilters({
   );
 }
 
-function RequestTableRow({ item }: { item: RequestListItem }) {
-  const productCode = getDisplayCode(item.product.product_group_code);
-  const variantCode = getDisplayCode(item.variant.variant_code);
-  const manufacturerRef = getDisplayCode(item.variant.manufacturer_ref);
-
-  return (
-    <tr className="align-top">
-      <td className="px-4 py-4">
-        <div className="font-medium">{item.product.product_name}</div>
-        <div className="mt-1 text-xs text-muted-foreground">
-          {productCode ?? "SKU yok"}
-        </div>
-      </td>
-      <td className="px-4 py-4">
-        <div className="font-medium">{variantCode ?? "Standart varyant"}</div>
-        <div className="mt-1 text-xs text-muted-foreground">
-          {manufacturerRef ?? "Teknik kod gizlendi"}
-        </div>
-      </td>
-      <td className="px-4 py-4">
-        <QuantityForm item={item} />
-      </td>
-      <td className="px-4 py-4 text-right font-medium">
-        {formatPrice(item.unit_price)}
-      </td>
-      <td className="px-4 py-4 text-right font-semibold">
-        {formatPrice(item.line_total)}
-      </td>
-      <td className="px-4 py-4">
-        <RemoveItemForm itemId={item.id} />
-      </td>
-    </tr>
-  );
-}
-
-function RequestMobileCard({ item }: { item: RequestListItem }) {
-  const productCode = getDisplayCode(item.product.product_group_code);
-  const variantCode = getDisplayCode(item.variant.variant_code);
-
-  return (
-    <div className="rounded-xl border border-border/70 bg-background/60 p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="font-medium">{item.product.product_name}</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {variantCode ?? "Standart varyant"}
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">{productCode ?? "SKU yok"}</p>
-        </div>
-        <RemoveItemForm itemId={item.id} />
-      </div>
-      <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
-        <div>
-          <p className="text-xs text-muted-foreground">Birim Fiyat</p>
-          <p className="mt-1 font-medium">{formatPrice(item.unit_price)}</p>
-        </div>
-        <div>
-          <p className="text-xs text-muted-foreground">Toplam</p>
-          <p className="mt-1 font-semibold">{formatPrice(item.line_total)}</p>
-        </div>
-      </div>
-      <div className="mt-4">
-        <QuantityForm item={item} />
-      </div>
-    </div>
-  );
-}
-
-function QuantityForm({ item }: { item: RequestListItem }) {
-  return (
-    <form
-      action={updateOrderItemQuantityAction}
-      className="flex max-w-[170px] items-center gap-2"
-    >
-      <input name="item_id" type="hidden" value={item.id} />
-      <input
-        aria-label="Adet"
-        className="h-9 w-20 rounded-lg border border-input bg-background px-3 text-sm"
-        defaultValue={item.quantity}
-        min={1}
-        name="quantity"
-        step={1}
-        type="number"
-      />
-      <Button size="sm" type="submit" variant="outline">
-        Güncelle
-      </Button>
-    </form>
-  );
-}
-
-function RemoveItemForm({ itemId }: { itemId: string }) {
-  return (
-    <form action={removeOrderItemAction}>
-      <input name="item_id" type="hidden" value={itemId} />
-      <Button aria-label="Listeden çıkar" size="icon" type="submit" variant="ghost">
-        <Trash2 />
-      </Button>
-    </form>
-  );
-}
-
-function formatPrice(value: number | null) {
-  return `${new Intl.NumberFormat("tr-TR", {
-    currency: "TRY",
-    style: "currency",
-  }).format(value ?? 0)} + KDV`;
-}
-
 function parseHistoryFilters(
   query: Record<string, string | string[] | undefined>
 ): RequestHistoryFilters {
@@ -581,22 +399,4 @@ function getHistoryStatusParam(
   return historyStatusOptions.some((option) => option.value === item)
     ? (item as RequestStatus)
     : "all";
-}
-
-function getDisplayCode(value: string | null | undefined) {
-  if (!value || isUuid(value) || isInternalSlug(value)) {
-    return null;
-  }
-
-  return value;
-}
-
-function isInternalSlug(value: string) {
-  return /^[a-z0-9]+(?:-[a-z0-9]+){2,}$/.test(value);
-}
-
-function isUuid(value: string) {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-    value
-  );
 }
