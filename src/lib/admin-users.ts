@@ -19,6 +19,24 @@ export type AdminUsersFilterKey =
 export const ADMIN_PROFILE_SELECT =
   "id,full_name,email,phone,requested_role,clinic_name,company_name,city,district,specialty,role,user_type,verification_status,can_view_prices,is_active,created_at,updated_at";
 
+export const ADMIN_USERS_PAGE_SIZE = 25;
+
+export type AdminUsersListFilters = {
+  filter: AdminUsersFilterKey;
+  page: number;
+  query?: string;
+};
+
+export type AdminUsersStats = {
+  admins: number;
+  doctors: number;
+  labs: number;
+  pending: number;
+  sales: number;
+  suspended: number;
+  vets: number;
+};
+
 export const adminUsersFilterOptions: Array<{
   key: AdminUsersFilterKey;
   label: string;
@@ -232,6 +250,57 @@ export function normalizeAdminUserSearch(value: string) {
     .toLocaleLowerCase("tr-TR")
     .normalize("NFKD")
     .replace(/[\u0300-\u036f]/g, "");
+}
+
+export function parseAdminUsersFilter(value: string | null | undefined): AdminUsersFilterKey {
+  if (
+    value === "pending" ||
+    value === "doctor" ||
+    value === "lab" ||
+    value === "vet" ||
+    value === "sales" ||
+    value === "admin" ||
+    value === "suspended"
+  ) {
+    return value;
+  }
+
+  return "all";
+}
+
+export function parseAdminUsersPage(value: string | null | undefined) {
+  const parsed = Number(value);
+
+  if (!Number.isInteger(parsed) || parsed < 1) {
+    return 1;
+  }
+
+  return parsed;
+}
+
+export function getAdminUsersSearchQuery(value: string | null | undefined) {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed.slice(0, 120) : undefined;
+}
+
+export function buildAdminUsersSearchOr(query: string) {
+  const escaped = escapePostgrestLikeValue(query);
+  const pattern = `%${escaped}%`;
+
+  return [
+    `full_name.ilike.${pattern}`,
+    `email.ilike.${pattern}`,
+    `phone.ilike.${pattern}`,
+    `clinic_name.ilike.${pattern}`,
+    `company_name.ilike.${pattern}`,
+    `city.ilike.${pattern}`,
+    `district.ilike.${pattern}`,
+    `specialty.ilike.${pattern}`,
+  ].join(",");
+}
+
+function escapePostgrestLikeValue(value: string) {
+  return value.replace(/[,%()]/g, "");
 }
 
 export function formatAdminUserDate(value: string) {

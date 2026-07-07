@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { Eye, FileDown, XCircle } from "lucide-react";
+import { ChevronLeft, ChevronRight, Eye, FileDown, XCircle } from "lucide-react";
 
 import { updateRequestStatusAction } from "@/app/(admin)/admin/requests/actions";
 import { ConfirmSubmitButton } from "@/components/admin/confirm-submit-button";
@@ -12,6 +12,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
 import {
   adminRequestStatuses,
+  ADMIN_REQUESTS_PAGE_SIZE,
   getAdminRequestList,
   requestSourceLabel,
   requestStatusLabel,
@@ -37,7 +38,8 @@ export default async function AdminRequestsPage({
 }: AdminRequestsPageProps) {
   const query = await searchParams;
   const filters = parseRequestFilters(query);
-  const requests = await getAdminRequestList(filters);
+  const result = await getAdminRequestList(filters);
+  const requests = result.rows;
 
   return (
     <div className="flex flex-col gap-6">
@@ -47,6 +49,18 @@ export default async function AdminRequestsPage({
       />
 
       <RequestFilters filters={filters} />
+
+      <div className="flex flex-col gap-2 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+        <p>
+          Toplam {result.totalCount} talep içinde sayfa {result.page} / {result.totalPages}
+          <span className="ml-1 hidden sm:inline">· Sayfa boyutu {ADMIN_REQUESTS_PAGE_SIZE}</span>
+        </p>
+        <AdminRequestsPagination
+          currentPage={result.page}
+          filters={filters}
+          totalPages={result.totalPages}
+        />
+      </div>
 
       <SurfaceCard className="overflow-hidden">
         <CardContent className="p-0">
@@ -89,6 +103,7 @@ function RequestFilters({ filters }: { filters: AdminRequestListFilters }) {
     <SurfaceCard>
       <CardContent className="p-4">
         <form className="grid gap-4 lg:grid-cols-[1.5fr_0.8fr_0.8fr_0.8fr_0.8fr_1fr_auto] lg:items-end">
+          <input name="page" type="hidden" value="1" />
           <label className="grid gap-2 text-sm font-medium">
             Ara
             <input
@@ -358,11 +373,110 @@ function parseRequestFilters(
   return {
     createdFrom: getDateParam(query.from),
     createdTo: getDateParam(query.to),
+    page: getPageParam(query.page),
     search: getStringParam(query.q),
     sort: getSortParam(query.sort),
     source: getSourceParam(query.source),
     status: getStatusParam(query.status),
   };
+}
+
+function AdminRequestsPagination({
+  currentPage,
+  filters,
+  totalPages,
+}: {
+  currentPage: number;
+  filters: AdminRequestListFilters;
+  totalPages: number;
+}) {
+  if (totalPages <= 1) {
+    return null;
+  }
+
+  const visiblePages = getVisiblePages(currentPage, totalPages);
+
+  return (
+    <nav
+      aria-label="Talep sayfalama"
+      className="flex flex-wrap items-center justify-between gap-2 sm:justify-end"
+    >
+      <PaginationArrowLink
+        direction="previous"
+        disabled={currentPage <= 1}
+        href={getRequestPageHref(filters, currentPage - 1)}
+      />
+      <div className="hidden items-center gap-1 sm:flex">
+        {visiblePages.map((page, index) => {
+          const previousPage = visiblePages[index - 1];
+          const hasGap = previousPage ? page - previousPage > 1 : false;
+
+          return (
+            <span className="flex items-center gap-1" key={page}>
+              {hasGap ? (
+                <span className="px-1 text-xs text-muted-foreground" aria-hidden="true">
+                  ...
+                </span>
+              ) : null}
+              <Link
+                aria-current={page === currentPage ? "page" : undefined}
+                className={cn(
+                  buttonVariants({
+                    size: "sm",
+                    variant: page === currentPage ? "default" : "outline",
+                  }),
+                  "min-w-9 px-3"
+                )}
+                href={getRequestPageHref(filters, page)}
+              >
+                {page}
+              </Link>
+            </span>
+          );
+        })}
+      </div>
+      <span className="text-xs text-muted-foreground sm:hidden">
+        Sayfa {currentPage} / {totalPages}
+      </span>
+      <PaginationArrowLink
+        direction="next"
+        disabled={currentPage >= totalPages}
+        href={getRequestPageHref(filters, currentPage + 1)}
+      />
+    </nav>
+  );
+}
+
+function PaginationArrowLink({
+  direction,
+  disabled,
+  href,
+}: {
+  direction: "next" | "previous";
+  disabled: boolean;
+  href: string;
+}) {
+  const Icon = direction === "previous" ? ChevronLeft : ChevronRight;
+
+  if (disabled) {
+    return (
+      <span
+        aria-disabled="true"
+        className={cn(buttonVariants({ size: "icon-sm", variant: "outline" }), "opacity-45")}
+      >
+        <Icon />
+      </span>
+    );
+  }
+
+  return (
+    <Link
+      className={buttonVariants({ size: "icon-sm", variant: "outline" })}
+      href={href}
+    >
+      <Icon />
+    </Link>
+  );
 }
 
 function getStringParam(value: string | string[] | undefined) {
@@ -416,4 +530,41 @@ function getSortParam(
   }
 
   return "newest";
+}
+
+function getPageParam(value: string | string[] | undefined) {
+  const item = getStringParam(value);
+  const parsed = Number(item);
+
+  if (!Number.isInteger(parsed) || parsed < 1) {
+    return 1;
+  }
+
+  return parsed;
+}
+
+function getRequestPageHref(filters: AdminRequestListFilters, page: number) {
+  const params = new URLSearchParams();
+
+  if (filters.search) params.set("q", filters.search);
+  if (filters.status && filters.status !== "all") params.set("status", filters.status);
+  if (filters.source && filters.source !== "all") params.set("source", filters.source);
+  if (filters.createdFrom) params.set("from", filters.createdFrom);
+  if (filters.createdTo) params.set("to", filters.createdTo);
+  if (filters.sort && filters.sort !== "newest") params.set("sort", filters.sort);
+  params.set("page", String(Math.max(1, page)));
+
+  return `/admin/requests?${params.toString()}`;
+}
+
+function getVisiblePages(currentPage: number, totalPages: number) {
+  const pages = new Set<number>([1, totalPages]);
+
+  for (let page = currentPage - 2; page <= currentPage + 2; page += 1) {
+    if (page >= 1 && page <= totalPages) {
+      pages.add(page);
+    }
+  }
+
+  return Array.from(pages).sort((a, b) => a - b);
 }

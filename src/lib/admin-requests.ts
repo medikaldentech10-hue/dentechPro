@@ -5,7 +5,7 @@ import {
   customerPaymentPreferenceLabel,
   type CustomerPaymentPreference,
 } from "@/lib/customer-request-preferences";
-import { getRequestDisplayNumber, getRequestSearchTokens } from "@/lib/request-numbers";
+import { getRequestDisplayNumber } from "@/lib/request-numbers";
 import type { Database, Json } from "@/lib/supabase/database.types";
 import { getSupabaseAdminClient } from "@/lib/supabase/server";
 import type { Profile } from "@/lib/types/auth";
@@ -77,11 +77,22 @@ export type AdminRequestListItem = DraftRow & {
 export type AdminRequestListFilters = {
   createdFrom?: string;
   createdTo?: string;
+  page?: number;
   search?: string;
   sort?: "newest" | "oldest" | "updated_newest" | "total_desc";
   source?: DraftRow["source"] | "all";
   status?: AdminRequestStatus | "all";
 };
+
+export type AdminRequestListResult = {
+  page: number;
+  pageSize: number;
+  rows: AdminRequestListItem[];
+  totalCount: number;
+  totalPages: number;
+};
+
+export const ADMIN_REQUESTS_PAGE_SIZE = 25;
 
 export type AdminRequestLine = ItemRow & {
   product: Pick<ProductRow, "id" | "product_group_code" | "product_name"> | null;
@@ -234,12 +245,11 @@ export function buildAdminRequestWhatsAppUrl(request: AdminRequestDetail) {
 
 export async function getAdminRequestList(
   filters: AdminRequestListFilters = {}
-): Promise<AdminRequestListItem[]> {
+): Promise<AdminRequestListResult> {
   const supabase = getSupabaseAdminClient();
   let query = supabase
     .from("order_drafts")
-    .select(ADMIN_REQUEST_DRAFT_COLUMNS)
-    .limit(100);
+    .select(ADMIN_REQUEST_DRAFT_COLUMNS, { count: "exact" });
 
   if (filters.status && filters.status !== "all") {
     if (filters.status === "submitted") {
@@ -261,6 +271,22 @@ export async function getAdminRequestList(
     query = query.lte("created_at", endOfDayIso(filters.createdTo));
   }
 
+  if (filters.search) {
+    const searchFilter = await buildAdminRequestSearchFilter(filters.search);
+
+    if (searchFilter === null) {
+      return {
+        page: 1,
+        pageSize: ADMIN_REQUESTS_PAGE_SIZE,
+        rows: [],
+        totalCount: 0,
+        totalPages: 1,
+      };
+    }
+
+    query = query.or(searchFilter);
+  }
+
   if (filters.sort === "oldest") {
     query = query.order("created_at", { ascending: true });
   } else if (filters.sort === "total_desc") {
@@ -271,7 +297,10 @@ export async function getAdminRequestList(
     query = query.order("created_at", { ascending: false });
   }
 
-  const { data: drafts, error } = await query;
+  const requestedPage = Math.max(1, Math.floor(filters.page ?? 1));
+  const from = (requestedPage - 1) * ADMIN_REQUESTS_PAGE_SIZE;
+  const to = from + ADMIN_REQUESTS_PAGE_SIZE - 1;
+  const { data: drafts, error, count } = await query.range(from, to);
 
   if (error) {
     throw new Error(error.message);
@@ -293,7 +322,24 @@ export async function getAdminRequestList(
       : null,
   }));
 
-  return filterAdminRequestSearch(hydratedRows, filters.search);
+  const totalCount = count ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalCount / ADMIN_REQUESTS_PAGE_SIZE));
+  const currentPage = Math.min(requestedPage, totalPages);
+
+  if (currentPage !== requestedPage) {
+    return getAdminRequestList({
+      ...filters,
+      page: currentPage,
+    });
+  }
+
+  return {
+    page: currentPage,
+    pageSize: ADMIN_REQUESTS_PAGE_SIZE,
+    rows: hydratedRows,
+    totalCount,
+    totalPages,
+  };
 }
 
 export async function getAdminRequestDetail(
@@ -812,30 +858,71 @@ function uniqueStrings(values: Array<string | null>) {
   return [...new Set(values.filter((value): value is string => Boolean(value)))];
 }
 
-function filterAdminRequestSearch(
-  rows: AdminRequestListItem[],
-  search?: string
-) {
-  const needle = search?.trim().toLocaleLowerCase("tr-TR");
+async function buildAdminRequestSearchFilter(search: string) {
+  const trimmed = search.trim();
 
-  if (!needle) {
-    return rows;
+  if (!trimmed) {
+    return "";
   }
 
-  return rows.filter((row) => {
-    const haystack = [
-      ...getRequestSearchTokens(row),
-      row.customer?.name,
-      row.customer?.company_name,
-      row.customer?.phone,
-      row.customer?.email,
-    ]
-      .filter(Boolean)
-      .join(" ")
-      .toLocaleLowerCase("tr-TR");
+  const [customerIds, requesterIds] = await Promise.all([
+    getCustomerIdsBySearch(trimmed),
+    getProfileIdsBySearch(trimmed),
+  ]);
+  const parts = [`request_number.ilike.%${escapePostgrestLikeValue(trimmed)}%`];
 
-    return haystack.includes(needle);
-  });
+  if (customerIds.length) {
+    parts.push(`customer_id.in.(${customerIds.join(",")})`);
+  }
+
+  if (requesterIds.length) {
+    parts.push(`created_by_user_id.in.(${requesterIds.join(",")})`);
+  }
+
+  return parts.length ? parts.join(",") : null;
+}
+
+async function getCustomerIdsBySearch(search: string) {
+  const supabase = getSupabaseAdminClient();
+  const safeSearch = `%${escapePostgrestLikeValue(search)}%`;
+  const { data, error } = await supabase
+    .from("customers")
+    .select("id")
+    .or(
+      [
+        `name.ilike.${safeSearch}`,
+        `company_name.ilike.${safeSearch}`,
+        `phone.ilike.${safeSearch}`,
+        `email.ilike.${safeSearch}`,
+      ].join(",")
+    )
+    .limit(200);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return uniqueStrings((data ?? []).map((row) => row.id));
+}
+
+async function getProfileIdsBySearch(search: string) {
+  const supabase = getSupabaseAdminClient();
+  const safeSearch = `%${escapePostgrestLikeValue(search)}%`;
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id")
+    .or([`full_name.ilike.${safeSearch}`, `email.ilike.${safeSearch}`].join(","))
+    .limit(200);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return uniqueStrings((data ?? []).map((row) => row.id));
+}
+
+function escapePostgrestLikeValue(value: string) {
+  return value.replace(/[,%()]/g, "");
 }
 
 function startOfDayIso(value: string) {
