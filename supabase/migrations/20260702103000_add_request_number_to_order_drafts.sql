@@ -1,5 +1,5 @@
 alter table public.order_drafts
-add column request_number text;
+add column if not exists request_number text;
 
 create or replace function public.generate_order_draft_request_number(
   target_created_at timestamptz default now()
@@ -73,7 +73,8 @@ from numbered_requests
 where order_drafts.id = numbered_requests.id;
 
 create unique index order_drafts_request_number_idx
-on public.order_drafts (request_number);
+on public.order_drafts (request_number)
+where request_number is not null;
 
 revoke all on function public.generate_order_draft_request_number(timestamptz) from public;
 revoke all on function public.generate_order_draft_request_number(timestamptz) from anon;
