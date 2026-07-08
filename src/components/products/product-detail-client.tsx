@@ -308,7 +308,7 @@ function AddToRequestInlineForm({
       <form className="grid min-w-0 grid-cols-[72px_minmax(0,1fr)] gap-2" onSubmit={handleSubmit}>
         <input
           aria-label="Adet"
-          className="h-10 min-w-0 rounded-full border border-input bg-background/80 px-2 text-center text-sm shadow-sm"
+          className="h-11 min-w-0 rounded-full border border-input bg-background/80 px-2 text-center text-sm shadow-sm"
           inputMode="numeric"
           min={1}
           onChange={(event) => setQuantity(event.currentTarget.value)}
@@ -317,7 +317,7 @@ function AddToRequestInlineForm({
           value={quantity}
         />
         <Button
-          className="min-w-0 w-full rounded-full px-3 font-semibold shadow-sm"
+          className="min-w-0 w-full rounded-full px-3 py-2.5 font-semibold shadow-sm"
           disabled={isPending}
           type="submit"
         >
@@ -374,10 +374,10 @@ function CommercialState({
   }
 
   return (
-    <p className="rounded-full border border-border/70 bg-muted/65 px-3 py-2 text-center text-xs font-medium text-muted-foreground">
+    <p className="rounded-2xl border border-border/70 bg-muted/65 px-3 py-2.5 text-center text-xs font-medium leading-5 text-muted-foreground">
       {priceVisibility === "pending"
-        ? "Fiyat için hesap onayı bekleniyor"
-        : "Fiyat için giriş yapın"}
+        ? "Hesabınız onaylandıktan sonra fiyatları görüntüleyebilir ve talep listesi oluşturabilirsiniz."
+        : "Fiyatları görmek ve talep listesi oluşturmak için profesyonel hesabınızla giriş yapın."}
     </p>
   );
 }
@@ -437,7 +437,7 @@ function VariantListItem({
           aria-current={isSelected ? "true" : undefined}
           className={cn(
             buttonVariants({ variant: isSelected ? "default" : "outline" }),
-            "w-full"
+            "h-11 w-full"
           )}
           onClick={() => onSelect(variant.id)}
           type="button"

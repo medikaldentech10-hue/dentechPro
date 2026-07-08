@@ -452,6 +452,7 @@ function QuantityStepper({
       <Button
         disabled={isRemoving || item.quantity <= 1}
         onClick={() => onChange(item.id, item.quantity - 1)}
+        className="size-11 sm:size-10"
         size="icon"
         type="button"
         variant="outline"
@@ -460,7 +461,7 @@ function QuantityStepper({
       </Button>
       <input
         aria-label="Adet"
-        className="h-9 w-20 rounded-lg border border-input bg-background px-3 text-center text-sm"
+        className="h-11 w-20 rounded-lg border border-input bg-background px-3 text-center text-sm sm:h-10"
         disabled={isRemoving}
         inputMode="numeric"
         min={1}
@@ -488,6 +489,7 @@ function QuantityStepper({
       <Button
         disabled={isRemoving}
         onClick={() => onChange(item.id, item.quantity + 1)}
+        className="size-11 sm:size-10"
         size="icon"
         type="button"
         variant="outline"

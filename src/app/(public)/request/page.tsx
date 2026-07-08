@@ -85,7 +85,12 @@ export default async function RequestPage({ searchParams }: RequestPageProps) {
       <RequestFlowSummary />
 
       <section className="flex flex-col gap-4">
-        <h2 className="text-xl font-semibold tracking-normal">Aktif Talep</h2>
+        <div className="flex flex-col gap-1">
+          <h2 className="text-xl font-semibold tracking-normal">Aktif Talep</h2>
+          <p className="text-sm leading-6 text-muted-foreground">
+            Listeyi düzenleyip talebinizi göndermeden önce ürünlerinizi burada son kez kontrol edin.
+          </p>
+        </div>
         {!draft || draft.items.length === 0 ? (
           <EmptyRequestList />
         ) : (
@@ -93,9 +98,9 @@ export default async function RequestPage({ searchParams }: RequestPageProps) {
         )}
       </section>
 
-      <section className="flex flex-col gap-4">
+      <section className="flex flex-col gap-4 border-t border-border/60 pt-2">
         <div className="flex flex-col gap-1">
-          <h2 className="text-xl font-semibold tracking-normal">
+          <h2 className="text-lg font-semibold tracking-normal">
             Geçmiş Taleplerim
           </h2>
           <p className="text-sm leading-6 text-muted-foreground">

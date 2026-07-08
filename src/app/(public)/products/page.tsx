@@ -8,6 +8,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { canViewPrices, getCurrentProfile, isAdmin, isSalesRep } from "@/lib/auth";
+import { DENTECH_WHATSAPP_NUMBER } from "@/lib/config";
 import {
   getCatalogCategories,
   getCatalogUsageAreas,
@@ -50,6 +51,8 @@ const SEARCH_SUGGESTIONS = [
 ] as const;
 
 const MOBILE_SEARCH_SUGGESTIONS = SEARCH_SUGGESTIONS.slice(0, 7);
+const hasWhatsAppSupport = !DENTECH_WHATSAPP_NUMBER.includes("X");
+const whatsAppSupportHref = `https://wa.me/${DENTECH_WHATSAPP_NUMBER}`;
 
 export default async function ProductsPage({ searchParams }: ProductsPageProps) {
   const [params, profile] = await Promise.all([searchParams, getCurrentProfile()]);
@@ -310,10 +313,12 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
             </>
           ) : (
             <EmptyState
-              actionHref="/products"
+              actionHref={hasActiveFilters ? "/products" : undefined}
               actionLabel="Filtreleri Temizle"
-              description="Seçili filtrelerle eşleşen aktif JOTA ürünü bulunamadı."
-              title="Ürün bulunamadı"
+              description="Aramanız veya seçili filtreler için uygun ürün bulunamadı. Filtreleri temizleyerek tekrar deneyebilir ya da ürün desteği için bizimle iletişime geçebilirsiniz."
+              secondaryActionHref={hasWhatsAppSupport ? whatsAppSupportHref : undefined}
+              secondaryActionLabel={hasWhatsAppSupport ? "Ürün Desteği Al" : undefined}
+              title="Sonuç bulunamadı"
             />
           )}
         </div>

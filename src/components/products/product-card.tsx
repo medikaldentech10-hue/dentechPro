@@ -230,15 +230,15 @@ function PriceState({
   if (visibility === "pending") {
     return (
       <p className="rounded-full border border-primary/15 bg-primary/10 px-2 py-1.5 text-center text-[11px] font-medium leading-4 text-primary sm:px-3 sm:py-2 sm:text-xs">
-        Fiyat için hesap onayı bekleniyor
+        Hesabınız onaylandıktan sonra fiyatları görüntüleyebilir ve talep listesi oluşturabilirsiniz.
       </p>
     );
   }
 
   return (
     <p className="rounded-full border border-border/60 bg-muted/65 px-3 py-2 text-center text-xs font-medium text-muted-foreground">
-      <span className="sr-only">Fiyat için giriş yapın</span>
-      Stok bilgisi için iletişime geçin
+      <span className="sr-only">Fiyatları görmek ve talep listesi oluşturmak için giriş yapın</span>
+      Fiyatları görmek ve talep listesi oluşturmak için profesyonel hesabınızla giriş yapın.
     </p>
   );
 }
@@ -258,7 +258,7 @@ function ProductAction({
 }) {
   if (priceVisibility !== "approved" || !variant || !("stockQuantity" in variant)) {
     return (
-      <Button className="h-8 w-full rounded-full px-2 text-[11px] font-semibold leading-4 shadow-sm sm:h-10 sm:text-xs" disabled>
+      <Button className="h-10 w-full rounded-full px-2 text-[11px] font-semibold leading-4 shadow-sm sm:h-10 sm:text-xs" disabled>
         {getActionLabel({ adminMode, priceVisibility, salesMode })}
       </Button>
     );
@@ -271,7 +271,7 @@ function ProductAction({
   if (pricedVariants.length > 1) {
     return (
       <details className="group/selector pointer-events-auto relative z-30">
-        <summary className="flex h-10 cursor-pointer list-none items-center justify-center rounded-full bg-primary px-3 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 [&::-webkit-details-marker]:hidden">
+        <summary className="flex h-11 cursor-pointer list-none items-center justify-center rounded-full bg-primary px-3 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 [&::-webkit-details-marker]:hidden">
           Ekle
         </summary>
         <div className="mt-2 max-h-72 overflow-y-auto rounded-2xl border border-white/55 bg-white/92 p-2 shadow-[0_14px_38px_rgb(15_23_42/0.14)] backdrop-blur-2xl dark:border-white/10 dark:bg-slate-950/92">
