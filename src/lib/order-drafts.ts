@@ -1,6 +1,12 @@
 import "server-only";
 
-import { canViewPrices, isAdmin, isApprovedUser, isSalesRep } from "@/lib/auth";
+import {
+  canViewPrices,
+  isAdmin,
+  isApprovedUser,
+  isSalesRep,
+  type AccessProfile,
+} from "@/lib/auth";
 import { DENTECH_WHATSAPP_NUMBER } from "@/lib/config";
 import {
   type CustomerPaymentPreference,
@@ -65,7 +71,7 @@ const REQUEST_DRAFT_COLUMNS =
 const REQUEST_ITEM_COLUMNS =
   "id,order_draft_id,variant_id,quantity,unit_price,line_total,created_at,updated_at";
 
-export function canCreateOrderRequest(profile: Profile | null) {
+export function canCreateOrderRequest(profile: AccessProfile | null) {
   return Boolean(
     profile?.is_active &&
       profile.verification_status === "approved" &&
@@ -75,7 +81,7 @@ export function canCreateOrderRequest(profile: Profile | null) {
   );
 }
 
-export async function getActiveRequestDraft(profile: Profile) {
+export async function getActiveRequestDraft(profile: AccessProfile) {
   assertCanCreateOrderRequest(profile);
   const startedAt = performance.now();
   const draft = await findDraft(profile.id);
@@ -98,7 +104,7 @@ export async function getActiveRequestDraft(profile: Profile) {
 }
 
 export async function getUserRequestHistory(
-  profile: Profile,
+  profile: AccessProfile,
   filters: RequestHistoryFilters = {}
 ) {
   assertCanCreateOrderRequest(profile);
@@ -150,7 +156,7 @@ export async function addVariantToDraft({
   quantity,
   variantId,
 }: {
-  profile: Profile;
+  profile: AccessProfile;
   quantity: number;
   variantId: string;
 }) {
@@ -244,28 +250,37 @@ export async function updateDraftItemQuantity({
   quantity,
 }: {
   itemId: string;
-  profile: Profile;
+  profile: AccessProfile;
   quantity: number;
 }) {
+  const startedAt = performance.now();
   assertCanCreateOrderRequest(profile);
   assertPositiveInteger(quantity, "Adet");
+  const rateLimitStartedAt = performance.now();
   await assertRateLimit({
     policy: RATE_LIMIT_POLICIES.requestItemMutation,
     userId: profile.id,
   });
+  const rateLimitMs = Math.round(performance.now() - rateLimitStartedAt);
 
   const supabase = getSupabaseAdminClient();
+  const itemLookupStartedAt = performance.now();
   const item = await getOwnedDraftItem(profile.id, itemId);
+  const itemLookupMs = Math.round(performance.now() - itemLookupStartedAt);
+  const variantLookupStartedAt = performance.now();
   const variant = await getVariantForDraft(item.variant_id);
+  const variantLookupMs = Math.round(performance.now() - variantLookupStartedAt);
 
   if (variant.price === null) {
     throw new Error("Fiyat tanımlı olmayan varyant güncellenemez.");
   }
 
+  const lineTotal = calculateLineTotal(variant.price, quantity);
+  const updateStartedAt = performance.now();
   const { error } = await supabase
     .from("order_items")
     .update({
-      line_total: calculateLineTotal(variant.price, quantity),
+      line_total: lineTotal,
       quantity,
       unit_price: variant.price,
     })
@@ -274,9 +289,14 @@ export async function updateDraftItemQuantity({
   if (error) {
     throw new Error(error.message);
   }
+  const updateMs = Math.round(performance.now() - updateStartedAt);
 
+  const refetchStartedAt = performance.now();
   const totals = await recalculateDraftTotals(item.order_draft_id);
-  await writeDraftAuditLog({
+  const refetchMs = Math.round(performance.now() - refetchStartedAt);
+  const sideEffectStartedAt = performance.now();
+  await Promise.all([
+    writeDraftAuditLog({
     action: "draft_item_quantity_updated",
     draftId: item.order_draft_id,
     userId: profile.id,
@@ -285,21 +305,35 @@ export async function updateDraftItemQuantity({
       quantity,
       variant_id: item.variant_id,
     },
-  });
-  await recordRateLimitEvent({
-    action: RATE_LIMIT_POLICIES.requestItemMutation.action,
-    metadata: {
-      item_id: item.id,
-      order_draft_id: item.order_draft_id,
-      quantity,
-      variant_id: item.variant_id,
-    },
-    userId: profile.id,
+    }),
+    recordRateLimitEvent({
+      action: RATE_LIMIT_POLICIES.requestItemMutation.action,
+      metadata: {
+        item_id: item.id,
+        order_draft_id: item.order_draft_id,
+        quantity,
+        variant_id: item.variant_id,
+      },
+      userId: profile.id,
+    }),
+  ]);
+  const sideEffectMs = Math.round(performance.now() - sideEffectStartedAt);
+
+  logRequestPerf("request.updateQuantity.breakdown", {
+    authMs: 0,
+    itemLookupMs,
+    quantity,
+    rateLimitMs,
+    refetchMs,
+    sideEffectMs,
+    totalMs: Math.round(performance.now() - startedAt),
+    updateMs,
+    variantLookupMs,
   });
 
   return {
     itemId: item.id,
-    lineTotal: calculateLineTotal(variant.price, quantity),
+    lineTotal,
     quantity,
     subtotal: totals.subtotal,
     total: totals.total,
@@ -312,7 +346,7 @@ export async function removeDraftItem({
   profile,
 }: {
   itemId: string;
-  profile: Profile;
+  profile: AccessProfile;
 }) {
   assertCanCreateOrderRequest(profile);
   await assertRateLimit({
@@ -355,7 +389,7 @@ export async function removeDraftItem({
   };
 }
 
-export async function clearDraft(profile: Profile) {
+export async function clearDraft(profile: AccessProfile) {
   assertCanCreateOrderRequest(profile);
 
   const draft = await findDraft(profile.id);
@@ -473,7 +507,7 @@ export async function cancelCustomerRequest({
   profile,
   requestId,
 }: {
-  profile: Profile;
+  profile: AccessProfile;
   requestId: string;
 }) {
   assertCanCreateOrderRequest(profile);
@@ -529,13 +563,13 @@ export async function cancelCustomerRequest({
   return cancelledDraft;
 }
 
-function assertCanCreateOrderRequest(profile: Profile | null) {
+function assertCanCreateOrderRequest(profile: AccessProfile | null) {
   if (!canCreateOrderRequest(profile)) {
     throw new Error("Talep oluşturmak için onaylı ve aktif hesap gerekir.");
   }
 }
 
-async function getOrCreateDraft(profile: Profile) {
+async function getOrCreateDraft(profile: AccessProfile) {
   const existingDraft = await findDraft(profile.id);
 
   if (existingDraft) {

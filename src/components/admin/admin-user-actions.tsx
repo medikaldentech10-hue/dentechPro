@@ -1,7 +1,14 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ShieldAlert, ShieldCheck, UserRoundCog, UserRoundX } from "lucide-react";
+import { useFormStatus } from "react-dom";
+import {
+  LoaderCircle,
+  ShieldAlert,
+  ShieldCheck,
+  UserRoundCog,
+  UserRoundX,
+} from "lucide-react";
 
 import { reviewUserAction } from "@/app/(admin)/admin/users/actions";
 import { Button } from "@/components/ui/button";
@@ -174,8 +181,23 @@ function ReviewForm({
       <input name="user_id" type="hidden" value={userId} />
       <input name="intent" type="hidden" value={intent} />
       <input name="note" type="hidden" value={note} />
-      {children}
+      <ReviewSubmitButton>{children}</ReviewSubmitButton>
     </form>
+  );
+}
+
+function ReviewSubmitButton({ children }: { children: React.ReactNode }) {
+  const { pending } = useFormStatus();
+
+  if (!pending) {
+    return children;
+  }
+
+  return (
+    <Button className="w-full justify-center" disabled size="sm" type="submit">
+      <LoaderCircle className="animate-spin" data-icon="inline-start" />
+      İşleniyor...
+    </Button>
   );
 }
 

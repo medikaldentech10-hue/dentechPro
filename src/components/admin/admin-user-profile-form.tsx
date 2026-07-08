@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useFormStatus } from "react-dom";
+import { LoaderCircle } from "lucide-react";
 
 import { updateUserProfileFormAction } from "@/app/(admin)/admin/users/actions";
 import { Button } from "@/components/ui/button";
@@ -173,6 +174,7 @@ function SubmitButton() {
 
   return (
     <Button disabled={pending} type="submit">
+      {pending ? <LoaderCircle className="animate-spin" data-icon="inline-start" /> : null}
       {pending ? "Kaydediliyor..." : "Bilgileri Kaydet"}
     </Button>
   );

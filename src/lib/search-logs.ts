@@ -8,6 +8,8 @@ import { getSupabaseAdminClient } from "@/lib/supabase/server";
 import type { Json } from "@/lib/supabase/database.types";
 import type { Profile, PublicRole } from "@/lib/types/auth";
 
+type SearchLogProfile = Pick<Profile, "role">;
+
 export type SearchLogTokenPayload = {
   category: string[];
   chips: Array<{
@@ -81,7 +83,7 @@ export async function recordCatalogSearch({
   query,
   resultCount,
 }: {
-  profile: Profile | null;
+  profile: SearchLogProfile | null;
   query: string | null | undefined;
   resultCount: number;
 }) {
@@ -236,7 +238,7 @@ function buildSearchLogTokens(
   };
 }
 
-function getProfileRole(profile: Profile | null): PublicRole {
+function getProfileRole(profile: SearchLogProfile | null): PublicRole {
   return profile?.role ?? "public";
 }
 

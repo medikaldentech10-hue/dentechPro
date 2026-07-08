@@ -1,17 +1,15 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
-import { PackageSearch, Search } from "lucide-react";
+import { Clock3, PackageSearch, Search } from "lucide-react";
 
-import {
-} from "@/app/(public)/request/actions";
 import { RequestDraftClient } from "@/components/request/request-draft-client";
 import { RequestHistoryList } from "@/components/request/request-history-list";
 import { SurfaceCard } from "@/components/premium/surface-card";
 import { PageTitle } from "@/components/shared/page-title";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
-import { getCurrentProfile, isSuspendedUser } from "@/lib/auth";
+import { getCurrentRoutingProfile, isSuspendedUser } from "@/lib/auth";
 import {
   canCreateOrderRequest,
   getActiveRequestDraft,
@@ -43,7 +41,7 @@ const historyStatusOptions: Array<{
 ];
 
 export default async function RequestPage({ searchParams }: RequestPageProps) {
-  const [profile, query] = await Promise.all([getCurrentProfile(), searchParams]);
+  const [profile, query] = await Promise.all([getCurrentRoutingProfile(), searchParams]);
 
   if (!profile) {
     redirect("/login");
@@ -84,28 +82,31 @@ export default async function RequestPage({ searchParams }: RequestPageProps) {
       ) : null}
       <RequestFlowSummary />
 
-      <section className="flex flex-col gap-4">
-        <div className="flex flex-col gap-1">
-          <h2 className="text-xl font-semibold tracking-normal">Aktif Talep</h2>
-          <p className="text-sm leading-6 text-muted-foreground">
-            Listeyi düzenleyip talebinizi göndermeden önce ürünlerinizi burada son kez kontrol edin.
-          </p>
+      <section className="rounded-3xl border border-primary/12 bg-primary/[0.035] p-4 sm:p-5">
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-2">
+            <span className="inline-flex w-fit items-center gap-2 rounded-full border border-primary/15 bg-background/85 px-3 py-1 text-xs font-medium text-primary shadow-sm">
+              <Clock3 className="size-3.5" />
+              Aktif Taslak
+            </span>
+            <h2 className="text-xl font-semibold tracking-normal">Aktif Talep</h2>
+            <p className="text-sm leading-6 text-muted-foreground">
+              Listeyi düzenleyip talebinizi göndermeden önce ürünlerinizi burada son kez kontrol edin.
+            </p>
+          </div>
+          {!draft || draft.items.length === 0 ? (
+            <EmptyRequestList />
+          ) : (
+            <RequestList draft={draft} />
+          )}
         </div>
-        {!draft || draft.items.length === 0 ? (
-          <EmptyRequestList />
-        ) : (
-          <RequestList draft={draft} />
-        )}
       </section>
 
-      <section className="flex flex-col gap-4 border-t border-border/60 pt-2">
+      <section className="flex flex-col gap-4 rounded-3xl border border-border/60 bg-muted/[0.18] p-4 sm:p-5">
         <div className="flex flex-col gap-1">
-          <h2 className="text-lg font-semibold tracking-normal">
-            Geçmiş Taleplerim
-          </h2>
+          <h2 className="text-lg font-semibold tracking-normal">Geçmiş Taleplerim</h2>
           <p className="text-sm leading-6 text-muted-foreground">
-            Gönderdiğiniz talepleri, notlarınızı ve süreç durumlarını buradan
-            takip edebilirsiniz.
+            Gönderdiğiniz talepleri, notlarınızı ve süreç durumlarını buradan takip edebilirsiniz.
           </p>
         </div>
         <RequestHistoryFilters filters={filters} />
@@ -127,7 +128,7 @@ async function RequestHistorySection({
   showPrices,
 }: {
   filters: RequestHistoryFilters;
-  profile: NonNullable<Awaited<ReturnType<typeof getCurrentProfile>>>;
+  profile: NonNullable<Awaited<ReturnType<typeof getCurrentRoutingProfile>>>;
   showPrices: boolean;
 }) {
   const history = await getUserRequestHistory(profile, filters);
@@ -171,8 +172,7 @@ function RequestFeedbackBanner({
   if (error === "item_rate_limited") {
     return (
       <div className="rounded-xl border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive">
-        Çok kısa sürede fazla işlem yapıldı. Lütfen birkaç saniye sonra tekrar
-        deneyin.
+        Çok kısa sürede fazla işlem yapıldı. Lütfen birkaç saniye sonra tekrar deneyin.
       </div>
     );
   }
@@ -180,8 +180,7 @@ function RequestFeedbackBanner({
   if (error === "submit_rate_limited") {
     return (
       <div className="rounded-xl border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive">
-        Güvenlik nedeniyle kısa süre içinde tekrar talep gönderemezsiniz.
-        Lütfen biraz sonra tekrar deneyin.
+        Güvenlik nedeniyle kısa süre içinde tekrar talep gönderemezsiniz. Lütfen biraz sonra tekrar deneyin.
       </div>
     );
   }
@@ -189,8 +188,7 @@ function RequestFeedbackBanner({
   if (error === "submit_daily_limit") {
     return (
       <div className="rounded-xl border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive">
-        Günlük talep limitine ulaştınız. Acil durumlar için DENTech Medikal ile
-        iletişime geçin.
+        Günlük talep limitine ulaştınız. Acil durumlar için DENTech Medikal ile iletişime geçin.
       </div>
     );
   }
@@ -216,8 +214,7 @@ function RequestFlowSummary() {
         <div>
           <p className="text-sm font-medium text-primary">Talep akışı</p>
           <p className="mt-1 text-sm leading-6 text-muted-foreground">
-            Burası doğrudan ödeme ekranı değil; ürünleri seçip ekibimize teklif
-            talebi ilettiğiniz profesyonel talep alanıdır.
+            Burası doğrudan ödeme ekranı değil; ürünleri seçip ekibimize teklif talebi ilettiğiniz profesyonel talep alanıdır.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -245,8 +242,7 @@ function EmptyRequestList() {
         <div className="flex max-w-md flex-col gap-2">
           <h2 className="text-lg font-semibold">Talep listenizde henüz ürün yok.</h2>
           <p className="text-sm leading-6 text-muted-foreground">
-            Katalogdan ürün seçerek talep listenizi oluşturabilirsiniz. Ekibimiz
-            talebiniz sonrası sizinle iletişime geçecektir.
+            Katalogdan ürün seçerek talep listenizi oluşturabilirsiniz. Ekibimiz talebiniz sonrası sizinle iletişime geçecektir.
           </p>
         </div>
         <Link className={cn(buttonVariants())} href="/products">
@@ -263,8 +259,7 @@ function RequestHistoryEmptyState() {
       <CardContent className="flex min-h-40 flex-col items-center justify-center gap-2 p-6 text-center">
         <p className="font-medium">Henüz geçmiş talebiniz bulunmuyor.</p>
         <p className="max-w-md text-sm leading-6 text-muted-foreground">
-          Gönderdiğiniz talepler burada listelenir. Talep oluşturduktan sonra
-          durumunu ve detaylarını bu alandan takip edebilirsiniz.
+          Gönderdiğiniz talepler burada listelenir. Talep oluşturduktan sonra durumunu ve detaylarını bu alandan takip edebilirsiniz.
         </p>
       </CardContent>
     </SurfaceCard>
@@ -275,20 +270,23 @@ function RequestHistorySkeleton() {
   return (
     <SurfaceCard>
       <CardContent className="grid gap-3 p-4">
-        {Array.from({ length: 3 }, (_, index) => (
+        <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+          <Clock3 className="size-3.5" />
+          Geçmiş talepler yükleniyor
+        </div>
+        {Array.from({ length: 2 }, (_, index) => (
           <div
-            className="rounded-2xl border border-border/70 bg-background/70 p-4 shadow-sm"
+            className="rounded-2xl border border-border/60 bg-background/75 p-3 shadow-sm"
             key={index}
           >
-            <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+            <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
               <div className="min-w-0 flex-1 space-y-2">
-                <div className="h-5 w-40 animate-pulse rounded bg-muted" />
-                <div className="h-4 w-56 animate-pulse rounded bg-muted/80" />
-                <div className="h-4 w-full max-w-xl animate-pulse rounded bg-muted/60" />
+                <div className="h-4 w-36 animate-pulse rounded bg-muted" />
+                <div className="h-3.5 w-52 animate-pulse rounded bg-muted/75" />
               </div>
               <div className="flex gap-2">
-                <div className="h-9 w-20 animate-pulse rounded-lg bg-muted" />
-                <div className="h-9 w-24 animate-pulse rounded-lg bg-muted/80" />
+                <div className="h-8 w-20 animate-pulse rounded-lg bg-muted/75" />
+                <div className="h-8 w-24 animate-pulse rounded-lg bg-muted/60" />
               </div>
             </div>
           </div>
@@ -355,7 +353,7 @@ function RequestHistoryFilters({
               type="date"
             />
           </label>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button type="submit">Filtrele</Button>
             <Link
               className={buttonVariants({ variant: "outline" })}

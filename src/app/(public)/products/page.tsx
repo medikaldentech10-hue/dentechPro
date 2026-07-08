@@ -7,7 +7,12 @@ import { ProductCard } from "@/components/products/product-card";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { canViewPrices, getCurrentProfile, isAdmin, isSalesRep } from "@/lib/auth";
+import {
+  canViewPrices,
+  getCurrentRoutingProfile,
+  isAdmin,
+  isSalesRep,
+} from "@/lib/auth";
 import { DENTECH_WHATSAPP_NUMBER } from "@/lib/config";
 import {
   getCatalogCategories,
@@ -55,7 +60,8 @@ const hasWhatsAppSupport = !DENTECH_WHATSAPP_NUMBER.includes("X");
 const whatsAppSupportHref = `https://wa.me/${DENTECH_WHATSAPP_NUMBER}`;
 
 export default async function ProductsPage({ searchParams }: ProductsPageProps) {
-  const [params, profile] = await Promise.all([searchParams, getCurrentProfile()]);
+  const params = await searchParams;
+  const { authMs, profile } = await getProductsPageProfile();
   const filters: ProductFilters = {
     brand: params.brand || "JOTA",
     category: params.category,
@@ -77,15 +83,13 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
   );
   const isFirstPublicCatalogPage =
     !hasPriceAccess && !hasActiveFilters && (!params.page || params.page === "1");
-  const [categories, usageAreas, productResult] = await Promise.all([
-    getCatalogCategories(),
-    getCatalogUsageAreas(),
-    hasPriceAccess
-      ? getPricedProductsForProfile(profile, filters)
-      : isFirstPublicCatalogPage
-        ? getCachedPublicFirstPageProducts(filters)
-        : getPublicProducts(filters),
-  ]);
+  const { dataMs, result } = await getProductsPageData({
+    filters,
+    hasPriceAccess,
+    isFirstPublicCatalogPage,
+    profile,
+  });
+  const [categories, usageAreas, productResult] = result;
   after(async () => {
     await recordCatalogSearch({
       profile,
@@ -114,6 +118,16 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
   ].filter((label): label is string => Boolean(label));
   const interpretedCriteria = interpretCatalogQuery(params.q);
   const searchUiKey = getFilterUiStateKey(params);
+
+  logProductsPagePerf({
+    authMs,
+    dataMs,
+    hasActiveFilters,
+    hasPriceAccess,
+    page: Number(params.page ?? "1") || 1,
+    productCount: products.length,
+    totalMs: authMs + dataMs,
+  });
 
   return (
     <div className="mx-auto flex w-full max-w-[1320px] flex-col gap-5 px-3 py-4 md:gap-6 md:px-6 md:py-8">
@@ -325,6 +339,52 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
       </div>
     </div>
   );
+}
+
+function logProductsPagePerf(payload: Record<string, unknown>) {
+  if (process.env.DENTECH_PERF_LOGS !== "true") {
+    return;
+  }
+
+  console.info("[products.page]", payload);
+}
+
+async function getProductsPageProfile() {
+  const startedAt = performance.now();
+  const profile = await getCurrentRoutingProfile();
+
+  return {
+    authMs: Math.round(performance.now() - startedAt),
+    profile,
+  };
+}
+
+async function getProductsPageData({
+  filters,
+  hasPriceAccess,
+  isFirstPublicCatalogPage,
+  profile,
+}: {
+  filters: ProductFilters;
+  hasPriceAccess: boolean;
+  isFirstPublicCatalogPage: boolean;
+  profile: Awaited<ReturnType<typeof getCurrentRoutingProfile>>;
+}) {
+  const startedAt = performance.now();
+  const result = await Promise.all([
+    getCatalogCategories(),
+    getCatalogUsageAreas(),
+    hasPriceAccess
+      ? getPricedProductsForProfile(profile, filters)
+      : isFirstPublicCatalogPage
+        ? getCachedPublicFirstPageProducts(filters)
+        : getPublicProducts(filters),
+  ]);
+
+  return {
+    dataMs: Math.round(performance.now() - startedAt),
+    result,
+  };
 }
 
 function CatalogSelects({

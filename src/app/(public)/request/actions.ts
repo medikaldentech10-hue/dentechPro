@@ -3,7 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { getCurrentProfile } from "@/lib/auth";
+import {
+  getCurrentProfile,
+  getCurrentRoutingProfile,
+} from "@/lib/auth";
 import {
   isCustomerPaymentPreference,
   type CustomerPaymentPreference,
@@ -152,15 +155,17 @@ export async function updateOrderItemQuantityInlineAction(
   const startedAt = performance.now();
 
   try {
-    const profile = await getRequiredProfile();
+    const authStartedAt = performance.now();
+    const profile = await getRequiredAccessProfile();
+    const authMs = Math.round(performance.now() - authStartedAt);
     const result = await updateDraftItemQuantity({
       itemId: input.itemId,
       profile,
       quantity: input.quantity,
     });
 
-    revalidatePath("/request");
     logRequestActionPerf("request.updateQuantity", {
+      authMs,
       durationMs: Math.round(performance.now() - startedAt),
       quantity: input.quantity,
       success: true,
@@ -171,6 +176,7 @@ export async function updateOrderItemQuantityInlineAction(
       success: true,
     };
   } catch (error) {
+    const authMs = Math.round(performance.now() - startedAt);
     const message = await getInlineMutationErrorMessage({
       action: RATE_LIMIT_POLICIES.requestItemMutation.action,
       error,
@@ -180,6 +186,7 @@ export async function updateOrderItemQuantityInlineAction(
       },
     });
     logRequestActionPerf("request.updateQuantity", {
+      authMs,
       durationMs: Math.round(performance.now() - startedAt),
       quantity: input.quantity,
       success: false,
@@ -347,6 +354,16 @@ async function getRequiredProfile() {
   return profile;
 }
 
+async function getRequiredAccessProfile() {
+  const profile = await getCurrentRoutingProfile();
+
+  if (!profile) {
+    redirect("/login");
+  }
+
+  return profile;
+}
+
 function getRequiredString(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
 }
@@ -406,7 +423,7 @@ async function getInlineMutationErrorMessage({
     return error instanceof Error ? error.message : "İşlem tamamlanamadı.";
   }
 
-  const profile = await getCurrentProfile();
+  const profile = await getCurrentRoutingProfile();
   if (profile) {
     await logRateLimitBlockedAttempt({
       action,

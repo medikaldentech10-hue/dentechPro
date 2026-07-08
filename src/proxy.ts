@@ -8,9 +8,10 @@ export async function proxy(request: NextRequest) {
   let response = NextResponse.next({
     request,
   });
-  const hasAuthCookies = request.cookies
+  const authCookies = request.cookies
     .getAll()
-    .some((cookie) => cookie.name.startsWith("sb-") && cookie.name.includes("-auth-token"));
+    .filter((cookie) => cookie.name.startsWith("sb-") && cookie.name.includes("-auth-token"));
+  const hasAuthCookies = authCookies.length > 0;
 
   if (!hasAuthCookies) {
     logProxyPerf({
@@ -47,7 +48,23 @@ export async function proxy(request: NextRequest) {
     }
   );
 
-  await supabase.auth.getUser();
+  try {
+    await supabase.auth.getUser();
+  } catch (error) {
+    if (isExpiredSessionError(error)) {
+      clearAuthCookies(request, response, authCookies.map((cookie) => cookie.name));
+      logProxyPerf({
+        durationMs: Math.round(performance.now() - startedAt),
+        path: request.nextUrl.pathname,
+        refreshedSession: false,
+        reason: "expired-session",
+      });
+      logExpiredSessionDebug(request.nextUrl.pathname);
+      return response;
+    }
+
+    throw error;
+  }
   logProxyPerf({
     durationMs: Math.round(performance.now() - startedAt),
     path: request.nextUrl.pathname,
@@ -63,6 +80,46 @@ function logProxyPerf(payload: Record<string, unknown>) {
   }
 
   console.info("[proxy]", payload);
+}
+
+function clearAuthCookies(
+  request: NextRequest,
+  response: NextResponse,
+  cookieNames: string[]
+) {
+  for (const name of cookieNames) {
+    request.cookies.delete(name);
+    response.cookies.set(name, "", {
+      maxAge: 0,
+      path: "/",
+    });
+  }
+}
+
+function isExpiredSessionError(error: unknown) {
+  const message =
+    error instanceof Error
+      ? error.message
+      : typeof error === "string"
+        ? error
+        : "";
+  const details =
+    typeof error === "object" && error !== null ? JSON.stringify(error) : "";
+  const haystack = `${message} ${details}`.toLocaleLowerCase("en-US");
+
+  return (
+    haystack.includes("invalid refresh token") ||
+    haystack.includes("refresh token not found") ||
+    haystack.includes("refresh_token_not_found")
+  );
+}
+
+function logExpiredSessionDebug(path: string) {
+  if (process.env.DENTECH_PERF_LOGS !== "true") {
+    return;
+  }
+
+  console.info("[auth.session.expired]", { path });
 }
 
 export const config = {

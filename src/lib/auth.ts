@@ -22,6 +22,7 @@ type RoutingProfile = Pick<
   Profile,
   "can_view_prices" | "id" | "is_active" | "role" | "verification_status"
 >;
+export type AccessProfile = RoutingProfile;
 
 export type RegistrationProfileFields = {
   city: string;
@@ -60,11 +61,22 @@ export function isAllowedUserType(value: string): value is RegistrationUserType 
 
 export const getCurrentUser = cache(async function getCurrentUser() {
   const supabase = await getSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-  return user;
+    return user;
+  } catch (error) {
+    if (isExpiredSessionError(error)) {
+      logAuthPerf("auth.session.expired", {
+        reason: "invalid-refresh-token",
+      });
+      return null;
+    }
+
+    throw error;
+  }
 });
 
 export const getCurrentProfile = cache(async function getCurrentProfile() {
@@ -80,6 +92,20 @@ export const getCurrentProfile = cache(async function getCurrentProfile() {
   }
 
   return getProfileForUser(user);
+});
+
+export const getCurrentRoutingProfile = cache(async function getCurrentRoutingProfile() {
+  const user = await getCurrentUser();
+
+  if (!user) {
+    logAuthDebug("profile.routing.read", {
+      profileFound: false,
+      reason: "no-auth-user",
+    });
+    return null;
+  }
+
+  return getRoutingProfileForUser(user);
 });
 
 export async function getUserRole(): Promise<PublicRole> {
@@ -402,4 +428,22 @@ function logAuthPerf(event: string, payload: Record<string, unknown>) {
   }
 
   console.info(`[${event}]`, payload);
+}
+
+function isExpiredSessionError(error: unknown) {
+  const message =
+    error instanceof Error
+      ? error.message
+      : typeof error === "string"
+        ? error
+        : "";
+  const details =
+    typeof error === "object" && error !== null ? JSON.stringify(error) : "";
+  const haystack = `${message} ${details}`.toLocaleLowerCase("en-US");
+
+  return (
+    haystack.includes("invalid refresh token") ||
+    haystack.includes("refresh token not found") ||
+    haystack.includes("refresh_token_not_found")
+  );
 }

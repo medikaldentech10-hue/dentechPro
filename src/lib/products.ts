@@ -2,11 +2,10 @@
 
 import { unstable_cache } from "next/cache";
 
-import { canViewPrices } from "@/lib/auth";
+import { canViewPrices, type AccessProfile } from "@/lib/auth";
 import { interpretCatalogQueryLocal } from "@/lib/search-interpretation";
 import { getSupabaseAdminClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/database.types";
-import type { Profile } from "@/lib/types/auth";
 
 type CategoryRow = Database["public"]["Tables"]["categories"]["Row"];
 type ProductRow = Database["public"]["Tables"]["products"]["Row"];
@@ -140,7 +139,7 @@ type CatalogSearch = {
   variantTerms: string[];
 };
 
-export function getCanViewPrices(profile: Profile | null) {
+export function getCanViewPrices(profile: AccessProfile | null) {
   return canViewPrices(profile);
 }
 
@@ -149,6 +148,11 @@ export function interpretCatalogQuery(query: string | undefined) {
 }
 
 export async function getCatalogCategories() {
+  return getCachedCatalogCategories();
+}
+
+const getCachedCatalogCategories = unstable_cache(
+  async () => {
   const supabase = getSupabaseAdminClient();
   const { data, error } = await supabase
     .from("categories")
@@ -161,9 +165,20 @@ export async function getCatalogCategories() {
   }
 
   return data satisfies CatalogCategory[];
-}
+  },
+  ["catalog-categories"],
+  {
+    revalidate: 60,
+    tags: ["catalog-taxonomy"],
+  }
+);
 
 export async function getCatalogUsageAreas() {
+  return getCachedCatalogUsageAreas();
+}
+
+const getCachedCatalogUsageAreas = unstable_cache(
+  async () => {
   const supabase = getSupabaseAdminClient();
   const { data, error } = await supabase
     .from("products")
@@ -183,7 +198,13 @@ export async function getCatalogUsageAreas() {
         .filter((value): value is string => Boolean(value))
     ),
   ];
-}
+  },
+  ["catalog-usage-areas"],
+  {
+    revalidate: 60,
+    tags: ["catalog-taxonomy"],
+  }
+);
 
 export async function getPublicProducts(filters: ProductFilters = {}) {
   const result = await getProductRows(filters);
@@ -205,7 +226,7 @@ export async function getPublicProductById(productId: string) {
 }
 
 export async function getPricedProductsForProfile(
-  profile: Profile | null,
+  profile: AccessProfile | null,
   filters: ProductFilters = {}
 ) {
   if (!getCanViewPrices(profile)) {
@@ -220,7 +241,7 @@ export async function getPricedProductsForProfile(
 }
 
 export async function getPricedProductByIdForProfile(
-  profile: Profile | null,
+  profile: AccessProfile | null,
   productId: string
 ) {
   const row = await getProductRowById(productId);
@@ -417,10 +438,14 @@ async function getProductRows(
     fetchedRowCount: productRows.length,
     productCount: paginatedRows.length,
     rawProductCount: productRows.length,
+    productQueryMs: checkpoints.productQueryMs ?? 0,
+    renderPrepMs: checkpoints.mappingMs ?? 0,
     countSkipped: !search,
     hasNext: hasNextPage,
     hasPrevious: page > 1,
     totalCount,
+    totalMs: Math.round(performance.now() - startedAt),
+    variantQueryMs: checkpoints.variantQueryMs ?? 0,
     variantCount,
   });
 

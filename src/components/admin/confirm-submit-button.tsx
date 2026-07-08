@@ -2,6 +2,8 @@
 
 import type { ReactNode } from "react";
 import type { VariantProps } from "class-variance-authority";
+import { LoaderCircle } from "lucide-react";
+import { useFormStatus } from "react-dom";
 
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -25,10 +27,13 @@ export function ConfirmSubmitButton({
   title,
   variant = "destructive",
 }: ConfirmSubmitButtonProps) {
+  const { pending } = useFormStatus();
+
   return (
     <button
       aria-label={ariaLabel}
       className={cn(buttonVariants({ size, variant }), className)}
+      disabled={pending}
       onClick={(event) => {
         if (!window.confirm(confirmMessage)) {
           event.preventDefault();
@@ -37,7 +42,7 @@ export function ConfirmSubmitButton({
       title={title}
       type="submit"
     >
-      {children}
+      {pending ? <LoaderCircle className="animate-spin" /> : children}
     </button>
   );
 }

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useFormStatus } from "react-dom";
 import {
   Building2,
   ChevronDown,
@@ -9,6 +10,7 @@ import {
   ChevronRight,
   ChevronUp,
   Download,
+  LoaderCircle,
   MapPin,
   Search,
   Shield,
@@ -554,11 +556,23 @@ function PrimaryApprovalButton({ profile }: { profile: Profile }) {
       <input name="user_id" type="hidden" value={profile.id} />
       <input name="intent" type="hidden" value={intent} />
       <input name="note" type="hidden" value="" />
-      <Button size="sm" type="submit">
-        <UserCheck data-icon="inline-start" />
-        {label}
-      </Button>
+      <PrimaryApprovalSubmitButton label={label} />
     </form>
+  );
+}
+
+function PrimaryApprovalSubmitButton({ label }: { label: string }) {
+  const { pending } = useFormStatus();
+
+  return (
+    <Button disabled={pending} size="sm" type="submit">
+      {pending ? (
+        <LoaderCircle className="animate-spin" data-icon="inline-start" />
+      ) : (
+        <UserCheck data-icon="inline-start" />
+      )}
+      {pending ? "İşleniyor..." : label}
+    </Button>
   );
 }
 
