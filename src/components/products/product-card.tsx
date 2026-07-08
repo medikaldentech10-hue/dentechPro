@@ -48,7 +48,8 @@ export function ProductCard({
   const primaryVariant = catalogProduct.variants[0] ?? null;
   const detailHref = `/products/${catalogProduct.id}`;
   const displayTitle = getDisplayTitle(catalogProduct.name, catalogProduct.brand);
-  const categoryLabel = catalogProduct.category?.name ?? null;
+  const brandLabel = getDisplayText(catalogProduct.brand);
+  const categoryLabel = getDisplayText(catalogProduct.category?.name);
   const skuSummary = getSkuSummary(primaryVariant);
   const variantBadges = getVariantBadges(catalogProduct, detailHref);
 
@@ -71,7 +72,7 @@ export function ProductCard({
               alt={catalogProduct.name}
               fallback={
                 <div className="flex h-full w-full items-center justify-center rounded-xl bg-white/42 text-2xl font-semibold text-primary backdrop-blur sm:rounded-2xl sm:text-3xl">
-                  {primaryVariant?.connectionType ?? catalogProduct.brand}
+                  {primaryVariant?.connectionType ?? brandLabel ?? "Ürün"}
                 </div>
               }
               src={catalogProduct.imageUrl ?? primaryVariant?.imageUrl}
@@ -82,22 +83,24 @@ export function ProductCard({
 
           <div className="absolute inset-x-1.5 bottom-1.5 z-20 hidden rounded-xl border border-white/70 bg-gradient-to-br from-white/78 via-white/52 to-white/30 p-2 shadow-[0_10px_28px_rgb(15_23_42/0.12)] backdrop-blur-2xl backdrop-saturate-150 sm:inset-x-3 sm:bottom-3 sm:block sm:rounded-[1.15rem] sm:p-3 sm:shadow-[0_14px_36px_rgb(15_23_42/0.14)]">
             <ProductCardInfo
-              brandLabel={catalogProduct.brand}
+              brandLabel={brandLabel}
               categoryLabel={categoryLabel}
               displayTitle={displayTitle}
               skuSummary={skuSummary}
               variantBadges={variantBadges}
+              variantCount={catalogProduct.variantCount}
               variantLimit={3}
             />
           </div>
         </div>
         <div className="mt-2 rounded-2xl border border-border/50 bg-background/78 p-2 shadow-[0_8px_20px_rgb(15_23_42/0.04)] sm:hidden">
           <ProductCardInfo
-            brandLabel={catalogProduct.brand}
+            brandLabel={brandLabel}
             categoryLabel={categoryLabel}
             displayTitle={displayTitle}
             skuSummary={skuSummary}
             variantBadges={variantBadges}
+            variantCount={catalogProduct.variantCount}
             variantLimit={2}
           />
         </div>
@@ -127,22 +130,26 @@ function ProductCardInfo({
   displayTitle,
   skuSummary,
   variantBadges,
+  variantCount,
   variantLimit,
 }: {
-  brandLabel: string;
+  brandLabel: string | null;
   categoryLabel: string | null;
   displayTitle: string;
   skuSummary: string | null;
   variantBadges: VariantBadge[];
+  variantCount: number;
   variantLimit: number;
 }) {
   return (
     <>
       <div className="mb-1 flex items-center justify-between gap-2 sm:mb-1.5">
         <div className="flex min-w-0 items-center gap-1.5">
-          <span className="rounded-full border border-primary/15 bg-primary/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-primary sm:px-2.5 sm:py-1 sm:text-[10px] sm:tracking-[0.18em]">
-            {brandLabel}
-          </span>
+          {brandLabel ? (
+            <span className="rounded-full border border-primary/15 bg-primary/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-primary sm:px-2.5 sm:py-1 sm:text-[10px] sm:tracking-[0.18em]">
+              {brandLabel}
+            </span>
+          ) : null}
           {categoryLabel ? (
             <span className="truncate text-[10px] font-medium text-slate-500 sm:text-[11px]">
               {categoryLabel}
@@ -151,7 +158,7 @@ function ProductCardInfo({
         </div>
         {variantBadges.length ? (
           <span className="shrink-0 text-[10px] font-medium text-slate-500">
-            Varyantlar
+            {variantCount > 1 ? `${variantCount} varyant` : "Varyant"}
           </span>
         ) : null}
       </div>
@@ -199,7 +206,7 @@ function VariantBadgeLink({
     >
       <span>{badge.label}</span>
       {badge.colors.length ? (
-        <span className="flex items-center gap-0.5" aria-hidden="true">
+        <span aria-hidden="true" className="flex items-center gap-0.5">
           {badge.colors.slice(0, 4).map((color) => (
             <span
               className={`size-1.5 rounded-full ring-1 ring-white/80 ${colorClass(color)}`}
@@ -220,6 +227,14 @@ function PriceState({
   visibility: PriceVisibility;
 }) {
   if (visibility === "approved" && variant && "price" in variant) {
+    if (variant.price === null) {
+      return (
+        <p className="rounded-full border border-amber-200/80 bg-amber-50/90 px-3 py-2 text-center text-xs font-medium text-amber-800 dark:border-amber-400/20 dark:bg-amber-500/10 dark:text-amber-200">
+          Fiyat bilgisi hazırlanıyor. Stok ve teklif için ekibimizle iletişime geçin.
+        </p>
+      );
+    }
+
     return (
       <p className="px-1 text-[0.82rem] font-semibold text-foreground sm:text-[0.95rem]">
         {formatPrice(variant.price, variant.currency)}
@@ -237,7 +252,9 @@ function PriceState({
 
   return (
     <p className="rounded-full border border-border/60 bg-muted/65 px-3 py-2 text-center text-xs font-medium text-muted-foreground">
-      <span className="sr-only">Fiyatları görmek ve talep listesi oluşturmak için giriş yapın</span>
+      <span className="sr-only">
+        Fiyatları görmek ve talep listesi oluşturmak için giriş yapın
+      </span>
       Fiyatları görmek ve talep listesi oluşturmak için profesyonel hesabınızla giriş yapın.
     </p>
   );
@@ -258,7 +275,10 @@ function ProductAction({
 }) {
   if (priceVisibility !== "approved" || !variant || !("stockQuantity" in variant)) {
     return (
-      <Button className="h-10 w-full rounded-full px-2 text-[11px] font-semibold leading-4 shadow-sm sm:h-10 sm:text-xs" disabled>
+      <Button
+        className="h-10 w-full rounded-full px-2 text-[11px] font-semibold leading-4 shadow-sm sm:h-10 sm:text-xs"
+        disabled
+      >
         {getActionLabel({ adminMode, priceVisibility, salesMode })}
       </Button>
     );
@@ -288,18 +308,18 @@ function ProductAction({
     );
   }
 
-  const disabled = !variant.isActive || variant.stockQuantity === 0;
+  const disabled =
+    !variant.isActive || variant.stockQuantity === 0 || variant.price === null;
+  const disabledReason = !variant.isActive
+    ? "Pasif varyant"
+    : variant.price === null
+      ? "Fiyat bilgisi hazırlanıyor"
+      : "Stok bilgisi için iletişime geçin";
 
   return (
     <AddToRequestForm
       disabled={disabled}
-      disabledReason={
-        disabled
-          ? !variant.isActive
-            ? "Pasif varyant"
-            : "Stok bilgisi için iletişime geçin"
-          : undefined
-      }
+      disabledReason={disabled ? disabledReason : undefined}
       submitLabel="Ekle"
       variantId={variant.id}
     />
@@ -313,7 +333,13 @@ function VariantRequestOption({
   salesMode: boolean;
   variant: PricedCatalogVariant;
 }) {
-  const disabled = !variant.isActive || variant.stockQuantity === 0;
+  const disabled =
+    !variant.isActive || variant.stockQuantity === 0 || variant.price === null;
+  const disabledReason = !variant.isActive
+    ? "Pasif varyant"
+    : variant.price === null
+      ? "Fiyat bilgisi hazırlanıyor"
+      : "Stok bilgisi için iletişime geçin";
 
   return (
     <div className="rounded-xl border border-slate-200/75 bg-white/72 p-2 shadow-sm dark:border-white/10 dark:bg-white/8">
@@ -334,12 +360,15 @@ function VariantRequestOption({
             Stok yok
           </span>
         ) : null}
+        {variant.price === null ? (
+          <span className="rounded-full bg-amber-50 px-2 py-0.5 font-medium text-amber-700 dark:bg-amber-500/10 dark:text-amber-200">
+            Fiyat bekleniyor
+          </span>
+        ) : null}
       </div>
       <AddToRequestForm
         disabled={disabled}
-        disabledReason={
-          !variant.isActive ? "Pasif varyant" : "Stok bilgisi için iletişime geçin"
-        }
+        disabledReason={disabledReason}
         submitLabel={salesMode ? "Ekle" : "Ekle"}
         variantId={variant.id}
       />
@@ -400,6 +429,12 @@ function getDisplayTitle(name: string, brand: string) {
   }
 
   return cleanTitle.length > 64 ? `${cleanTitle.slice(0, 61).trim()}...` : cleanTitle;
+}
+
+function getDisplayText(value: string | null | undefined) {
+  const trimmed = value?.trim();
+
+  return trimmed ? trimmed : null;
 }
 
 function escapeRegExp(value: string) {
@@ -555,9 +590,10 @@ function getPackageBadges(
 
 function getVariantOptionLabel(variant: PublicCatalogVariant | PricedCatalogVariant) {
   const code = isUuidLike(variant.code) ? null : variant.code;
-  const ref = variant.manufacturerRef && !isUuidLike(variant.manufacturerRef)
-    ? variant.manufacturerRef
-    : null;
+  const ref =
+    variant.manufacturerRef && !isUuidLike(variant.manufacturerRef)
+      ? variant.manufacturerRef
+      : null;
 
   return ref ?? code ?? variant.name;
 }

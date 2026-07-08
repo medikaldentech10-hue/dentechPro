@@ -39,6 +39,7 @@ type ProductDetailView = {
   imageUrl: string | null;
   name: string;
   status: string;
+  usageArea?: string | null;
   variants: ProductVariantView[];
 };
 
@@ -68,7 +69,9 @@ export function ProductDetailClient({
   salesMode,
 }: ProductDetailClientProps) {
   const initialVariant =
-    product.variants.find((variant) => variant.id === initialVariantId) ?? product.variants[0] ?? null;
+    product.variants.find((variant) => variant.id === initialVariantId) ??
+    product.variants[0] ??
+    null;
   const [selectedVariantId, setSelectedVariantId] = useState(initialVariant?.id ?? null);
 
   const selectedVariant = useMemo(
@@ -85,10 +88,12 @@ export function ProductDetailClient({
       : null;
   const variantLabels = selectedVariant ? getVariantLabels(selectedVariant) : [];
   const metaItems = getMetaItems(product, selectedVariant, selectedCode, selectedReference);
+  const usageAreaLabel = getUsageAreaLabel(product);
   const canSeeCommercialData =
     priceVisibility === "approved" &&
     selectedVariant &&
-    typeof selectedVariant.price !== "undefined";
+    typeof selectedVariant.price !== "undefined" &&
+    selectedVariant.price !== null;
 
   useEffect(() => {
     if (!selectedVariantId) {
@@ -118,9 +123,11 @@ export function ProductDetailClient({
                         {product.brand}
                       </span>
                       <span className="text-3xl font-semibold text-primary sm:text-4xl">
-                        {product.category?.name ?? "JOTA"}
+                        {product.category?.name ?? "Ürün"}
                       </span>
-                      <span className="text-xs text-muted-foreground">Dental ürün kataloğu</span>
+                      <span className="text-xs text-muted-foreground">
+                        Görsel yakında eklenecek
+                      </span>
                     </div>
                   }
                   priority
@@ -138,15 +145,17 @@ export function ProductDetailClient({
         <SurfaceCard className="rounded-3xl border-border/70 bg-card/80 shadow-[0_16px_50px_rgb(15_23_42/0.06)]">
           <CardContent className="flex flex-col gap-5 p-4 sm:p-6">
             <div className="flex flex-wrap items-center gap-2">
-              <StatusBadge label={product.brand} tone="success" />
+              {getDisplayText(product.brand) ? (
+                <StatusBadge label={product.brand} tone="success" />
+              ) : null}
               {product.category?.name ? (
                 <span className="rounded-full border border-border/70 bg-background/70 px-3 py-1 text-xs font-medium text-muted-foreground">
                   {product.category.name}
                 </span>
               ) : null}
-              {product.status ? (
+              {usageAreaLabel ? (
                 <span className="rounded-full border border-primary/15 bg-primary/8 px-3 py-1 text-xs font-medium text-primary">
-                  {product.status}
+                  {usageAreaLabel}
                 </span>
               ) : null}
             </div>
@@ -173,7 +182,7 @@ export function ProductDetailClient({
                     Seçili Varyant
                   </p>
                   <p className="mt-1 text-sm font-semibold text-foreground sm:text-base">
-                    {selectedVariant?.name ?? "Varyant bilgisi bekleniyor"}
+                    {selectedVariant?.name ?? "Standart ürün"}
                   </p>
                   {variantLabels.length ? (
                     <div className="mt-2 flex flex-wrap gap-2">
@@ -190,10 +199,12 @@ export function ProductDetailClient({
                 </div>
                 <div className="min-w-0 sm:max-w-[220px] sm:text-right">
                   <CommercialState
-                    price={canSeeCommercialData ? selectedVariant?.price ?? null : null}
+                    price={selectedVariant?.price ?? null}
                     priceVisibility={priceVisibility}
                     stockQuantity={
-                      canSeeCommercialData ? selectedVariant?.stockQuantity ?? null : null
+                      typeof selectedVariant?.stockQuantity === "number"
+                        ? selectedVariant.stockQuantity
+                        : null
                     }
                     variantCurrency={selectedVariant?.currency ?? "TRY"}
                   />
@@ -258,7 +269,9 @@ function AddToRequestInlineForm({
   variantId: string;
 }) {
   const [quantity, setQuantity] = useState("1");
-  const [feedback, setFeedback] = useState<null | { tone: "error" | "success"; text: string }>(null);
+  const [feedback, setFeedback] = useState<null | { tone: "error" | "success"; text: string }>(
+    null
+  );
   const [isPending, startTransition] = useTransition();
 
   if (disabled) {
@@ -362,14 +375,22 @@ function CommercialState({
   stockQuantity: number | null;
   variantCurrency: string;
 }) {
-  if (priceVisibility === "approved" && price !== null) {
+  if (priceVisibility === "approved") {
+    if (price !== null) {
+      return (
+        <>
+          <p className="text-lg font-semibold text-foreground sm:text-xl">
+            {formatPrice(price, variantCurrency)}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">Stok: {stockQuantity ?? 0} adet</p>
+        </>
+      );
+    }
+
     return (
-      <>
-        <p className="text-lg font-semibold text-foreground sm:text-xl">
-          {formatPrice(price, variantCurrency)}
-        </p>
-        <p className="mt-1 text-xs text-muted-foreground">Stok: {stockQuantity ?? 0} adet</p>
-      </>
+      <p className="rounded-2xl border border-amber-200/70 bg-amber-50/80 px-3 py-2.5 text-center text-xs font-medium leading-5 text-amber-800 dark:border-amber-400/20 dark:bg-amber-500/10 dark:text-amber-200">
+        Bu varyant için fiyat bilgisi hazırlanıyor. Stok ve teklif için ekibimizle iletişime geçin.
+      </p>
     );
   }
 
@@ -406,6 +427,11 @@ function VariantListItem({
         <div className="flex flex-wrap items-center gap-2">
           <p className="font-semibold leading-6">{variant.name}</p>
           {isSelected ? <StatusBadge label="Seçili" tone="success" /> : null}
+          {variant.price === null ? (
+            <span className="rounded-full border border-amber-200/70 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700 dark:border-amber-400/20 dark:bg-amber-500/10 dark:text-amber-200">
+              Fiyat bekleniyor
+            </span>
+          ) : null}
         </div>
         <div className="mt-1.5 flex flex-wrap gap-2 text-xs text-muted-foreground">
           {labels.map((label) => (
@@ -497,7 +523,7 @@ function getMetaItems(
   const grit = variant ? normalizeGritLabel(variant.color ?? variant.grit ?? variant.code) : null;
   const diameter = variant ? formatVariantDiameter(variant) : null;
   const items = [
-    { icon: Tag, label: "Marka", value: product.brand },
+    getDisplayText(product.brand) ? { icon: Tag, label: "Marka", value: product.brand } : null,
     product.category?.name
       ? { icon: Boxes, label: "Kategori", value: product.category.name }
       : null,
@@ -520,12 +546,32 @@ function getMetaItems(
   );
 }
 
+function getUsageAreaLabel(product: ProductDetailView) {
+  const usageArea = getDisplayText(product.usageArea);
+  if (usageArea) {
+    return usageArea;
+  }
+
+  const status = getDisplayText(product.status);
+  if (!status) {
+    return null;
+  }
+
+  return status.toLocaleLowerCase("tr-TR") === "jota ürün kataloğu" ? null : status;
+}
+
 function getDisplayCode(value: string | undefined) {
   if (!value || isUuid(value)) {
     return null;
   }
 
   return value;
+}
+
+function getDisplayText(value: string | null | undefined) {
+  const trimmed = value?.trim();
+
+  return trimmed ? trimmed : null;
 }
 
 function getVariantLabels(variant: ProductVariantView) {
