@@ -72,7 +72,7 @@ set request_number = numbered_requests.next_request_number
 from numbered_requests
 where order_drafts.id = numbered_requests.id;
 
-create unique index order_drafts_request_number_idx
+create unique index if not exists order_drafts_request_number_idx
 on public.order_drafts (request_number)
 where request_number is not null;
 
