@@ -10,14 +10,14 @@ const footerColumns = [
     title: "Katalog",
     links: [
       { href: "/products", label: "Tüm Ürünler" },
-      { href: "/products", label: "JOTA Frezler" },
+      { href: "/products?brand=JOTA", label: "JOTA Frezler" },
       { href: "/#kategoriler", label: "Kategoriler" },
     ],
   },
   {
     title: "Kategoriler",
     links: [
-      { href: "/products", label: "Frezler" },
+      { href: "/products?category=burs", label: "Frezler" },
       { href: "/#kategoriler", label: "Polisaj Ürünleri" },
       { href: "/#kategoriler", label: "Endodonti" },
       { href: "/#kategoriler", label: "Laboratuvar" },

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { CardContent, CardTitle } from "@/components/ui/card";
 import type { PriceVisibility } from "@/lib/constants";
 import { cn } from "@/lib/utils";
+import { getProductPublicPath } from "@/lib/products";
 import type {
   PricedCatalogProduct,
   PricedCatalogVariant,
@@ -28,7 +29,7 @@ type VariantBadge = {
   colors: string[];
   href: string;
   label: string;
-  tone: "holder" | "diameter" | "neutral";
+  tone: "diameter" | "neutral";
 };
 
 type ProductCardProps = {
@@ -46,59 +47,50 @@ export function ProductCard({
 }: ProductCardProps) {
   const catalogProduct = normalizeProduct(product);
   const primaryVariant = catalogProduct.variants[0] ?? null;
-  const detailHref = `/products/${catalogProduct.id}`;
+  const detailHref = getProductPublicPath(catalogProduct);
   const displayTitle = getDisplayTitle(catalogProduct.name, catalogProduct.brand);
   const brandLabel = getDisplayText(catalogProduct.brand);
   const categoryLabel = getDisplayText(catalogProduct.category?.name);
-  const skuSummary = getSkuSummary(primaryVariant);
   const variantBadges = getVariantBadges(catalogProduct, detailHref);
 
   return (
-    <PremiumCard className="group/card relative h-full overflow-hidden rounded-2xl border border-white/25 bg-white/46 shadow-[0_14px_34px_rgb(15_23_42/0.06)] ring-1 ring-black/[0.015] backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:border-primary/20 hover:bg-white/62 hover:shadow-[0_24px_64px_rgb(15_23_42/0.12)] sm:rounded-[1.7rem] sm:bg-white/40 sm:shadow-[0_18px_56px_rgb(15_23_42/0.07)] dark:border-white/8 dark:bg-slate-950/42 dark:ring-white/[0.025]">
+    <PremiumCard className="group/card relative h-full overflow-hidden rounded-2xl border border-border/55 bg-white shadow-sm ring-1 ring-black/[0.015] transition duration-300 hover:-translate-y-0.5 hover:border-primary/20 hover:shadow-[0_18px_44px_rgb(15_23_42/0.1)] dark:border-white/8 dark:bg-slate-950/72 dark:ring-white/[0.025]">
       <Link
         aria-label={`${catalogProduct.name} detayını aç`}
         className="absolute inset-0 z-0 rounded-2xl outline-none focus-visible:ring-3 focus-visible:ring-ring/50 sm:rounded-[1.7rem]"
         href={detailHref}
       />
 
-      <div className="pointer-events-none relative z-10 flex flex-1 flex-col p-1.5 pb-1 sm:p-3 sm:pb-1.5">
-        <div className="relative aspect-[4/3] overflow-hidden rounded-[1rem] bg-[radial-gradient(circle_at_28%_18%,rgb(211_250_229/0.7),transparent_36%),radial-gradient(circle_at_76%_70%,rgb(20_118_82/0.12),transparent_40%),linear-gradient(145deg,rgb(255_255_255),rgb(244_248_247))] shadow-[inset_0_0_0_1px_rgb(255_255_255/0.76),inset_0_-30px_60px_rgb(15_23_42/0.04)] sm:aspect-[1/1.04] sm:rounded-[1.45rem] xl:aspect-square dark:bg-[radial-gradient(circle_at_28%_18%,rgb(20_118_82/0.16),transparent_36%),linear-gradient(145deg,rgb(248_250_252),rgb(226_232_240))]">
-          <div className="pointer-events-none absolute inset-x-6 top-4 z-0 h-px bg-gradient-to-r from-transparent via-white/95 to-transparent" />
-          <div className="pointer-events-none absolute -right-10 -top-8 z-0 size-36 rounded-full bg-primary/12 blur-3xl" />
-          <div className="pointer-events-none absolute -bottom-14 -left-12 z-0 size-36 rounded-full bg-cyan-100/55 blur-3xl" />
-
-          <div className="absolute inset-1.5 z-0 flex items-center justify-center sm:inset-2.5">
+      <div className="pointer-events-none relative z-10 flex flex-1 flex-col p-2 pb-0.5 sm:p-3 sm:pb-1">
+        <div className="relative aspect-[4/3] overflow-hidden rounded-xl border border-slate-100 bg-white sm:aspect-square sm:rounded-2xl dark:border-white/10 dark:bg-white">
+          <div className="absolute inset-2 z-0 flex items-center justify-center sm:inset-3">
             <ProductImage
               alt={catalogProduct.name}
               fallback={
-                <div className="flex h-full w-full items-center justify-center rounded-xl bg-white/42 text-2xl font-semibold text-primary backdrop-blur sm:rounded-2xl sm:text-3xl">
-                  {primaryVariant?.connectionType ?? brandLabel ?? "Ürün"}
+                <div className="flex h-full w-full items-center justify-center rounded-xl bg-white text-2xl font-semibold text-primary sm:rounded-2xl sm:text-3xl">
+                  {brandLabel ?? "Ürün"}
                 </div>
               }
               src={catalogProduct.imageUrl ?? primaryVariant?.imageUrl}
             />
           </div>
 
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-20 bg-gradient-to-t from-white/48 via-white/14 to-transparent sm:h-28" />
-
-          <div className="absolute inset-x-1.5 bottom-1.5 z-20 hidden rounded-xl border border-white/70 bg-gradient-to-br from-white/78 via-white/52 to-white/30 p-2 shadow-[0_10px_28px_rgb(15_23_42/0.12)] backdrop-blur-2xl backdrop-saturate-150 sm:inset-x-3 sm:bottom-3 sm:block sm:rounded-[1.15rem] sm:p-3 sm:shadow-[0_14px_36px_rgb(15_23_42/0.14)]">
+          <div className="absolute inset-x-2 bottom-2 z-20 hidden rounded-xl border border-slate-200/70 bg-white/90 p-2 shadow-sm backdrop-blur-sm sm:block">
             <ProductCardInfo
               brandLabel={brandLabel}
               categoryLabel={categoryLabel}
               displayTitle={displayTitle}
-              skuSummary={skuSummary}
               variantBadges={variantBadges}
               variantCount={catalogProduct.variantCount}
               variantLimit={3}
             />
           </div>
         </div>
-        <div className="mt-2 rounded-2xl border border-border/50 bg-background/78 p-2 shadow-[0_8px_20px_rgb(15_23_42/0.04)] sm:hidden">
+        <div className="mt-1.5 rounded-2xl border border-border/45 bg-background/60 p-1.5 shadow-none sm:hidden">
           <ProductCardInfo
             brandLabel={brandLabel}
             categoryLabel={categoryLabel}
             displayTitle={displayTitle}
-            skuSummary={skuSummary}
             variantBadges={variantBadges}
             variantCount={catalogProduct.variantCount}
             variantLimit={2}
@@ -106,8 +98,8 @@ export function ProductCard({
         </div>
       </div>
 
-      <CardContent className="relative z-20 mt-auto px-2 pb-2 pt-0 sm:px-3.5 sm:pb-3.5">
-        <div className="flex min-h-[4.6rem] flex-col justify-center gap-1.5 rounded-xl border border-white/30 bg-white/42 p-1.5 shadow-[0_8px_24px_rgb(15_23_42/0.045)] backdrop-blur-xl sm:min-h-[5.6rem] sm:gap-2 sm:rounded-[1.15rem] sm:p-2.5 dark:border-white/8 dark:bg-slate-950/42">
+      <CardContent className="relative z-20 mt-auto px-2 pb-1.5 pt-0 sm:px-3 sm:pb-2">
+        <div className="flex min-h-[3.25rem] flex-col justify-center gap-0.5 rounded-xl border border-border/35 bg-background/35 p-1.5 shadow-none backdrop-blur-sm sm:min-h-[3.8rem] sm:p-1.5 dark:border-white/8 dark:bg-slate-950/28">
           <PriceState visibility={priceVisibility} variant={primaryVariant} />
           {priceVisibility === "approved" ? (
             <ProductAction
@@ -128,7 +120,6 @@ function ProductCardInfo({
   brandLabel,
   categoryLabel,
   displayTitle,
-  skuSummary,
   variantBadges,
   variantCount,
   variantLimit,
@@ -136,7 +127,6 @@ function ProductCardInfo({
   brandLabel: string | null;
   categoryLabel: string | null;
   displayTitle: string;
-  skuSummary: string | null;
   variantBadges: VariantBadge[];
   variantCount: number;
   variantLimit: number;
@@ -156,20 +146,15 @@ function ProductCardInfo({
             </span>
           ) : null}
         </div>
-        {variantBadges.length ? (
+        {variantCount > 1 ? (
           <span className="shrink-0 text-[10px] font-medium text-slate-500">
-            {variantCount > 1 ? `${variantCount} varyant` : "Varyant"}
+            {`${variantCount} varyant`}
           </span>
         ) : null}
       </div>
-      <CardTitle className="line-clamp-2 min-h-[2.5rem] text-[0.82rem] font-semibold leading-5 text-slate-950 sm:min-h-[2.8rem] sm:text-[0.98rem] sm:leading-[1.22]">
+      <CardTitle className="line-clamp-2 text-[0.82rem] font-semibold leading-5 text-slate-950 sm:text-[0.94rem] sm:leading-5">
         {displayTitle}
       </CardTitle>
-      {skuSummary ? (
-        <p className="mt-1 truncate text-[10px] font-medium uppercase tracking-[0.08em] text-slate-500 sm:text-[11px]">
-          {skuSummary}
-        </p>
-      ) : null}
       {variantBadges.length ? (
         <div className="mt-1 flex min-h-5 min-w-0 flex-wrap items-center gap-1 text-[10px] text-slate-500 sm:mt-2 sm:min-h-6 sm:gap-1.5 sm:text-[11px]">
           {variantBadges.map((badge, index) => (
@@ -196,9 +181,7 @@ function VariantBadgeLink({
     <Link
       className={cn(
         "pointer-events-auto relative z-20 inline-flex min-h-6 items-center gap-1.5 rounded-full border px-2.5 py-0.5 font-semibold shadow-sm backdrop-blur transition",
-        badge.tone === "holder"
-          ? "border-primary/20 bg-primary/10 text-primary hover:bg-primary/15"
-          : "border-slate-200/80 bg-white/72 text-slate-900 hover:border-primary/25 hover:bg-primary/10",
+        "border-slate-200/80 bg-white/72 text-slate-900 hover:border-primary/25 hover:bg-primary/10",
         "min-h-5 px-2 text-[10px] sm:min-h-6 sm:px-2.5 sm:text-[11px]",
         className
       )}
@@ -461,6 +444,7 @@ function normalizeProduct(
     id: product.id,
     imageUrl: null,
     name: product.name,
+    publicSlug: product.code,
     status: product.status,
     usageArea: product.status,
     variantCount: 1,
@@ -495,7 +479,6 @@ function getVariantBadges(
   }
 
   const badges: VariantBadge[] = [];
-  const holders = new Map<string, PublicCatalogVariant | PricedCatalogVariant>();
   const diameters = new Map<
     string,
     {
@@ -505,13 +488,8 @@ function getVariantBadges(
   >();
 
   for (const variant of product.variants) {
-    const holder = normalizeHolder(variant.connectionType ?? variant.code);
     const diameter = getDiameterLabel(variant);
     const color = normalizeColorKey(variant.color ?? variant.grit ?? variant.code);
-
-    if (holder && !holders.has(holder)) {
-      holders.set(holder, variant);
-    }
 
     if (diameter) {
       const group = diameters.get(diameter) ?? {
@@ -527,44 +505,38 @@ function getVariantBadges(
     }
   }
 
-  for (const [holder, variant] of holders) {
-    badges.push({
-      colors: [],
-      href: `${detailHref}?variant=${variant.id}`,
-      label: holder,
-      tone: "holder",
-    });
+  const sortedDiameters = sortDiameterEntries(diameters);
 
-    if (badges.length >= 5) {
-      break;
-    }
-  }
+  if (sortedDiameters.length) {
+    const [, firstGroup] = sortedDiameters[0];
+    const colors = new Set<string>();
 
-  for (const [diameter, group] of sortDiameterEntries(diameters)) {
-    if (badges.length >= 5) {
-      break;
+    for (const [, group] of sortedDiameters) {
+      for (const color of group.colors) {
+        colors.add(color);
+      }
     }
 
     badges.push({
-      colors: Array.from(group.colors),
-      href: `${detailHref}?variant=${group.variant.id}`,
-      label: diameter,
+      colors: Array.from(colors),
+      href: `${detailHref}?variant=${firstGroup.variant.id}`,
+      label: formatDiameterPreview(sortedDiameters.map(([diameter]) => diameter)),
       tone: "diameter",
     });
   }
 
-  const remaining = holders.size + diameters.size - badges.length;
+  return badges;
+}
 
-  if (remaining > 0) {
-    badges.push({
-      colors: [],
-      href: detailHref,
-      label: `+${remaining}`,
-      tone: "neutral",
-    });
+function formatDiameterPreview(diameters: string[]) {
+  const first = diameters[0];
+  const last = diameters[diameters.length - 1];
+
+  if (!first || !last || first === last) {
+    return first ?? "";
   }
 
-  return badges;
+  return `${first}-${last}`;
 }
 
 function getPackageBadges(
@@ -589,32 +561,14 @@ function getPackageBadges(
 }
 
 function getVariantOptionLabel(variant: PublicCatalogVariant | PricedCatalogVariant) {
-  const code = isUuidLike(variant.code) ? null : variant.code;
-  const ref =
-    variant.manufacturerRef && !isUuidLike(variant.manufacturerRef)
-      ? variant.manufacturerRef
-      : null;
+  const code = getUsableBusinessCode(variant.code);
+  const ref = getUsableBusinessCode(variant.manufacturerRef);
 
   return ref ?? code ?? variant.name;
 }
 
-function getSkuSummary(variant: PublicCatalogVariant | PricedCatalogVariant | null) {
-  if (!variant) {
-    return null;
-  }
-
-  const manufacturerRef =
-    variant.manufacturerRef && !isUuidLike(variant.manufacturerRef)
-      ? variant.manufacturerRef
-      : null;
-  const code = !isUuidLike(variant.code) ? variant.code : null;
-
-  return manufacturerRef ?? code;
-}
-
 function getVariantLabels(variant: PublicCatalogVariant | PricedCatalogVariant) {
   return [
-    normalizeHolder(variant.connectionType ?? variant.code),
     getDiameterLabel(variant),
     normalizeColorLabel(variant.color ?? variant.grit ?? variant.code),
   ].filter((label): label is string => Boolean(label));
@@ -646,12 +600,6 @@ function sortDiameterEntries(
   return Array.from(entries.entries()).sort(
     ([left], [right]) => Number(left) - Number(right)
   );
-}
-
-function normalizeHolder(value: string) {
-  const match = value.toUpperCase().match(/\b(FG|RA|HP)\b/);
-
-  return match?.[1] ?? null;
 }
 
 function normalizeColorKey(value: string) {
@@ -711,10 +659,18 @@ function isValidDiameterCode(value: string) {
   return Number.isInteger(numeric) && numeric >= 1 && numeric <= 60;
 }
 
-function isUuidLike(value: string) {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-    value
-  );
+function getUsableBusinessCode(value: string | null | undefined) {
+  const trimmed = value?.trim();
+
+  if (!trimmed) {
+    return null;
+  }
+
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?:$|[-_A-Z0-9].*)/i.test(
+    trimmed
+  )
+    ? null
+    : trimmed;
 }
 
 function normalizeText(value: string) {

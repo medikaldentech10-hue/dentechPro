@@ -55,6 +55,7 @@ Her aktif varyant icin:
 - Approved / admin / sales kullanici fiyat goruyor
 - Public HTML tarafinda fiyat leak yok
 - Fiyati eksik varyant "Talep listesine ekle" gibi yaniltici davranmiyor
+- TODO: JOTA unit/pack pricing later 5'li frez ve 2'li polisher paket kurallarina gore hesaplanip gosterilmeli.
 
 ## 5. Variant / SKU Checklist
 

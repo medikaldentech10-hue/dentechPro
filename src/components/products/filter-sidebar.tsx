@@ -23,14 +23,14 @@ export function FilterSidebar({
             Katalog Filtreleri
           </p>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            JOTA ürünlerini alt kategoriye göre daraltın.
+            Tüm aktif ürünleri kategoriye göre daraltın.
           </p>
         </div>
         <FilterSection
           currentParams={currentParams}
           items={categories}
           selectedCategory={selectedCategory}
-          title="JOTA Alt Kategorileri"
+          title="Kategoriler"
         />
       </SurfaceCard>
     </aside>

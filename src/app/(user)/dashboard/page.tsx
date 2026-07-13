@@ -306,7 +306,7 @@ function LatestRequestsCard({
           <EmptyState
             actionHref="/products"
             actionLabel="Ürünleri İncele"
-            description="Henüz talebiniz yok. Katalogdan ürün seçerek teklif sürecinizi başlatabilirsiniz."
+            description="Henüz talebiniz yok. Ürünlerden seçim yaparak teklif sürecinizi başlatabilirsiniz."
             title="Henüz talebiniz yok"
           />
         )}
@@ -326,12 +326,12 @@ function FeaturedProductsCard({
     return (
       <SurfaceCard className="h-fit">
         <CardHeader>
-          <CardTitle>Öne Çıkan Kataloglar</CardTitle>
+          <CardTitle>Öne Çıkan Ürünler</CardTitle>
         </CardHeader>
         <CardContent>
           <EmptyState
             actionHref="/products"
-            actionLabel="Kataloğa Git"
+            actionLabel="Ürünlere Git"
             description="Şu anda gösterilecek aktif ürün bulunamadı."
             title="Ürün önerisi yok"
           />
@@ -447,6 +447,13 @@ function WelcomePanel({
               Henüz gönderilmiş talebiniz bulunmuyor.
             </p>
           )}
+          <div
+            className="rounded-2xl border border-primary/15 bg-primary/8 px-4 py-3 text-sm"
+            id="hesap-durumum"
+          >
+            <p className="font-medium text-primary">Hesap Durumum</p>
+            <p className="mt-1 text-muted-foreground">{getAccountStatusMessage(profile)}</p>
+          </div>
         </div>
 
         <div className="flex flex-wrap gap-2 lg:justify-end">
@@ -456,10 +463,25 @@ function WelcomePanel({
           <Link className={buttonVariants({ variant: "outline" })} href="/request">
             Talep Listem
           </Link>
+          <Link className={buttonVariants({ variant: "outline" })} href="#hesap-durumum">
+            Hesap Durumum
+          </Link>
         </div>
       </CardContent>
     </SurfaceCard>
   );
+}
+
+function getAccountStatusMessage(profile: DashboardProfile) {
+  if (!profile.is_active || profile.verification_status === "suspended") {
+    return "Hesabınız askıya alınmış görünüyor. Destek ekibimizle iletişime geçebilirsiniz.";
+  }
+
+  if (profile.verification_status === "pending") {
+    return "Hesabınız onay incelemesinde. Onaylandıktan sonra fiyat ve teklif özellikleri açılır.";
+  }
+
+  return "Hesabınız aktif. Ürünleri inceleyebilir ve talep listenizi yönetebilirsiniz.";
 }
 
 function formatPrice(value: number | null) {

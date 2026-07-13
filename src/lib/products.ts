@@ -32,6 +32,7 @@ export type CatalogCategory = Pick<
 >;
 
 export type PublicCatalogVariant = {
+  clinicalNote?: string | null;
   code: string;
   connectionType: string | null;
   color: string | null;
@@ -60,14 +61,26 @@ export type PublicCatalogProduct = {
   id: string;
   imageUrl: string | null;
   name: string;
+  publicSlug: string;
   status: string;
   usageArea: string | null;
   variantCount: number;
   variants: PublicCatalogVariant[];
+  relatedProducts?: RelatedCatalogProduct[];
 };
 
 export type PricedCatalogProduct = Omit<PublicCatalogProduct, "variants"> & {
   variants: PricedCatalogVariant[];
+};
+
+export type RelatedCatalogProduct = {
+  brand: string;
+  categoryName: string | null;
+  href: string;
+  id: string;
+  imageUrl: string | null;
+  name: string;
+  variantCount: number;
 };
 
 export type ProductListResult<TProduct> = {
@@ -80,24 +93,25 @@ export type ProductListResult<TProduct> = {
   totalPages: number | null;
 };
 
-type CatalogVariantRow = Pick<
-  VariantRow,
-  | "connection_type"
-  | "color"
-  | "currency"
-  | "diameter"
-  | "grit"
-  | "id"
-  | "image_url"
-  | "is_active"
-  | "manufacturer_ref"
-  | "package_quantity"
-  | "price"
-  | "product_id"
-  | "stock_quantity"
-  | "stock_status"
-  | "variant_code"
->;
+type CatalogVariantRow = {
+  connection_type: VariantRow["connection_type"];
+  color: VariantRow["color"];
+  currency: VariantRow["currency"];
+  diameter: VariantRow["diameter"];
+  grit: VariantRow["grit"];
+  id: VariantRow["id"];
+  image_url: VariantRow["image_url"];
+  is_active: VariantRow["is_active"];
+  length: VariantRow["length"];
+  manufacturer_ref: VariantRow["manufacturer_ref"];
+  package_quantity: VariantRow["package_quantity"];
+  price: VariantRow["price"];
+  product_id: VariantRow["product_id"];
+  product_description?: string | null;
+  stock_quantity: VariantRow["stock_quantity"];
+  stock_status: VariantRow["stock_status"];
+  variant_code: VariantRow["variant_code"];
+};
 
 type ProductQueryRow = Pick<
   ProductRow,
@@ -126,7 +140,7 @@ type ProductRowsResult = {
 };
 
 const PRODUCT_DETAIL_SELECT =
-  "id,brand,category_id,description,image_url,is_active,product_group_code,product_name,usage_area,category:categories(id,name,slug,sort_order),variants:product_variants(id,product_id,variant_code,manufacturer_ref,connection_type,color,currency,diameter,grit,image_url,is_active,package_quantity,price,stock_quantity,stock_status)";
+  "id,brand,category_id,description,image_url,is_active,product_group_code,product_name,usage_area,category:categories(id,name,slug,sort_order),variants:product_variants(id,product_id,variant_code,manufacturer_ref,connection_type,color,currency,diameter,length,grit,image_url,is_active,package_quantity,price,stock_quantity,stock_status)";
 const PRODUCT_CARD_SELECT =
   "id,brand,category_id,product_group_code,product_name,image_url,is_active,category:categories(id,name,slug,sort_order)";
 
@@ -139,6 +153,16 @@ type CatalogSearch = {
   variantTerms: string[];
 };
 
+const JOTA_BRAND_ALIASES = ["JOTA", "JOTA Switzerland"] as const;
+const MAIN_CATEGORY_FILTERS: Record<string, string[]> = {
+  cilalama: ["cilalama", "polisaj", "polish", "polisher", "zirkonya", "metal"],
+  frezler: ["frez", "bur", "asindirici", "tas", "elmas", "karbit", "diamond", "carbide"],
+  "klinik-cihazlar": ["klinik", "cihaz", "device", "laser", "rvg", "scanner", "tarayici", "kamera", "camera", "airjet"],
+  "olcu-materyalleri": ["olcu", "impression", "measure", "materyal", "aljinat", "silikon", "seil"],
+  pedodonti: ["pedodonti", "cocuk", "pediatric"],
+  "setler-paketler": ["set", "paket", "package", "kit"],
+};
+
 export function getCanViewPrices(profile: AccessProfile | null) {
   return canViewPrices(profile);
 }
@@ -147,9 +171,50 @@ export function interpretCatalogQuery(query: string | undefined) {
   return interpretCatalogQueryLocal(query);
 }
 
+export function getProductPublicPath(
+  product: Pick<PublicCatalogProduct, "code" | "id" | "name"> & { publicSlug?: string | null }
+) {
+  const explicitSlug =
+    product.publicSlug && isUsableBusinessCode(product.publicSlug)
+      ? slugifyPublicSegment(product.publicSlug)
+      : null;
+
+  return `/products/${encodeURIComponent(explicitSlug || getProductPublicSlug(product))}`;
+}
+
 export async function getCatalogCategories() {
   return getCachedCatalogCategories();
 }
+
+export async function getActiveCatalogCategories() {
+  const [categories, productCategories] = await Promise.all([
+    getCatalogCategories(),
+    getActiveProductCategoryIds(),
+  ]);
+  const activeCategoryIds = new Set(productCategories);
+
+  return categories.filter((category) => activeCategoryIds.has(category.id));
+}
+
+const getActiveProductCategoryIds = unstable_cache(
+  async () => {
+    const supabase = getSupabaseAdminClient();
+    const { data, error } = await supabase
+      .from("products")
+      .select("category_id")
+      .eq("is_active", true)
+      .not("category_id", "is", null)
+      .limit(5000);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return [...new Set((data ?? []).map((row) => row.category_id).filter(Boolean))];
+  },
+  ["active-product-category-ids"],
+  { revalidate: 60, tags: ["catalog-taxonomy", "public-products"] }
+);
 
 const getCachedCatalogCategories = unstable_cache(
   async () => {
@@ -250,7 +315,13 @@ export async function getPricedProductByIdForProfile(
     return null;
   }
 
-  return getCanViewPrices(profile) ? toPricedProduct(row) : toPublicProduct(row);
+  const relatedProducts = await getRelatedProductSummaries(row);
+  const product = getCanViewPrices(profile) ? toPricedProduct(row) : toPublicProduct(row);
+
+  return {
+    ...product,
+    relatedProducts,
+  };
 }
 
 async function getProductRows(
@@ -266,18 +337,23 @@ async function getProductRows(
     return result;
   };
   const supabase = getSupabaseAdminClient();
-  const normalizedBrand = filters.brand?.trim() || "JOTA";
-  const normalizedCategory = filters.category?.trim();
+  const normalizedBrand = normalizeBrandFilter(filters.brand);
+  const normalizedCategory = normalizeCategoryFilter(filters.category);
   const normalizedQuery = filters.query?.trim();
   const search = normalizedQuery ? buildCatalogSearch(normalizedQuery) : null;
   const normalizedUsage = filters.usage?.trim();
   const pageSize = clampInteger(filters.pageSize, 24, 1, 60);
   const page = clampInteger(filters.page, 1, 1, 10_000);
   const exactSku = search?.exactSku ?? null;
-  const [categoryId, [matchingVariantProductIds, matchingCategoryIds, matchingProductIds], priceFilteredProductIds] =
+  const [categoryIds, categoryFilteredProductIds, [matchingVariantProductIds, matchingCategoryIds, matchingProductIds], priceFilteredProductIds] =
     await Promise.all([
       measureCheckpoint("categoryLookupMs", async () =>
-        normalizedCategory ? getCategoryIdBySlug(normalizedCategory) : null
+        normalizedCategory ? getCategoryIdsBySlug(normalizedCategory) : []
+      ),
+      measureCheckpoint("mainCategoryFilterMs", async () =>
+        normalizedCategory && getMainCategoryTerms(normalizedCategory)
+          ? getProductIdsByMainCategoryTerms(normalizedCategory, normalizedBrand)
+          : null
       ),
       measureCheckpoint<[string[], string[], string[]]>("searchCandidateMs", async () => {
         if (!search) {
@@ -311,6 +387,10 @@ async function getProductRows(
     return getEmptyRowsResult(page, pageSize);
   }
 
+  if (categoryFilteredProductIds && categoryFilteredProductIds.length === 0) {
+    return getEmptyRowsResult(page, pageSize);
+  }
+
   if (search && searchCandidateProductIds?.length === 0 && matchingCategoryIds.length === 0) {
     return getEmptyRowsResult(page, pageSize);
   }
@@ -319,11 +399,20 @@ async function getProductRows(
     .from("products")
     .select(PRODUCT_CARD_SELECT)
     .eq("is_active", true)
-    .eq("brand", normalizedBrand)
     .order("product_name", { ascending: true });
 
-  if (categoryId) {
-    query = query.eq("category_id", categoryId);
+  if (normalizedBrand) {
+    query = isJotaBrand(normalizedBrand)
+      ? query.in("brand", JOTA_BRAND_ALIASES)
+      : query.eq("brand", normalizedBrand);
+  }
+
+  if (categoryIds.length) {
+    query = query.in("category_id", categoryIds);
+  }
+
+  if (categoryFilteredProductIds) {
+    query = query.in("id", categoryFilteredProductIds);
   }
 
   if (normalizedUsage) {
@@ -386,7 +475,9 @@ async function getProductRows(
         matchingVariantProductIds,
       })
     );
-    const groupedRows = groupCatalogProductRows(rows, searchedRows);
+    const groupedRows = groupCatalogProductRows(rows, searchedRows).sort((left, right) =>
+      compareRowsBySearchScore(left, right, search)
+    );
     const from = (page - 1) * pageSize;
     const to = from + pageSize;
     const nextRow = groupedRows[to];
@@ -432,6 +523,17 @@ async function getProductRows(
   logProductQuery("products.list", {
     checkpoints,
     durationMs: Math.round(performance.now() - startedAt),
+    filters: {
+      activeOnly: true,
+      brand: normalizedBrand,
+      category: normalizedCategory,
+      categoryIds,
+      hasPriceFilter: priceFilteredProductIds !== null,
+      mainCategoryProductCount: categoryFilteredProductIds?.length ?? null,
+      query: normalizedQuery ?? null,
+      searchTerms: search?.normalizedTerms ?? [],
+      usage: normalizedUsage ?? null,
+    },
     includeSensitiveVariantFields: Boolean(options.includeSensitiveVariantFields),
     page,
     pageSize,
@@ -510,15 +612,16 @@ function getEmptyRowsResult(page: number, pageSize: number): ProductRowsResult {
 async function getProductRowById(productId: string) {
   const supabase = getSupabaseAdminClient();
   const startedAt = performance.now();
+  const lookup = productId.trim();
 
   let query = supabase
     .from("products")
     .select(PRODUCT_DETAIL_SELECT)
     .eq("is_active", true);
 
-  query = isUuid(productId)
-    ? query.eq("id", productId)
-    : query.eq("product_group_code", productId);
+  query = isUuid(lookup)
+    ? query.eq("id", lookup)
+    : query.eq("product_group_code", lookup);
 
   const { data, error } = await query.maybeSingle();
 
@@ -526,17 +629,51 @@ async function getProductRowById(productId: string) {
     throw new Error(error.message);
   }
 
-  const row = data ? normalizeProductRows([data])[0] : null;
+  const row = data
+    ? normalizeProductRows([data])[0]
+    : await getProductRowByPublicSlug(lookup, supabase);
   const groupedRow = row ? await getGroupedProductDetailRow(row) : null;
 
   logProductQuery("products.detail", {
     durationMs: Math.round(performance.now() - startedAt),
     found: Boolean(groupedRow),
-    productId,
+    productId: lookup,
     variantCount: groupedRow?.variants.length ?? 0,
   });
 
   return groupedRow;
+}
+
+async function getProductRowByPublicSlug(
+  lookup: string,
+  supabase: ReturnType<typeof getSupabaseAdminClient>
+) {
+  const normalizedLookup = slugifyPublicSegment(lookup);
+
+  if (!normalizedLookup) {
+    return null;
+  }
+
+  const { data, error } = await supabase
+    .from("products")
+    .select(PRODUCT_DETAIL_SELECT)
+    .eq("is_active", true)
+    .limit(1000);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const rows = normalizeProductRows(data ?? []);
+  const rowMatchesLookup = (row: ProductQueryRow) =>
+    getProductPublicSlug(row) === normalizedLookup ||
+    row.variants.some((variant) => getVariantPublicSlugs(variant).includes(normalizedLookup));
+
+  return (
+    rows.find(rowMatchesLookup) ??
+    groupCatalogProductRows(rows, rows).find(rowMatchesLookup) ??
+    null
+  );
 }
 
 async function getGroupedProductDetailRow(row: ProductQueryRow) {
@@ -562,6 +699,46 @@ async function getGroupedProductDetailRow(row: ProductQueryRow) {
   return mergeProductFamilyRows(familyRows);
 }
 
+async function getRelatedProductSummaries(row: ProductQueryRow): Promise<RelatedCatalogProduct[]> {
+  if (!row.category_id || !row.brand) {
+    return [];
+  }
+
+  const supabase = getSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("products")
+    .select(PRODUCT_DETAIL_SELECT)
+    .eq("is_active", true)
+    .eq("brand", row.brand)
+    .eq("category_id", row.category_id)
+    .limit(80);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const currentSlug = getProductPublicSlug(row);
+  const rows = normalizeProductRows(data ?? []);
+
+  return groupCatalogProductRows(rows, rows)
+    .filter((candidate) => getProductPublicSlug(candidate) !== currentSlug)
+    .slice(0, 6)
+    .map((candidate) => ({
+      brand: candidate.brand,
+      categoryName: candidate.category?.name ?? null,
+      href: getProductPublicPath({
+        code: candidate.product_group_code,
+        id: candidate.id,
+        name: candidate.product_name,
+        publicSlug: getProductPublicSlug(candidate),
+      }),
+      id: candidate.id,
+      imageUrl: candidate.image_url,
+      name: candidate.product_name,
+      variantCount: candidate.variants.length,
+    }));
+}
+
 async function getProductDetailFamilyRows({
   baseCode,
   brand,
@@ -575,12 +752,11 @@ async function getProductDetailFamilyRows({
   remainder: string;
   supabase: ReturnType<typeof getSupabaseAdminClient>;
 }) {
-  const familyKey = [
-    normalizeSearchText(brand),
-    categoryId,
-    baseCode,
-    normalizeSearchText(remainder),
-  ].join("|");
+  const familyKey = getProductFamilyKey({
+    brand,
+    category_id: categoryId,
+    product_name: [baseCode, remainder].filter(Boolean).join(" "),
+  });
   const codeMatchedRows = await getFamilyRowsByQuery(
     supabase
       .from("products")
@@ -604,7 +780,7 @@ async function getProductDetailFamilyRows({
       .eq("is_active", true)
       .eq("brand", brand)
       .eq("category_id", categoryId)
-      .ilike("product_name", `%${escapeLikePattern(remainder)}%`)
+      .ilike("product_name", `%${escapeLikePattern(baseCode)}%`)
       .limit(40),
     familyKey
   );
@@ -658,7 +834,14 @@ function normalizeProductRows(rows: unknown[]): ProductQueryRow[] {
 
     return {
       ...product,
-      variants: (product.variants ?? []).filter((variant) => variant.is_active),
+      variants: dedupeDisplayVariants(
+        (product.variants ?? [])
+          .filter((variant) => variant.is_active)
+          .map((variant) => ({
+            ...variant,
+            product_description: product.description ?? null,
+          }))
+      ).sort(compareCatalogVariants),
     };
   });
 }
@@ -670,14 +853,18 @@ async function getListVariantsForProducts(
 ) {
   const supabase = getSupabaseAdminClient();
   const select = includeSensitiveVariantFields
-    ? "id,product_id,variant_code,manufacturer_ref,connection_type,color,diameter,grit,package_quantity,price,currency,stock_quantity,stock_status,image_url,is_active"
-    : "id,product_id,variant_code,manufacturer_ref,connection_type,color,diameter,grit,package_quantity,image_url,is_active";
+    ? "id,product_id,variant_code,manufacturer_ref,connection_type,color,diameter,length,grit,package_quantity,price,currency,stock_quantity,stock_status,image_url,is_active"
+    : "id,product_id,variant_code,manufacturer_ref,connection_type,color,diameter,length,grit,package_quantity,image_url,is_active";
   const { data, error } = await supabase
     .from("product_variants")
     .select(select)
     .in("product_id", productIds)
     .eq("is_active", true)
-    .order("variant_code", { ascending: true });
+    .order("connection_type", { ascending: true })
+    .order("grit", { ascending: true })
+    .order("color", { ascending: true })
+    .order("diameter", { ascending: true })
+    .order("length", { ascending: true });
 
   if (error) {
     throw new Error(error.message);
@@ -694,6 +881,7 @@ async function getListVariantsForProducts(
         | "id"
         | "image_url"
         | "is_active"
+        | "length"
         | "manufacturer_ref"
         | "package_quantity"
         | "product_id"
@@ -711,10 +899,12 @@ async function getListVariantsForProducts(
       id: row.id,
       image_url: row.image_url,
       is_active: row.is_active,
+      length: row.length ?? null,
       manufacturer_ref: row.manufacturer_ref,
       package_quantity: row.package_quantity,
       price: row.price ?? null,
       product_id: row.product_id,
+      product_description: row.product_description ?? null,
       stock_quantity: row.stock_quantity ?? 0,
       stock_status: row.stock_status ?? "ask_for_stock",
       variant_code: row.variant_code,
@@ -750,6 +940,7 @@ function toPublicProduct(row: ProductQueryRow): PublicCatalogProduct {
     id: row.id,
     imageUrl: row.image_url,
     name: row.product_name,
+    publicSlug: getProductPublicSlug(row),
     status: row.usage_area ?? "JOTA ürün kataloğu",
     usageArea: row.usage_area,
     variantCount: row.variants.length,
@@ -766,6 +957,7 @@ function toPricedProduct(row: ProductQueryRow): PricedCatalogProduct {
 
 function toPublicVariant(row: CatalogVariantRow): PublicCatalogVariant {
   return {
+    clinicalNote: row.product_description ?? null,
     code: row.variant_code,
     connectionType: row.connection_type,
     color: row.color,
@@ -856,13 +1048,9 @@ function mergeProductFamilyRows(rows: ProductQueryRow[]): ProductQueryRow {
   const canonical =
     sortedRows.find((row) => isBaseFamilyProductName(row.product_name)) ?? sortedRows[0];
   const family = getProductFamilyParts(canonical.product_name);
-  const mergedVariants = uniqueVariants(
+  const mergedVariants = dedupeDisplayVariants(
     sortedRows.flatMap((row) => row.variants)
-  ).sort((left, right) =>
-    getVariantSortLabel(left).localeCompare(getVariantSortLabel(right), "tr-TR", {
-      numeric: true,
-    })
-  );
+  ).sort(compareCatalogVariants);
 
   return {
     ...canonical,
@@ -874,32 +1062,152 @@ function mergeProductFamilyRows(rows: ProductQueryRow[]): ProductQueryRow {
   };
 }
 
-function uniqueVariants(variants: CatalogVariantRow[]) {
-  const seen = new Set<string>();
-  const unique: CatalogVariantRow[] = [];
+function dedupeDisplayVariants(variants: CatalogVariantRow[]) {
+  const bestVariants = new Map<string, CatalogVariantRow>();
 
   for (const variant of variants) {
-    if (seen.has(variant.id)) {
+    const key = getVariantDisplayIdentityKey(variant);
+    const current = bestVariants.get(key);
+
+    if (current && compareVariantPreference(current, variant) <= 0) {
       continue;
     }
 
-    seen.add(variant.id);
-    unique.push(variant);
+    bestVariants.set(key, variant);
   }
 
-  return unique;
+  return [...bestVariants.values()];
 }
 
-function getVariantSortLabel(variant: CatalogVariantRow) {
+function getVariantDisplayIdentityKey(variant: CatalogVariantRow) {
   return [
-    variant.connection_type,
-    formatDiameterCode(variant.diameter ?? 0),
-    variant.grit,
-    variant.color,
-    variant.variant_code,
-  ]
-    .filter(Boolean)
-    .join(" ");
+    variant.product_id,
+    normalizeSearchText(variant.connection_type ?? ""),
+    normalizeSearchText(variant.color ?? ""),
+    formatNullableNumber(variant.diameter),
+    normalizeSearchText(variant.grit ?? ""),
+    formatNullableNumber(variant.length),
+  ].join("|");
+}
+
+function compareVariantPreference(left: CatalogVariantRow, right: CatalogVariantRow) {
+  return (
+    Number(hasUsableVariantCode(right)) - Number(hasUsableVariantCode(left)) ||
+    Number(right.is_active) - Number(left.is_active) ||
+    compareNullableText(left.variant_code, right.variant_code)
+  );
+}
+
+function hasUsableVariantCode(
+  variant: Pick<CatalogVariantRow, "manufacturer_ref" | "variant_code">
+) {
+  return Boolean(getUsableCode(variant.variant_code) ?? getUsableCode(variant.manufacturer_ref));
+}
+
+function compareCatalogVariants(left: CatalogVariantRow, right: CatalogVariantRow) {
+  return (
+    compareNullableText(left.connection_type, right.connection_type) ||
+    compareNullableText(left.grit ?? left.color, right.grit ?? right.color) ||
+    compareNullableNumber(left.diameter, right.diameter) ||
+    compareNullableNumber(left.length, right.length) ||
+    compareNullableText(left.variant_code, right.variant_code)
+  );
+}
+
+function compareNullableText(left: string | null, right: string | null) {
+  const normalizedLeft = normalizeSearchText(left ?? "");
+  const normalizedRight = normalizeSearchText(right ?? "");
+
+  if (!normalizedLeft && normalizedRight) {
+    return 1;
+  }
+
+  if (normalizedLeft && !normalizedRight) {
+    return -1;
+  }
+
+  return normalizedLeft.localeCompare(normalizedRight, "tr-TR", {
+    numeric: true,
+  });
+}
+
+function compareNullableNumber(left: number | null, right: number | null) {
+  const hasLeft = typeof left === "number" && Number.isFinite(left);
+  const hasRight = typeof right === "number" && Number.isFinite(right);
+
+  if (!hasLeft && hasRight) {
+    return 1;
+  }
+
+  if (hasLeft && !hasRight) {
+    return -1;
+  }
+
+  if (!hasLeft && !hasRight) {
+    return 0;
+  }
+
+  return Number(left) - Number(right);
+}
+
+function formatNullableNumber(value: number | null) {
+  return typeof value === "number" && Number.isFinite(value) ? String(value) : "";
+}
+
+function getProductPublicSlug(
+  product: Pick<ProductQueryRow, "id" | "product_group_code" | "product_name"> | Pick<PublicCatalogProduct, "code" | "id" | "name">
+) {
+  const code = "product_group_code" in product ? product.product_group_code : product.code;
+  const name = "product_name" in product ? product.product_name : product.name;
+  const usableCode = getUsableCode(code);
+  const codeSlug = usableCode ? slugifyPublicSegment(usableCode) : null;
+
+  if (codeSlug) {
+    return codeSlug;
+  }
+
+  const nameSlug = slugifyPublicSegment(name) || "urun";
+
+  return `${nameSlug}-${getStablePublicSuffix(product.id, name)}`;
+}
+
+function getVariantPublicSlugs(variant: Pick<CatalogVariantRow, "manufacturer_ref" | "variant_code">) {
+  return [variant.variant_code, variant.manufacturer_ref]
+    .map(getUsableCode)
+    .map((value) => (value ? slugifyPublicSegment(value) : null))
+    .filter((value): value is string => Boolean(value));
+}
+
+function slugifyPublicSegment(value: string) {
+  return value
+    .toLocaleLowerCase("tr-TR")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\u0131/g, "i")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .replace(/-{2,}/g, "-");
+}
+
+function getStablePublicSuffix(id: string, name: string) {
+  const source = `${id}:${name}`;
+  let hash = 5381;
+
+  for (let index = 0; index < source.length; index += 1) {
+    hash = (hash * 33) ^ source.charCodeAt(index);
+  }
+
+  return (hash >>> 0).toString(36).slice(0, 6);
+}
+
+function getUsableCode(value: string | null) {
+  const trimmed = value?.trim();
+
+  if (!trimmed || !isUsableBusinessCode(trimmed)) {
+    return null;
+  }
+
+  return trimmed;
 }
 
 function rowMatchesCatalogSearch(
@@ -938,19 +1246,129 @@ function rowMatchesCatalogSearch(
   return row.variants.some((variant) => getVariantSearchScore(variant, search) > 0);
 }
 
-async function getCategoryIdBySlug(slug: string) {
+async function getCategoryIdsBySlug(slug: string) {
   const supabase = getSupabaseAdminClient();
   const { data, error } = await supabase
     .from("categories")
-    .select("id")
-    .eq("slug", slug)
-    .maybeSingle();
+    .select("id,parent_id,slug")
+    .eq("status", "active");
 
   if (error) {
     throw new Error(error.message);
   }
 
-  return data?.id ?? null;
+  const targetSlug = slug === "burs" ? "frezler" : slug;
+
+  if (getMainCategoryTerms(targetSlug)) {
+    return [];
+  }
+
+  const target = data?.find((category) => category.slug === targetSlug);
+
+  if (!target) {
+    return [];
+  }
+
+  const ids = new Set([target.id]);
+  let foundChild = true;
+
+  while (foundChild) {
+    foundChild = false;
+    for (const category of data ?? []) {
+      if (category.parent_id && ids.has(category.parent_id) && !ids.has(category.id)) {
+        ids.add(category.id);
+        foundChild = true;
+      }
+    }
+  }
+
+  return [...ids];
+}
+
+async function getProductIdsByMainCategoryTerms(slug: string, brand: string | null) {
+  const terms = getMainCategoryTerms(slug);
+
+  if (!terms) {
+    return null;
+  }
+
+  const supabase = getSupabaseAdminClient();
+  let query = supabase
+    .from("products")
+    .select("id,brand,product_group_code,product_name,usage_area,category:categories(name,slug)")
+    .eq("is_active", true)
+    .limit(5000);
+
+  if (brand) {
+    query = isJotaBrand(brand)
+      ? query.in("brand", JOTA_BRAND_ALIASES)
+      : query.eq("brand", brand);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const rows = (data ?? []) as unknown as Array<{
+    brand: string | null;
+    category: { name: string | null; slug: string | null } | Array<{ name: string | null; slug: string | null }> | null;
+    id: string;
+    product_group_code: string | null;
+    product_name: string | null;
+    usage_area: string | null;
+  }>;
+
+  return rows
+    .filter((row) => {
+      const category = Array.isArray(row.category) ? row.category[0] : row.category;
+      const haystack = normalizeSearchText(
+        [
+          row.brand,
+          row.product_group_code,
+          row.product_name,
+          row.usage_area,
+          category?.name,
+          category?.slug,
+        ]
+          .filter(Boolean)
+          .join(" ")
+      );
+
+      return terms.some((term) => haystack.includes(term));
+    })
+    .map((row) => row.id);
+}
+
+function getMainCategoryTerms(slug: string) {
+  return MAIN_CATEGORY_FILTERS[slug]?.map(normalizeSearchText) ?? null;
+}
+
+function normalizeCategoryFilter(value: string | undefined) {
+  const normalized = value?.trim();
+
+  if (!normalized || normalized === "tum-urunler") {
+    return null;
+  }
+
+  return normalized;
+}
+
+function normalizeBrandFilter(value: string | undefined) {
+  const normalized = value?.trim();
+
+  if (!normalized) {
+    return null;
+  }
+
+  return isJotaBrand(normalized) ? "JOTA" : normalized;
+}
+
+function isJotaBrand(value: string) {
+  return JOTA_BRAND_ALIASES.some(
+    (alias) => alias.toLocaleLowerCase("tr-TR") === value.toLocaleLowerCase("tr-TR")
+  );
 }
 
 async function getMatchingVariantProductIds(search: CatalogSearch) {
@@ -1004,7 +1422,7 @@ async function getExactSkuVariantProductIds(exactSku: string) {
   return [...new Set((data ?? []).map((row) => row.product_id))];
 }
 
-async function getMatchingProductIds(search: CatalogSearch, brand: string) {
+async function getMatchingProductIds(search: CatalogSearch, brand: string | null) {
   const supabase = getSupabaseAdminClient();
   const productSearch = search.productTerms
     .flatMap((term) => {
@@ -1012,6 +1430,7 @@ async function getMatchingProductIds(search: CatalogSearch, brand: string) {
       return [
         `product_name.ilike.%${escapedTerm}%`,
         `product_group_code.ilike.%${escapedTerm}%`,
+        `brand.ilike.%${escapedTerm}%`,
         `description.ilike.%${escapedTerm}%`,
         `usage_area.ilike.%${escapedTerm}%`,
       ];
@@ -1022,13 +1441,20 @@ async function getMatchingProductIds(search: CatalogSearch, brand: string) {
     return [];
   }
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("products")
     .select("id")
     .eq("is_active", true)
-    .eq("brand", brand)
     .or(productSearch)
     .limit(500);
+
+  if (brand) {
+    query = isJotaBrand(brand)
+      ? query.in("brand", JOTA_BRAND_ALIASES)
+      : query.eq("brand", brand);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     throw new Error(error.message);
@@ -1037,19 +1463,26 @@ async function getMatchingProductIds(search: CatalogSearch, brand: string) {
   return [...new Set((data ?? []).map((row) => row.id))];
 }
 
-async function getProductIdsByCategoryIds(categoryIds: string[], brand: string) {
+async function getProductIdsByCategoryIds(categoryIds: string[], brand: string | null) {
   if (!categoryIds.length) {
     return [];
   }
 
   const supabase = getSupabaseAdminClient();
-  const { data, error } = await supabase
+  let query = supabase
     .from("products")
     .select("id")
     .eq("is_active", true)
-    .eq("brand", brand)
     .in("category_id", categoryIds)
     .limit(500);
+
+  if (brand) {
+    query = isJotaBrand(brand)
+      ? query.in("brand", JOTA_BRAND_ALIASES)
+      : query.eq("brand", brand);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     throw new Error(error.message);
@@ -1099,11 +1532,13 @@ function getVariantName(row: CatalogVariantRow) {
     return label;
   }
 
-  if (row.manufacturer_ref && !isUuid(row.manufacturer_ref)) {
-    return row.manufacturer_ref;
+  const manufacturerRef = getUsableCode(row.manufacturer_ref);
+
+  if (manufacturerRef) {
+    return manufacturerRef;
   }
 
-  return isUuid(row.variant_code) ? "Varyant seçeneği" : row.variant_code;
+  return getUsableCode(row.variant_code) ?? "Varyant seçeneği";
 }
 
 function buildCatalogSearch(rawQuery: string): CatalogSearch {
@@ -1223,8 +1658,66 @@ function sortVariantsBySearchMatch(
       return scoreDifference;
     }
 
-    return a.variant_code.localeCompare(b.variant_code, "tr-TR");
+    return compareCatalogVariants(a, b);
   });
+}
+
+function compareRowsBySearchScore(left: ProductQueryRow, right: ProductQueryRow, search: CatalogSearch) {
+  const difference = getProductSearchScore(right, search) - getProductSearchScore(left, search);
+
+  if (difference !== 0) {
+    return difference;
+  }
+
+  return left.product_name.localeCompare(right.product_name, "tr-TR", { numeric: true });
+}
+
+function getProductSearchScore(row: ProductQueryRow, search: CatalogSearch) {
+  const codeValues = [row.product_group_code, row.product_name, ...row.variants.flatMap((variant) => [
+    variant.variant_code,
+    variant.manufacturer_ref ?? "",
+  ])].map(normalizeSearchText);
+  const haystack = normalizeSearchText(
+    [
+      row.product_name,
+      row.product_group_code,
+      row.brand,
+      row.description,
+      row.usage_area,
+      row.category?.name,
+      row.category?.slug,
+      ...row.variants.flatMap((variant) => [
+        variant.variant_code,
+        variant.manufacturer_ref,
+        variant.connection_type,
+        variant.color,
+        variant.grit,
+      ]),
+    ]
+      .filter(Boolean)
+      .join(" ")
+  );
+
+  const codeScore = search.normalizedTerms.reduce((score, term) => {
+    if (!term) return score;
+    if (codeValues.some((value) => value === term || value.split(/\s+/)[0] === term)) {
+      return score + 1000;
+    }
+    if (codeValues.some((value) => value.startsWith(term))) {
+      return score + 500;
+    }
+    return score;
+  }, 0);
+  const termScore = search.normalizedTerms.reduce(
+    (score, term) => score + (haystack.includes(term) ? 10 : 0),
+    0
+  );
+  const variantScore = row.variants.reduce(
+    (score, variant) => Math.max(score, getVariantSearchScore(variant, search)),
+    0
+  );
+
+  return codeScore + termScore + variantScore;
 }
 
 function getVariantSearchScore(variant: CatalogVariantRow, search: CatalogSearch) {
@@ -1275,12 +1768,13 @@ const GROUPABLE_JOTA_SUFFIXES = new Set([
 function getProductFamilyKey(row: Pick<ProductQueryRow, "brand" | "category_id" | "product_name">) {
   const family = getProductFamilyParts(row.product_name);
   const token = family.baseCode ?? normalizeSearchText(row.product_name);
+  const remainderKey = family.baseCode ? "" : normalizeSearchText(family.remainder ?? "");
 
   return [
     normalizeSearchText(row.brand),
     row.category_id,
     token,
-    normalizeSearchText(family.remainder ?? ""),
+    remainderKey,
   ].join("|");
 }
 
@@ -1385,6 +1879,18 @@ function formatDisplayDiameter(value: number | null) {
 function isUuid(value: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
     value
+  );
+}
+
+function isUsableBusinessCode(value: string) {
+  const trimmed = value.trim();
+
+  if (!trimmed) {
+    return false;
+  }
+
+  return !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?:$|[-_A-Z0-9].*)/i.test(
+    trimmed
   );
 }
 

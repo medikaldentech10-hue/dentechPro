@@ -1,0 +1,22 @@
+warning: in the working copy of 'docs/product-catalog-launch-plan.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/product-data-readiness.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'package.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app/(admin)/admin/products/[id]/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app/(public)/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app/(public)/products/page.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/components/products/filter-drawer.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/components/products/filter-sidebar.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/components/products/product-detail-client.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/components/shared/footer.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/lib/products.ts', LF will be replaced by CRLF the next time Git touches it
+ docs/product-catalog-launch-plan.md               |   1 [32m+[m
+ docs/product-data-readiness.md                    | 211 [32m++++++[m[31m-[m
+ package.json                                      |   2 [32m+[m
+ src/app/(public)/page.tsx                         |  61 [32m+[m[31m-[m
+ src/app/(public)/products/page.tsx                |   9 [32m+[m[31m-[m
+ src/components/products/filter-drawer.tsx         |   4 [32m+[m[31m-[m
+ src/components/products/filter-sidebar.tsx        |   4 [32m+[m[31m-[m
+ src/components/products/product-detail-client.tsx | 671 [32m++++++++++[m[31m------------[m
+ src/components/shared/footer.tsx                  |   4 [32m+[m[31m-[m
+ src/lib/products.ts                               | 328 [32m++++++++[m[31m---[m
+ 10 files changed, 797 insertions(+), 498 deletions(-)

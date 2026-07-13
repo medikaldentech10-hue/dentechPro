@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import {
   ArrowLeft,
 } from "lucide-react";
@@ -9,7 +9,7 @@ import { SurfaceCard } from "@/components/premium/surface-card";
 import { buttonVariants } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
 import { canViewPrices, getCurrentProfile, isSalesRep } from "@/lib/auth";
-import { getPricedProductByIdForProfile } from "@/lib/products";
+import { getPricedProductByIdForProfile, getProductPublicPath } from "@/lib/products";
 import { cn } from "@/lib/utils";
 
 const DESCRIPTION_FALLBACK =
@@ -27,11 +27,28 @@ export default async function ProductDetailPage({
     searchParams,
     getCurrentProfile(),
   ]);
-  const selectedVariantId = getStringParam(query.variant);
+  const requestedVariant = getStringParam(query.variant);
   const product = await getPricedProductByIdForProfile(profile, id);
 
   if (!product) {
     notFound();
+  }
+
+  const selectedVariantId = getSelectedVariantId(product.variants, requestedVariant);
+  const canonicalProductPath = getProductPublicPath(product);
+  const canonicalVariantToken = selectedVariantId
+    ? getVariantPublicToken(product.variants.find((variant) => variant.id === selectedVariantId))
+    : null;
+  const shouldCanonicalizeProduct =
+    normalizeRouteSegment(id) !== normalizeRouteSegment(product.publicSlug) || isUuidLike(id);
+  const shouldCanonicalizeVariant = requestedVariant ? isUuidLike(requestedVariant) : false;
+
+  if (shouldCanonicalizeProduct || shouldCanonicalizeVariant) {
+    const queryString =
+      requestedVariant && canonicalVariantToken
+        ? `?variant=${encodeURIComponent(canonicalVariantToken)}`
+        : "";
+    redirect(`${canonicalProductPath}${queryString}`);
   }
 
   const priceVisibility = canViewPrices(profile)
@@ -211,4 +228,101 @@ function getStringParam(value: string | string[] | undefined) {
   const trimmed = item?.trim();
 
   return trimmed || undefined;
+}
+
+function getSelectedVariantId<
+  TVariant extends {
+    code: string;
+    color: string | null;
+    diameter: number | null;
+    grit: string | null;
+    id: string;
+    manufacturerRef: string | null;
+  },
+>(variants: TVariant[], requestedVariant: string | undefined) {
+  if (!requestedVariant) {
+    return undefined;
+  }
+
+  const requestedToken = normalizeRouteSegment(requestedVariant);
+
+  return variants.find((variant) => {
+    if (variant.id === requestedVariant) {
+      return true;
+    }
+
+    return (
+      getVariantPublicSlugs(variant).includes(requestedToken) ||
+      getVariantFallbackToken(variant) === requestedToken
+    );
+  })?.id;
+}
+
+function getVariantPublicToken(
+  variant:
+    | {
+        code: string;
+        color: string | null;
+        diameter: number | null;
+        grit: string | null;
+        manufacturerRef: string | null;
+      }
+    | null
+    | undefined
+) {
+  return variant ? getVariantPublicSlugs(variant)[0] ?? getVariantFallbackToken(variant) : null;
+}
+
+function getVariantPublicSlugs(variant: { code: string; manufacturerRef: string | null }) {
+  return [variant.code, variant.manufacturerRef]
+    .map(getUsableBusinessCode)
+    .map((value) => (value ? normalizeRouteSegment(value) : null))
+    .filter((value): value is string => Boolean(value));
+}
+
+function getVariantFallbackToken(variant: {
+  color: string | null;
+  diameter: number | null;
+  grit: string | null;
+}) {
+  const token = [variant.color ?? variant.grit, formatDiameterToken(variant.diameter)]
+    .filter(Boolean)
+    .join("-");
+
+  return token ? normalizeRouteSegment(token) : null;
+}
+
+function formatDiameterToken(value: number | null) {
+  if (value === null || !Number.isFinite(value)) {
+    return null;
+  }
+
+  return Number.isInteger(value) ? String(value) : value.toFixed(1);
+}
+
+function normalizeRouteSegment(value: string) {
+  return value
+    .toLocaleLowerCase("tr-TR")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\u0131/g, "i")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .replace(/-{2,}/g, "-");
+}
+
+function getUsableBusinessCode(value: string | null | undefined) {
+  const trimmed = value?.trim();
+
+  if (!trimmed || isUuidLike(trimmed)) {
+    return null;
+  }
+
+  return trimmed;
+}
+
+function isUuidLike(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?:$|[-_A-Z0-9].*)/i.test(
+    value
+  );
 }

@@ -61,10 +61,11 @@ const whatsAppSupportHref = `https://wa.me/${DENTECH_WHATSAPP_NUMBER}`;
 
 export default async function ProductsPage({ searchParams }: ProductsPageProps) {
   const params = await searchParams;
+  const selectedCategory = params.category === "tum-urunler" ? undefined : params.category;
   const { authMs, profile } = await getProductsPageProfile();
   const filters: ProductFilters = {
-    brand: params.brand || "JOTA",
-    category: params.category,
+    brand: params.brand,
+    category: selectedCategory,
     maxPrice: params.max_price,
     minPrice: params.min_price,
     page: params.page,
@@ -75,11 +76,11 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
   const hasPriceAccess = canViewPrices(profile);
   const hasActiveFilters = Boolean(
     params.q ||
-      params.category ||
+      selectedCategory ||
       params.usage ||
       params.min_price ||
       params.max_price ||
-      (params.brand && params.brand !== "JOTA")
+      params.brand
   );
   const isFirstPublicCatalogPage =
     !hasPriceAccess && !hasActiveFilters && (!params.page || params.page === "1");
@@ -105,14 +106,14 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
       : "public";
   const activeFilterLabels = [
     params.q ? `Arama: ${params.q}` : null,
-    params.category
+    selectedCategory
       ? `Kategori: ${
-          categories.find((category) => category.slug === params.category)?.name ??
-          params.category
+          categories.find((category) => category.slug === selectedCategory)?.name ??
+          selectedCategory
         }`
       : null,
     params.usage ? `Kullanım: ${params.usage}` : null,
-    params.brand && params.brand !== "JOTA" ? `Marka: ${params.brand}` : null,
+    params.brand ? `Marka: ${params.brand}` : null,
     hasPriceAccess && params.min_price ? `Min: ₺${params.min_price}` : null,
     hasPriceAccess && params.max_price ? `Max: ₺${params.max_price}` : null,
   ].filter((label): label is string => Boolean(label));
@@ -286,7 +287,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
         <FilterSidebar
           categories={categories}
           currentParams={params}
-          selectedCategory={filters.category}
+          selectedCategory={selectedCategory}
         />
         <div className="min-w-0 flex-1">
           <div className="mb-3 flex flex-col gap-2 text-sm text-muted-foreground sm:mb-4 sm:flex-row sm:items-center sm:justify-between">
@@ -414,9 +415,10 @@ function CatalogSelects({
       </select>
       <select
         className="h-10 rounded-lg border border-input bg-background px-3 text-sm"
-        defaultValue={filters.brand}
+        defaultValue={filters.brand ?? ""}
         name="brand"
       >
+        <option value="">Tüm markalar</option>
         <option value="JOTA">JOTA</option>
       </select>
       <select

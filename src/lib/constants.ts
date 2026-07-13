@@ -36,12 +36,12 @@ export const publicNav = [
 
 export const dashboardNav = [
   { href: "/dashboard", label: "Panel", icon: Gauge },
-  { href: "/products", label: "Katalog", icon: PackageSearch },
+  { href: "/products", label: "Ürünler", icon: PackageSearch },
 ];
 
 export const salesNav = [
   { href: "/sales", label: "Panel", icon: Gauge },
-  { href: "/products", label: "Katalog", icon: PackageSearch },
+  { href: "/products", label: "Ürünler", icon: PackageSearch },
   { href: "/sales/request", label: "Talepler", icon: ShoppingBag },
 ];
 

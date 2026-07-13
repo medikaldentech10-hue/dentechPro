@@ -3,44 +3,50 @@ import { Box, ClipboardList, Headphones, Search } from "lucide-react";
 import { CategoryCard } from "@/components/marketing/category-card";
 import { SearchHero } from "@/components/marketing/search-hero";
 import { GradientBackground } from "@/components/premium/gradient-background";
+import { getPublicProducts } from "@/lib/products";
 
-const categories = [
+const mainCatalogCategories = [
   {
     title: "Frezler",
-    description: "Elmas, karbit ve teknik frez grupları",
-    status: "active" as const,
-    href: "/products",
+    description: "Elmas, karbit ve aşındırıcı frez gruplarını inceleyin",
+    slug: "frezler",
     visual: "bur" as const,
+    matchTerms: ["frez", "bur", "asindirici", "aşındırıcı", "tas", "taş", "elmas", "karbit"],
   },
   {
-    title: "Polisaj Ürünleri",
-    description: "Zirkonya, metal ve kompozit yüzey işlemleri",
-    status: "coming-soon" as const,
+    title: "Cilalama",
+    description: "Cilalama frezleri, uçları ve polisaj gruplarını inceleyin",
+    slug: "cilalama",
     visual: "polish" as const,
+    matchTerms: ["cilalama", "polisaj", "polish", "polisher", "zirkonya", "metal"],
   },
   {
-    title: "Endodonti",
-    description: "Kanal tedavisi için seçili ürün grupları",
-    status: "coming-soon" as const,
-    visual: "endo" as const,
-  },
-  {
-    title: "Laboratuvar Çözümleri",
-    description: "Laboratuvar iş akışına uygun ürün grupları",
-    status: "coming-soon" as const,
-    visual: "lab" as const,
-  },
-  {
-    title: "Klinik Sarf",
-    description: "Günlük kullanım için temel sarf ürünleri",
-    status: "coming-soon" as const,
+    title: "Ölçü Materyalleri",
+    description: "Ölçü ve yardımcı materyal seçeneklerini inceleyin",
+    slug: "olcu-materyalleri",
     visual: "supply" as const,
+    matchTerms: ["olcu", "ölçü", "materyal", "aljinat", "silikon"],
   },
   {
-    title: "Cihaz ve Ekipman",
-    description: "Görüntüleme ve klinik ekipman çözümleri",
-    status: "coming-soon" as const,
+    title: "Pedodonti",
+    description: "Çocuk diş hekimliği ürünlerini inceleyin",
+    slug: "pedodonti",
+    visual: "supply" as const,
+    matchTerms: ["pedodonti", "cocuk", "çocuk"],
+  },
+  {
+    title: "Klinik Cihazlar",
+    description: "Klinik cihaz ve ekipman gruplarını inceleyin",
+    slug: "klinik-cihazlar",
     visual: "device" as const,
+    matchTerms: ["klinik", "cihaz", "cihazlari", "cihazları", "ekipman"],
+  },
+  {
+    title: "Setler / Paketler",
+    description: "Set ve paket ürün gruplarını inceleyin",
+    slug: "setler-paketler",
+    visual: "lab" as const,
+    matchTerms: ["set", "setler", "paket", "paketler", "kit"],
   },
 ];
 
@@ -67,7 +73,23 @@ const steps = [
   },
 ];
 
-export default function HomePage() {
+export default async function HomePage() {
+  const categoryResults = await Promise.all(
+    mainCatalogCategories.map((category) =>
+      getPublicProducts({ category: category.slug, pageSize: 1 })
+    )
+  );
+  const categories = mainCatalogCategories.map((category, index) => {
+    const hasActiveProducts = categoryResults[index]?.products.length ? true : false;
+    return {
+      title: category.title,
+      description: category.description,
+      status: hasActiveProducts ? ("active" as const) : ("coming-soon" as const),
+      href: `/products?category=${encodeURIComponent(category.slug)}`,
+      visual: category.visual,
+    };
+  });
+
   return (
     <GradientBackground className="pb-0">
       <SearchHero />
