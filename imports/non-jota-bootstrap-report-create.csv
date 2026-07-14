@@ -1,0 +1,47 @@
+product_id,brand,product_group_code,product_name,variant_code,price,currency,stock_quantity,stock_status,package_quantity,match_source,csv_row
+032cbc12-0ba3-44c8-a00d-c5253d842430,DENTech Medikal,DENT-KLINIK-DCAM,D CAM Mini Kamera,DENT-KLINIK-DCAM,16000,TRY,50,in_stock,1,product_name,7
+0e39aef7-bdbd-4cda-a4fe-04b89fad6b3f,Seil Global,SG-KARI-101MIX,10:1 Mix Tip,SG-KARI-101MIX,200,TRY,50,in_stock,1,product_name,58
+11c1c3c6-c7d4-4922-98f0-68c41c25f93e,Seil Global,SG-KARI-YELLOWORAL,Yellow Oral Tip S115,SG-KARI-YELLOWORAL,200,TRY,50,in_stock,1,product_name,59
+11f5ce00-87fc-4b82-a945-7b51398d48cd,Seil Global,SG-OLCU-IMPRESSION,Impression Saver,SG-OLCU-IMPRESSION,3000,TRY,50,in_stock,1,product_name,16
+1d56d34a-e6d1-4bb4-bf59-4548523cb4ca,Seil Global,SG-PEDO-BITESUCTIO,Bite Suction (2'li paket),SG-PEDO-BITESUCTIO,250,TRY,50,in_stock,1,product_name,13
+222d2af8-a09b-4d11-9c49-ae977dff795f,Seil Global,SG-KARI-YELLOWMIXI,Yellow Mixing Tip,SG-KARI-YELLOWMIXI,200,TRY,50,in_stock,1,product_name,57
+328917af-5201-43bb-bd35-adc84f2176a0,Voldent,VOLD-KLINIK-AIRJETAIR,AirJet Air Flow Başlık,VOLD-KLINIK-AIRJETAIR,,TRY,50,in_stock,1,none,
+32fed272-6254-4323-b3f9-615faff0105e,Seil Global,SG-OLCU-SMARTSIL,Smart Sil Bite Registration,SG-OLCU-SMARTSIL,1000,TRY,50,in_stock,1,product_name,68
+34c19618-19c6-499a-b441-af50afb1d26f,Seil Global,SG-KARI-NEWRESIN,New Resin Mix Tip (Brown) - S S124,SG-KARI-NEWRESIN,250,TRY,50,in_stock,1,product_name,33
+3a7ebc00-bd2c-4738-91ef-cbef6e0ecb01,Seil Global,SG-KARI-NEWCEMENT,New Cement Tip - S Flat End S129,SG-KARI-NEWCEMENT,200,TRY,50,in_stock,1,product_name,37
+3bb6944a-b03d-4329-8cdf-49cac55ac124,Seil Global,SG-KARI-COREMIX,Core Mix Tip S131-A,SG-KARI-COREMIX,200,TRY,50,in_stock,1,product_name,41
+46771dbe-9f11-4908-b6e3-30a00e4e6354,Seil Global,SG-KARI-41CEMENT,4:1 Cement Tip Taper End,SG-KARI-41CEMENT,,TRY,50,in_stock,1,none,
+50885a84-eaf7-4a3a-a21f-e109c617ee95,Seil Global,SG-KARI-NEWGREEN,New Green Mixing Tip S131,SG-KARI-NEWGREEN,200,TRY,50,in_stock,1,product_name,29
+521508ce-cf50-48d9-b1cb-a75f6c0bc43d,Brulon,BRUL-OLCU-MUM,Mum,BRUL-OLCU-MUM,250,TRY,50,in_stock,1,product_name,22
+525a6101-612e-4d94-84d2-6420227a60bc,Seil Global,SG-OLCU-SMARTSILPU,SmartSil Putty,SG-OLCU-SMARTSILPU,1500,TRY,50,in_stock,1,product_name,18
+53adc823-2063-487c-bff8-6d7fa9cc6e54,Seil Global,SG-OLCU-JBFORK,JB Fork,SG-OLCU-JBFORK,5000,TRY,50,in_stock,1,product_name,64
+56ee57fa-2ba3-45a5-930b-4745dc79bc2a,Brulon,BRUL-OLCU-BIOKALGINP,Biokalgin Pro 453gr,BRUL-OLCU-BIOKALGINP,200,TRY,50,in_stock,1,product_name,19
+5c13eb5e-0095-4b62-a934-1839b678e9b8,Seil Global,SG-KARI-WHITEORAL,White Oral S116,SG-KARI-WHITEORAL,200,TRY,50,in_stock,1,product_name,56
+5d5dc6fe-bf9d-49d1-a7ad-5667b9b1adef,Seil Global,SG-KARI-BLUECEMENT,Blue CementTip-L,SG-KARI-BLUECEMENT,200,TRY,50,in_stock,1,product_name,63
+63f8e822-b8f3-47e6-8a67-8554888d8e04,Seil Global,SG-KARI-NEWCORE,New Core Mix (Brown) S123,SG-KARI-NEWCORE,250,TRY,50,in_stock,1,product_name,38
+647c0720-762a-461d-bf8e-6ed4e96cceac,Seil Global,SG-KARI-NEWYELLOW,New Yellow Mixing Tip S130,SG-KARI-NEWYELLOW,200,TRY,50,in_stock,1,product_name,30
+6a21495d-5218-4e5b-8a58-2070decd7f4a,Seil Global,SG-KARI-RESINMIX,Resin Mix Tip-S,SG-KARI-RESINMIX,,TRY,50,in_stock,1,none,
+6d4631e3-b35c-449c-b696-a9b2ade0c587,Seil Global,SG-KARI-GREENMIX,Green Mix Tip S131-A,SG-KARI-GREENMIX,200,TRY,50,in_stock,1,product_name,52
+70ab6733-7ed8-4d01-a343-83cb7a1bdfd7,Seil Global,SG-KARI-NEWPINK,New Pink Mixing Tip S132,SG-KARI-NEWPINK,200,TRY,50,in_stock,1,product_name,32
+71594148-c78a-4906-9472-98a5b32cb704,Seil Global,SG-KARI-BITEORAL,Bite Oral Tip S122,SG-KARI-BITEORAL,200,TRY,50,in_stock,1,product_name,62
+71f669ce-65aa-4f7f-af01-f63bc50bc2d2,Seil Global,SG-PEDO-KLEMPSETI,Klemp Seti,SG-PEDO-KLEMPSETI,2000,TRY,50,in_stock,1,product_name,14
+77b2213f-1508-450f-a1cf-84c46606d3f9,Voldent,VOLD-KLINIK-PROJET2,ProJet 2,VOLD-KLINIK-PROJET2,11500,TRY,50,in_stock,1,product_name,65
+877d4ef1-191b-427e-852d-8fa9d5b190d5,Xpect Vision,XPV-KLINIK-AGIZICI,Ağız İçi Tarayıcı Qscan7000,XPV-KLINIK-AGIZICI,230000,TRY,50,in_stock,1,product_name,3
+88bbcf02-b2ed-4b81-b026-91085cbf40c4,Seil Global,SG-KARI-AUTOPLUS,Auto Plus Tip Yellow,SG-KARI-AUTOPLUS,400,TRY,50,in_stock,1,product_name,23
+90bac54a-ff21-475d-83d6-04d8a7fc9044,Seil Global,SG-KARI-YELLOWMIX,Yellow Mix Tip S130-A,SG-KARI-YELLOWMIX,200,TRY,50,in_stock,1,product_name,50
+9913efb1-f2c1-4563-928c-f644385e632a,Seil Global,SG-OLCU-JBTRAY,JB Tray,SG-OLCU-JBTRAY,5000,TRY,50,in_stock,1,product_name,2
+9e078ba8-7391-4ef4-ac5b-819c2cff0821,Brulon,BRUL-OLCU-GELMAKPRO,Gelmak Pro 453gr,BRUL-OLCU-GELMAKPRO,250,TRY,50,in_stock,1,product_name,21
+a22b5ef5-e1d8-4b9c-a30e-0c11943a7e55,Brulon,BRUL-OLCU-ALGINOMERP,Alginomer Plus 453gr,BRUL-OLCU-ALGINOMERP,300,TRY,50,in_stock,1,product_name,20
+a40a292e-9dd8-4201-a62d-a67408d1ccd8,Seil Global,SG-KARI-NEW11,New 1:1 Blue Cement Tip - Y S142 76.3mm,SG-KARI-NEW11,200,TRY,50,in_stock,1,product_name,31
+a453a204-22a9-4a11-8ac5-2c63a01c9484,Seil Global,SG-KARI-NEW101,New 10:1 Mix Tip S141 76.3mm,SG-KARI-NEW101,,TRY,50,in_stock,1,none,
+a4615868-c739-4c9f-9f7c-f08e2d6b0387,Seil Global,SG-KARI-NEWBLUE,New Blue Mix Tip S133,SG-KARI-NEWBLUE,200,TRY,50,in_stock,1,product_name,60
+a5da6b2c-6778-4c82-9528-01d336e3b79a,Hulaser,HULA-KLINIK-HULASERK2,HULASER K2 Mobil Diyot Lazer Cihazı,HULA-KLINIK-HULASERK2,200000,TRY,50,in_stock,1,product_name,4
+b95e7950-7890-477d-b073-0efe12d81086,Seil Global,SG-KLINIK-MIRRORSUCT,Mirror Suction,SG-KLINIK-MIRRORSUCT,10000,TRY,50,in_stock,1,product_name,10
+d0c7a24f-66ba-4e3b-9a66-3ca9547a3a63,DENTech Medikal,DENT-PEDO-COCUKDIS,Çocuk Diş Kutusu 25 Adet,DENT-PEDO-COCUKDIS,250,TRY,50,in_stock,1,product_name,15
+dafaba19-2fa4-4120-a03a-f1c345ea4180,Seil Global,SG-OLCU-ZIRADD,Zir Add,SG-OLCU-ZIRADD,3500,TRY,50,in_stock,1,product_name,66
+e21cd51e-2205-4103-8983-749526c60989,Seil Global,SG-OLCU-SMARTSILLI,SmartSil Light Body,SG-OLCU-SMARTSILLI,850,TRY,50,in_stock,1,product_name,17
+e6983efc-6413-4ade-bdb3-4a3b3b120f70,Seil Global,SG-KARI-BLUEMIX,Blue Mix Tip-B S139,SG-KARI-BLUEMIX,200,TRY,50,in_stock,1,product_name,51
+f100c29b-ae2d-4d39-bff9-d685d57572f8,iCrown,ICRO-PEDO-PCKSET,PÇK Set,ICRO-PEDO-PCKSET,,TRY,50,in_stock,1,none,
+f4a990cf-6626-4cd9-86e3-d4cd692b503a,Seil Global,SG-KARI-ENDOORAL,Endo Oral Tip-S146,SG-KARI-ENDOORAL,200,TRY,50,in_stock,1,product_name,47
+f5e9813c-d450-44a2-b3ff-2661003d6272,Seil Global,SG-KARI-COREORAL,Core Oral Tip S117,SG-KARI-COREORAL,200,TRY,50,in_stock,1,product_name,43
+ff1e3062-def4-4abb-852a-6dcb4961ebe9,Xpect Vision,XPV-KLINIK-RVGYAPAY,RVG | Yapay Zeka Destekli,XPV-KLINIK-RVGYAPAY,,TRY,50,in_stock,1,none,
