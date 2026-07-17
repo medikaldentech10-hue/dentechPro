@@ -38,6 +38,7 @@ export type PublicCatalogVariant = {
   color: string | null;
   diameter: number | null;
   grit: string | null;
+  groupImageUrl?: string | null;
   id: string;
   imageUrl: string | null;
   isActive: boolean;
@@ -99,6 +100,7 @@ type CatalogVariantRow = {
   currency: VariantRow["currency"];
   diameter: VariantRow["diameter"];
   grit: VariantRow["grit"];
+  group_image_url?: string | null;
   id: VariantRow["id"];
   image_url: VariantRow["image_url"];
   is_active: VariantRow["is_active"];
@@ -963,6 +965,7 @@ function toPublicVariant(row: CatalogVariantRow): PublicCatalogVariant {
     color: row.color,
     diameter: row.diameter,
     grit: row.grit,
+    groupImageUrl: row.group_image_url ?? null,
     id: row.id,
     imageUrl: row.image_url,
     isActive: row.is_active,
@@ -1049,7 +1052,12 @@ function mergeProductFamilyRows(rows: ProductQueryRow[]): ProductQueryRow {
     sortedRows.find((row) => isBaseFamilyProductName(row.product_name)) ?? sortedRows[0];
   const family = getProductFamilyParts(canonical.product_name);
   const mergedVariants = dedupeDisplayVariants(
-    sortedRows.flatMap((row) => row.variants)
+    sortedRows.flatMap((row) =>
+      row.variants.map((variant) => ({
+        ...variant,
+        group_image_url: isJotaBrand(row.brand) ? null : row.image_url,
+      }))
+    )
   ).sort(compareCatalogVariants);
 
   return {

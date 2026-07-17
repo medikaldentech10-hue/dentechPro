@@ -60,6 +60,7 @@ type ProductVariantView = {
   currency?: string;
   diameter: number | null;
   grit: string | null;
+  groupImageUrl?: string | null;
   id: string;
   imageUrl: string | null;
   isActive: boolean;
@@ -114,10 +115,14 @@ export function ProductDetailClient({
     selectedGroupVariants[0] ??
     initialVariant;
   const selectedDescription = getReadableDescriptionText(selectedVariant?.clinicalNote);
+  const selectedVariantImageSrc = getImageSrc(selectedVariant?.imageUrl);
+  const selectedGroupImageSrc =
+    getImageSrc(selectedVariant?.groupImageUrl) ??
+    (isJotaProductBrand(product.brand)
+      ? (selectedGroupVariants.map((variant) => getImageSrc(variant.imageUrl)).find(Boolean) ?? null)
+      : null);
   const selectedImageSrc =
-    selectedVariant?.imageUrl ??
-    selectedGroupVariants.find((variant) => variant.imageUrl)?.imageUrl ??
-    product.imageUrl;
+    selectedVariantImageSrc ?? selectedGroupImageSrc ?? getImageSrc(product.imageUrl);
   const displayTitle = getSelectedProductTitle(product, selectedVariant, selectedGroup?.label);
   const titleParts = splitProductTitle(displayTitle);
   const imageZoomClass = shouldZoomProductImage(product, selectedVariant)
@@ -936,6 +941,10 @@ function getDisplayCode(value: string | null | undefined) {
   }
 
   return trimmed;
+}
+
+function getImageSrc(value: string | null | undefined) {
+  return value?.trim() || null;
 }
 
 function formatVariantSizeLabel(variant: ProductVariantView) {
