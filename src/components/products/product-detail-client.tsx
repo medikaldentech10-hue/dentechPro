@@ -677,6 +677,10 @@ function getSelectedProductTitle(
   selectedVariant: ProductVariantView | null,
   selectedGroupLabel: string | null | undefined
 ) {
+  if (!isJotaProductBrand(product.brand)) {
+    return getSafeProductTitle(product.name) ?? getDisplayCode(product.code) ?? "Ürün";
+  }
+
   const groupLabel =
     selectedGroupLabel && isBuyerFacingGroupLabel(selectedGroupLabel) ? selectedGroupLabel : null;
   const variantTitle = selectedVariant ? getCleanVariantTitle(selectedVariant.name) : null;
@@ -698,6 +702,18 @@ function getSelectedProductTitle(
   }
 
   return `${product.name} - ${groupLabel}`;
+}
+
+function isJotaProductBrand(brand: string) {
+  const normalizedBrand = normalizeText(brand);
+
+  return normalizedBrand === "jota" || normalizedBrand === "jota switzerland";
+}
+
+function getSafeProductTitle(value: string) {
+  const title = value.trim();
+
+  return title && isUsableBusinessCode(title) ? title : null;
 }
 
 function getCleanVariantTitle(value: string) {

@@ -3,11 +3,12 @@ import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
 import {
+  deactivateVariantAction,
   toggleProductActiveAction,
-  toggleVariantActiveAction,
   updateProductAction,
   updateVariantAction,
 } from "@/app/(admin)/admin/products/actions";
+import { ConfirmSubmitButton } from "@/components/admin/confirm-submit-button";
 import { SurfaceCard } from "@/components/premium/surface-card";
 import { PageTitle } from "@/components/shared/page-title";
 import { Badge } from "@/components/ui/badge";
@@ -253,6 +254,11 @@ function VariantEditor({
                 type="number"
               />
             </Field>
+            <Field label="Stok Durumu">
+              <div className="flex h-10 items-center rounded-lg border border-input bg-muted/30 px-3 text-sm">
+                {formatStockStatus(variant.stock_status)}
+              </div>
+            </Field>
             <Field label="Çap">
               <Input
                 defaultValue={variant.diameter ?? ""}
@@ -282,28 +288,13 @@ function VariantEditor({
               <Input defaultValue={variant.image_url ?? ""} name="image_url" />
             </Field>
           </div>
-          <label className="flex items-center gap-2 text-sm font-medium">
-            <input
-              defaultChecked={variant.is_active}
-              name="is_active"
-              type="checkbox"
-            />
-            Aktif varyant
-          </label>
-          {!variant.is_active ? (
-            <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-100">
-              Fiyat ve stok kontrol edilmeden aktif etmeyin.
-            </p>
-          ) : null}
           <div className="flex flex-col gap-2 sm:flex-row">
             <Button type="submit">Varyantı Kaydet</Button>
           </div>
         </form>
-        <ToggleVariantForm
-          isActive={!variant.is_active}
-          productId={productId}
-          variantId={variant.id}
-        />
+        {variant.is_active ? (
+          <DeactivateVariantForm productId={productId} variantId={variant.id} />
+        ) : null}
       </CardContent>
     </SurfaceCard>
   );
@@ -327,25 +318,36 @@ function ToggleProductForm({
   );
 }
 
-function ToggleVariantForm({
-  isActive,
+function DeactivateVariantForm({
   productId,
   variantId,
 }: {
-  isActive: boolean;
   productId: string;
   variantId: string;
 }) {
   return (
-    <form action={toggleVariantActiveAction}>
+    <form action={deactivateVariantAction}>
       <input name="product_id" type="hidden" value={productId} />
       <input name="variant_id" type="hidden" value={variantId} />
-      <input name="is_active" type="hidden" value={String(isActive)} />
-      <Button type="submit" variant="outline">
-        {isActive ? "Varyantı Aktifleştir" : "Varyantı Pasifleştir"}
-      </Button>
+      <ConfirmSubmitButton
+        confirmMessage="Bu varyant pasife alınacak. Devam etmek istiyor musunuz?"
+        variant="destructive"
+      >
+        Pasife Al
+      </ConfirmSubmitButton>
     </form>
   );
+}
+
+function formatStockStatus(status: Variant["stock_status"]) {
+  const labels: Record<Variant["stock_status"], string> = {
+    ask_for_stock: "Stok Sorunuz",
+    in_stock: "Stokta",
+    low_stock: "Düşük Stok",
+    out_of_stock: "Stok Yok",
+  };
+
+  return labels[status];
 }
 
 function ProductStatusBadge({ isActive }: { isActive: boolean }) {

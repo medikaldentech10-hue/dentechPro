@@ -46,13 +46,25 @@ export type AdminProductFilters = {
   category?: string;
   page?: number | string;
   pageSize?: number | string;
+  quality?: AdminProductQualityFilter;
   query?: string;
 };
 
+export type AdminProductQualityFilter =
+  | "all"
+  | "inactive_or_duplicate"
+  | "missing_price"
+  | "no_active_variant";
+
 export type AdminProductListItem = {
+  activeVariantCount: number;
   brand: string;
   categoryName: string;
   categorySlug: string | null;
+  hasDuplicateLikeVariants: boolean;
+  hasInactiveVariant: boolean;
+  hasMissingPrice: boolean;
+  hasNoActiveVariant: boolean;
   id: string;
   isActive: boolean;
   lowestPrice: number | null;
@@ -99,15 +111,44 @@ export async function getAdminCategories() {
   return data;
 }
 
+export async function getAdminBrands() {
+  const supabase = getSupabaseAdminClient();
+  const brands = new Set<string>();
+  const pageSize = 1000;
+
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await supabase
+      .from("products")
+      .select("brand")
+      .order("brand")
+      .order("id")
+      .range(from, from + pageSize - 1);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    for (const row of data ?? []) {
+      const brand = row.brand.trim();
+      if (brand) brands.add(brand);
+    }
+
+    if ((data ?? []).length < pageSize) break;
+  }
+
+  return [...brands].sort((left, right) => left.localeCompare(right, "tr-TR"));
+}
+
 export async function getAdminProductList(
   filters: AdminProductFilters = {}
 ): Promise<AdminProductListResult> {
   const supabase = getSupabaseAdminClient();
   const startedAt = performance.now();
-  const normalizedBrand = filters.brand?.trim() || "JOTA";
+  const normalizedBrand = filters.brand?.trim();
   const normalizedCategory = filters.category?.trim();
   const normalizedQuery = filters.query?.trim().toLocaleLowerCase("tr-TR");
   const activeFilter = filters.active ?? "active";
+  const qualityFilter = filters.quality ?? "all";
   const pageSize = clampInteger(filters.pageSize, 25, 1, 100);
   const page = clampInteger(filters.page, 1, 1, 10_000);
   const from = (page - 1) * pageSize;
@@ -118,6 +159,22 @@ export async function getAdminProductList(
   const matchingProductIds = normalizedQuery
     ? await getMatchingVariantProductIds(normalizedQuery)
     : [];
+  const productSearch = normalizedQuery
+    ? buildProductSearch(normalizedQuery, matchingProductIds)
+    : null;
+
+  if (qualityFilter !== "all") {
+    return getQualityFilteredAdminProductList({
+      activeFilter,
+      categoryId,
+      normalizedBrand,
+      page,
+      pageSize,
+      productSearch,
+      qualityFilter,
+      startedAt,
+    });
+  }
 
   let query = supabase
     .from("products")
@@ -125,9 +182,12 @@ export async function getAdminProductList(
       "id,brand,category_id,product_group_code,product_name,is_active,updated_at,category:categories(id,name,slug,sort_order)",
       { count: "exact" }
     )
-    .eq("brand", normalizedBrand)
     .order("updated_at", { ascending: false })
     .range(from, to);
+
+  if (normalizedBrand) {
+    query = query.eq("brand", normalizedBrand);
+  }
 
   if (activeFilter === "active") {
     query = query.eq("is_active", true);
@@ -141,13 +201,7 @@ export async function getAdminProductList(
     query = query.eq("category_id", categoryId);
   }
 
-  if (normalizedQuery) {
-    const escapedQuery = escapeLikePattern(normalizedQuery);
-    const productSearch = [
-      `product_name.ilike.%${escapedQuery}%`,
-      `product_group_code.ilike.%${escapedQuery}%`,
-      ...matchingProductIds.map((id) => `id.eq.${id}`),
-    ].join(",");
+  if (productSearch) {
     query = query.or(productSearch);
   }
 
@@ -210,6 +264,85 @@ export async function getAdminProductDetail(productId: string) {
   return toDetail(normalizeDetailRows([data])[0]);
 }
 
+async function getQualityFilteredAdminProductList({
+  activeFilter,
+  categoryId,
+  normalizedBrand,
+  page,
+  pageSize,
+  productSearch,
+  qualityFilter,
+  startedAt,
+}: {
+  activeFilter: "active" | "inactive" | "all";
+  categoryId: string | null;
+  normalizedBrand: string | undefined;
+  page: number;
+  pageSize: number;
+  productSearch: string | null;
+  qualityFilter: Exclude<AdminProductQualityFilter, "all">;
+  startedAt: number;
+}): Promise<AdminProductListResult> {
+  const supabase = getSupabaseAdminClient();
+  const productRows: Omit<AdminProductRow, "variants">[] = [];
+  const fetchPageSize = 1000;
+
+  for (let from = 0; ; from += fetchPageSize) {
+    let query = supabase
+      .from("products")
+      .select(
+        "id,brand,category_id,product_group_code,product_name,is_active,updated_at,category:categories(id,name,slug,sort_order)"
+      )
+      .order("updated_at", { ascending: false })
+      .order("id")
+      .range(from, from + fetchPageSize - 1);
+
+    if (normalizedBrand) query = query.eq("brand", normalizedBrand);
+    if (activeFilter === "active") query = query.eq("is_active", true);
+    if (activeFilter === "inactive") query = query.eq("is_active", false);
+    if (categoryId) query = query.eq("category_id", categoryId);
+    if (productSearch) query = query.or(productSearch);
+
+    const { data, error } = await query;
+    if (error) throw new Error(error.message);
+
+    productRows.push(...normalizeListProductRows(data ?? []));
+    if ((data ?? []).length < fetchPageSize) break;
+  }
+
+  const variantSummaries = productRows.length
+    ? await getVariantSummariesForProducts(productRows.map((row) => row.id))
+    : new Map<string, VariantSummary[]>();
+  const matchingRows = productRows
+    .map((product) => ({
+      ...product,
+      variants: variantSummaries.get(product.id) ?? [],
+    }))
+    .filter((product) => matchesQualityFilter(product, qualityFilter));
+  const totalCount = matchingRows.length;
+  const from = (page - 1) * pageSize;
+  const products = matchingRows.slice(from, from + pageSize).map(toListItem);
+
+  logAdminProductQuery("admin.products.quality-list", {
+    durationMs: Math.round(performance.now() - startedAt),
+    page,
+    pageSize,
+    productCount: products.length,
+    qualityFilter,
+    totalCount,
+  });
+
+  return {
+    hasNextPage: from + pageSize < totalCount,
+    hasPreviousPage: page > 1,
+    page,
+    pageSize,
+    products,
+    totalCount,
+    totalPages: Math.max(1, Math.ceil(totalCount / pageSize)),
+  };
+}
+
 function normalizeListProductRows(rows: unknown[]): Omit<AdminProductRow, "variants">[] {
   return rows.map((row) => {
     const product = row as ProductRow & {
@@ -231,23 +364,28 @@ function normalizeListProductRows(rows: unknown[]): Omit<AdminProductRow, "varia
 
 async function getVariantSummariesForProducts(productIds: string[]) {
   const supabase = getSupabaseAdminClient();
-  const { data, error } = await supabase
-    .from("product_variants")
-    .select(
-      "id,is_active,manufacturer_ref,price,product_id,stock_quantity,variant_code"
-    )
-    .in("product_id", productIds);
+  const summaries = new Map<string, VariantSummary[]>();
 
-  if (error) {
-    throw new Error(error.message);
+  for (const ids of chunk(productIds, 200)) {
+    const { data, error } = await supabase
+      .from("product_variants")
+      .select(
+        "id,is_active,manufacturer_ref,price,product_id,stock_quantity,variant_code"
+      )
+      .in("product_id", ids);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    for (const variant of data ?? []) {
+      const current = summaries.get(variant.product_id) ?? [];
+      current.push(variant);
+      summaries.set(variant.product_id, current);
+    }
   }
 
-  return (data ?? []).reduce((summaries, variant) => {
-    const current = summaries.get(variant.product_id) ?? [];
-    current.push(variant);
-    summaries.set(variant.product_id, current);
-    return summaries;
-  }, new Map<string, VariantSummary[]>());
+  return summaries;
 }
 
 function normalizeDetailRows(rows: unknown[]): AdminProductDetailRow[] {
@@ -265,29 +403,66 @@ function normalizeDetailRows(rows: unknown[]): AdminProductDetailRow[] {
 }
 
 function toListItem(product: AdminProductRow): AdminProductListItem {
-  const prices = product.variants
+  const activeVariants = product.variants.filter((variant) => variant.is_active);
+  const prices = activeVariants
     .map((variant) => variant.price)
     .filter((price): price is number => typeof price === "number");
   const minPrice = prices.length ? Math.min(...prices) : null;
   const maxPrice = prices.length ? Math.max(...prices) : null;
+  const hasNoActiveVariant = product.is_active && activeVariants.length === 0;
 
   return {
+    activeVariantCount: activeVariants.length,
     brand: product.brand,
     categoryName: product.category?.name ?? "-",
     categorySlug: product.category?.slug ?? null,
+    hasDuplicateLikeVariants: hasDuplicateLikeVariants(product.variants),
+    hasInactiveVariant: product.variants.some((variant) => !variant.is_active),
+    hasMissingPrice:
+      product.is_active &&
+      (hasNoActiveVariant || activeVariants.some((variant) => variant.price === null)),
+    hasNoActiveVariant,
     id: product.id,
     isActive: product.is_active,
     lowestPrice: minPrice,
     priceRange: formatPriceRange(minPrice, maxPrice),
     productGroupCode: product.product_group_code,
     productName: product.product_name,
-    totalStock: product.variants.reduce(
+    totalStock: activeVariants.reduce(
       (sum, variant) => sum + variant.stock_quantity,
       0
     ),
     updatedAt: product.updated_at,
     variantCount: product.variants.length,
   };
+}
+
+function matchesQualityFilter(
+  product: AdminProductRow,
+  qualityFilter: Exclude<AdminProductQualityFilter, "all">
+) {
+  const item = toListItem(product);
+
+  if (qualityFilter === "missing_price") return item.hasMissingPrice;
+  if (qualityFilter === "no_active_variant") return item.hasNoActiveVariant;
+  return item.hasInactiveVariant || item.hasDuplicateLikeVariants;
+}
+
+function hasDuplicateLikeVariants(variants: VariantSummary[]) {
+  const seen = new Set<string>();
+
+  for (const variant of variants) {
+    const code = variant.variant_code
+      .trim()
+      .toLocaleUpperCase("tr-TR")
+      .replace(/[\s._-]/g, "");
+
+    if (!code) continue;
+    if (seen.has(code)) return true;
+    seen.add(code);
+  }
+
+  return false;
 }
 
 function toDetail(product: AdminProductDetailRow): AdminProductDetail {
@@ -339,6 +514,16 @@ async function getMatchingVariantProductIds(searchQuery: string) {
   return [...new Set((data ?? []).map((row) => row.product_id))];
 }
 
+function buildProductSearch(searchQuery: string, matchingProductIds: string[]) {
+  const escapedQuery = escapeLikePattern(searchQuery);
+
+  return [
+    `product_name.ilike.%${escapedQuery}%`,
+    `product_group_code.ilike.%${escapedQuery}%`,
+    ...matchingProductIds.map((id) => `id.eq.${id}`),
+  ].join(",");
+}
+
 function formatPriceRange(minPrice: number | null, maxPrice: number | null) {
   if (minPrice === null || maxPrice === null) {
     return "Fiyat yok";
@@ -373,6 +558,16 @@ function clampInteger(
 
 function escapeLikePattern(value: string) {
   return value.replace(/[%_,]/g, "");
+}
+
+function chunk<T>(items: T[], size: number) {
+  const chunks: T[][] = [];
+
+  for (let index = 0; index < items.length; index += size) {
+    chunks.push(items.slice(index, index + size));
+  }
+
+  return chunks;
 }
 
 function logAdminProductQuery(event: string, payload: Record<string, unknown>) {

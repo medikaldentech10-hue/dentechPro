@@ -9,20 +9,26 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
+  getAdminBrands,
   getAdminCategories,
   getAdminProductList,
   type AdminProductFilters,
+  type AdminProductListItem,
+  type AdminProductQualityFilter,
 } from "@/lib/admin-products";
 import { cn } from "@/lib/utils";
 
+type AdminProductsSearchParams = {
+  active?: "active" | "inactive" | "all";
+  brand?: string;
+  category?: string;
+  page?: string;
+  q?: string;
+  quality?: AdminProductQualityFilter;
+};
+
 type AdminProductsPageProps = {
-  searchParams: Promise<{
-    active?: "active" | "inactive" | "all";
-    brand?: string;
-    category?: string;
-    page?: string;
-    q?: string;
-  }>;
+  searchParams: Promise<AdminProductsSearchParams>;
 };
 
 export default async function AdminProductsPage({
@@ -31,13 +37,15 @@ export default async function AdminProductsPage({
   const params = await searchParams;
   const filters: AdminProductFilters = {
     active: params.active ?? "active",
-    brand: params.brand || "JOTA",
+    brand: params.brand,
     category: params.category,
     page: params.page,
     pageSize: 25,
+    quality: params.quality ?? "all",
     query: params.q,
   };
-  const [categories, productResult] = await Promise.all([
+  const [brands, categories, productResult] = await Promise.all([
+    getAdminBrands(),
     getAdminCategories(),
     getAdminProductList(filters),
   ]);
@@ -47,12 +55,36 @@ export default async function AdminProductsPage({
     <div className="flex flex-col gap-6">
       <PageTitle
         title="Ürün Yönetimi"
-        description="JOTA katalog ürünlerini ve varyant bazlı fiyat/stok durumunu yönetin."
+        description="Katalog ürünlerini, eksik fiyatları ve varyant durumlarını yönetin."
       />
+
+      <div className="flex flex-wrap gap-2">
+        <QualityTab href={getQualityHref(params, "all")} selected={filters.quality === "all"}>
+          Tüm Ürünler
+        </QualityTab>
+        <QualityTab
+          href={getQualityHref(params, "missing_price")}
+          selected={filters.quality === "missing_price"}
+        >
+          Fiyat Eksik
+        </QualityTab>
+        <QualityTab
+          href={getQualityHref(params, "no_active_variant")}
+          selected={filters.quality === "no_active_variant"}
+        >
+          Varyant Yok
+        </QualityTab>
+        <QualityTab
+          href={getQualityHref(params, "inactive_or_duplicate")}
+          selected={filters.quality === "inactive_or_duplicate"}
+        >
+          Pasif / Tekrarlı Varyant
+        </QualityTab>
+      </div>
 
       <SurfaceCard>
         <CardContent className="p-4">
-          <form className="grid gap-3 lg:grid-cols-[1fr_160px_220px_160px_auto]">
+          <form className="grid gap-3 lg:grid-cols-[1fr_180px_220px_160px_auto]">
             <Input
               defaultValue={filters.query}
               name="q"
@@ -64,7 +96,12 @@ export default async function AdminProductsPage({
               defaultValue={filters.brand}
               name="brand"
             >
-              <option value="JOTA">JOTA</option>
+              <option value="">Tüm markalar</option>
+              {brands.map((brand) => (
+                <option key={brand} value={brand}>
+                  {brand}
+                </option>
+              ))}
             </select>
             <select
               className="h-10 rounded-lg border border-input bg-background px-3 text-sm"
@@ -87,6 +124,7 @@ export default async function AdminProductsPage({
               <option value="inactive">Pasif</option>
               <option value="all">Tümü</option>
             </select>
+            <input name="quality" type="hidden" value={filters.quality} />
             <Button type="submit">Filtrele</Button>
           </form>
         </CardContent>
@@ -132,6 +170,7 @@ export default async function AdminProductsPage({
                         <span className="text-xs text-muted-foreground">
                           {product.productGroupCode}
                         </span>
+                        <ProductQualityBadges product={product} />
                       </div>
                     }
                   />
@@ -145,7 +184,7 @@ export default async function AdminProductsPage({
                   </div>
                   <MobileLabel
                     label="Varyant"
-                    value={`${product.variantCount} varyant`}
+                    value={`${product.activeVariantCount} aktif / ${product.variantCount} toplam`}
                   />
                   <MobileLabel label="Stok" value={`${product.totalStock} adet`} />
                   <MobileLabel label="Fiyat" value={product.priceRange} />
@@ -163,7 +202,7 @@ export default async function AdminProductsPage({
               <EmptyState
                 actionHref="/admin/products"
                 actionLabel="Filtreleri Temizle"
-                description="Seçili filtrelerle eşleşen ürün bulunamadı. Import çalıştıktan sonra JOTA ürünleri burada listelenir."
+                description="Seçili kalite, marka, kategori ve arama filtreleriyle eşleşen ürün bulunamadı."
                 title="Ürün bulunamadı"
               />
             </div>
@@ -193,12 +232,7 @@ function PaginationLinks({
   currentPage: number;
   hasNextPage: boolean;
   hasPreviousPage: boolean;
-  params: {
-    active?: "active" | "inactive" | "all";
-    brand?: string;
-    category?: string;
-    q?: string;
-  };
+  params: AdminProductsSearchParams;
 }) {
   if (!hasPreviousPage && !hasNextPage) {
     return null;
@@ -227,12 +261,7 @@ function PaginationLinks({
 }
 
 function getPageHref(
-  params: {
-    active?: "active" | "inactive" | "all";
-    brand?: string;
-    category?: string;
-    q?: string;
-  },
+  params: AdminProductsSearchParams,
   page: number
 ) {
   const nextParams = new URLSearchParams();
@@ -241,9 +270,77 @@ function getPageHref(
   if (params.brand) nextParams.set("brand", params.brand);
   if (params.category) nextParams.set("category", params.category);
   if (params.active) nextParams.set("active", params.active);
+  if (params.quality) nextParams.set("quality", params.quality);
   nextParams.set("page", String(page));
 
   return `/admin/products?${nextParams.toString()}`;
+}
+
+function getQualityHref(
+  params: AdminProductsSearchParams,
+  quality: AdminProductQualityFilter
+) {
+  const nextParams = new URLSearchParams();
+
+  if (params.q) nextParams.set("q", params.q);
+  if (params.brand) nextParams.set("brand", params.brand);
+  if (params.category) nextParams.set("category", params.category);
+  if (params.active) nextParams.set("active", params.active);
+  if (quality !== "all") nextParams.set("quality", quality);
+
+  const query = nextParams.toString();
+  return query ? `/admin/products?${query}` : "/admin/products";
+}
+
+function QualityTab({
+  children,
+  href,
+  selected,
+}: {
+  children: ReactNode;
+  href: string;
+  selected: boolean;
+}) {
+  return (
+    <Link
+      className={buttonVariants({ variant: selected ? "default" : "outline" })}
+      href={href}
+    >
+      {children}
+    </Link>
+  );
+}
+
+function ProductQualityBadges({ product }: { product: AdminProductListItem }) {
+  if (
+    !product.hasMissingPrice &&
+    !product.hasNoActiveVariant &&
+    !product.hasInactiveVariant &&
+    !product.hasDuplicateLikeVariants
+  ) {
+    return null;
+  }
+
+  return (
+    <span className="flex flex-wrap gap-1 pt-1">
+      {product.hasMissingPrice ? (
+        <Badge className="border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300" variant="outline">
+          Fiyat Eksik
+        </Badge>
+      ) : null}
+      {product.hasNoActiveVariant ? (
+        <Badge className="border-destructive/30 bg-destructive/10 text-destructive" variant="outline">
+          Varyant Yok
+        </Badge>
+      ) : null}
+      {product.hasInactiveVariant ? (
+        <Badge variant="secondary">Pasif Varyant Var</Badge>
+      ) : null}
+      {product.hasDuplicateLikeVariants ? (
+        <Badge variant="secondary">Tekrarlı Kod</Badge>
+      ) : null}
+    </span>
+  );
 }
 
 function ProductStatusBadge({ isActive }: { isActive: boolean }) {

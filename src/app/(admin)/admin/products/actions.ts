@@ -141,6 +141,7 @@ export async function updateVariantAction(formData: FormData) {
     .from("product_variants")
     .select("*")
     .eq("id", variantId)
+    .eq("product_id", productId)
     .single();
 
   if (oldVariantError) {
@@ -154,7 +155,6 @@ export async function updateVariantAction(formData: FormData) {
     diameter: parseOptionalNumber(formData, "diameter"),
     grit: getOptionalString(formData, "grit"),
     image_url: getOptionalString(formData, "image_url"),
-    is_active: formData.get("is_active") === "on",
     length: parseOptionalNumber(formData, "length"),
     manufacturer_ref: getOptionalString(formData, "manufacturer_ref"),
     package_quantity: packageQuantity,
@@ -169,6 +169,7 @@ export async function updateVariantAction(formData: FormData) {
     .from("product_variants")
     .update(patch)
     .eq("id", variantId)
+    .eq("product_id", productId)
     .select("*")
     .single();
 
@@ -192,11 +193,10 @@ export async function updateVariantAction(formData: FormData) {
   redirect(`/admin/products/${productId}?status=variant-updated`);
 }
 
-export async function toggleVariantActiveAction(formData: FormData) {
+export async function deactivateVariantAction(formData: FormData) {
   const adminProfile = await requireApprovedAdmin();
   const productId = getRequiredString(formData, "product_id");
   const variantId = getRequiredString(formData, "variant_id");
-  const isActive = getRequiredString(formData, "is_active") === "true";
 
   if (!productId || !variantId) {
     throw new Error("Varyant bulunamadı.");
@@ -207,6 +207,7 @@ export async function toggleVariantActiveAction(formData: FormData) {
     .from("product_variants")
     .select("*")
     .eq("id", variantId)
+    .eq("product_id", productId)
     .single();
 
   if (oldVariantError) {
@@ -215,8 +216,9 @@ export async function toggleVariantActiveAction(formData: FormData) {
 
   const { data: newVariant, error } = await supabase
     .from("product_variants")
-    .update({ is_active: isActive })
+    .update({ is_active: false })
     .eq("id", variantId)
+    .eq("product_id", productId)
     .select("*")
     .single();
 
@@ -225,7 +227,7 @@ export async function toggleVariantActiveAction(formData: FormData) {
   }
 
   await writeAuditLog({
-    action: isActive ? "product_variant_activated" : "product_variant_deactivated",
+    action: "product_variant_deactivated",
     entityId: variantId,
     entityType: "product_variant",
     newValue: summarizeChangedFields(oldVariant, newVariant),
