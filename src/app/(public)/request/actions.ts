@@ -13,6 +13,7 @@ import {
 } from "@/lib/customer-request-preferences";
 import {
   addVariantToDraft,
+  type AddedRequestDraftItem,
   cancelCustomerRequest,
   clearDraft,
   removeDraftItem,
@@ -55,8 +56,7 @@ export async function addToOrderDraftAction(formData: FormData) {
     throw error;
   }
 
-  revalidateRequestPaths();
-  redirect("/request?status=added");
+  revalidatePath("/request");
 }
 
 export async function updateOrderItemQuantityAction(formData: FormData) {
@@ -104,7 +104,7 @@ export type RequestItemMutationResult = RequestDraftTotals & {
 export async function addToOrderDraftInlineAction(input: {
   quantity: number;
   variantId: string;
-}): Promise<{
+}): Promise<Partial<AddedRequestDraftItem> & {
   error?: string;
   success?: boolean;
 }> {
@@ -112,20 +112,20 @@ export async function addToOrderDraftInlineAction(input: {
 
   try {
     const profile = await getRequiredProfile();
-    await addVariantToDraft({
+    const result = await addVariantToDraft({
       profile,
       quantity: input.quantity,
       variantId: input.variantId,
     });
 
-    revalidateRequestPaths();
+    revalidatePath("/request");
     logRequestActionPerf("request.addItem", {
       durationMs: Math.round(performance.now() - startedAt),
       quantity: input.quantity,
       success: true,
     });
 
-    return { success: true };
+    return { ...result, success: true };
   } catch (error) {
     const message = await getInlineMutationErrorMessage({
       action: RATE_LIMIT_POLICIES.requestItemMutation.action,

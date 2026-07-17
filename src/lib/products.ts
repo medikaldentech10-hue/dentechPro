@@ -174,7 +174,7 @@ export function interpretCatalogQuery(query: string | undefined) {
 }
 
 export function getProductPublicPath(
-  product: Pick<PublicCatalogProduct, "code" | "id" | "name"> & { publicSlug?: string | null }
+  product: Pick<PublicCatalogProduct, "brand" | "code" | "id" | "name"> & { publicSlug?: string | null }
 ) {
   const explicitSlug =
     product.publicSlug && isUsableBusinessCode(product.publicSlug)
@@ -273,9 +273,47 @@ const getCachedCatalogUsageAreas = unstable_cache(
   }
 );
 
+const getCachedCollidingNonJotaNameSlugs = unstable_cache(
+  async () => {
+    const supabase = getSupabaseAdminClient();
+    const products: Array<Pick<ProductQueryRow, "brand" | "product_group_code" | "product_name">> = [];
+    const pageSize = 1000;
+
+    for (let from = 0; ; from += pageSize) {
+      const { data, error } = await supabase
+        .from("products")
+        .select("brand,product_group_code,product_name")
+        .eq("is_active", true)
+        .order("id", { ascending: true })
+        .range(from, from + pageSize - 1);
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      products.push(...(data ?? []));
+
+      if ((data?.length ?? 0) < pageSize) {
+        break;
+      }
+    }
+
+    return getCollidingNonJotaNameSlugs(products);
+  },
+  ["non-jota-public-slug-collisions"],
+  {
+    revalidate: 60,
+    tags: ["public-products"],
+  }
+);
+
 export async function getPublicProducts(filters: ProductFilters = {}) {
-  const result = await getProductRows(filters);
-  return mapProductListResult(result, toPublicProduct);
+  const [result, collidingNameSlugs] = await Promise.all([
+    getProductRows(filters),
+    getCachedCollidingNonJotaNameSlugs(),
+  ]);
+  const collisions = new Set(collidingNameSlugs);
+  return mapProductListResult(result, (row) => toPublicProduct(row, collisions));
 }
 
 export const getCachedPublicFirstPageProducts = unstable_cache(
@@ -288,8 +326,11 @@ export const getCachedPublicFirstPageProducts = unstable_cache(
 );
 
 export async function getPublicProductById(productId: string) {
-  const row = await getProductRowById(productId);
-  return row ? toPublicProduct(row) : null;
+  const [row, collidingNameSlugs] = await Promise.all([
+    getProductRowById(productId),
+    getCachedCollidingNonJotaNameSlugs(),
+  ]);
+  return row ? toPublicProduct(row, new Set(collidingNameSlugs)) : null;
 }
 
 export async function getPricedProductsForProfile(
@@ -297,28 +338,35 @@ export async function getPricedProductsForProfile(
   filters: ProductFilters = {}
 ) {
   if (!getCanViewPrices(profile)) {
-    const result = await getProductRows(filters);
-    return mapProductListResult(result, toPublicProduct);
+    return getPublicProducts(filters);
   }
 
-  const result = await getProductRows(filters, {
-    includeSensitiveVariantFields: true,
-  });
-  return mapProductListResult(result, toPricedProduct);
+  const [result, collidingNameSlugs] = await Promise.all([
+    getProductRows(filters, { includeSensitiveVariantFields: true }),
+    getCachedCollidingNonJotaNameSlugs(),
+  ]);
+  const collisions = new Set(collidingNameSlugs);
+  return mapProductListResult(result, (row) => toPricedProduct(row, collisions));
 }
 
 export async function getPricedProductByIdForProfile(
   profile: AccessProfile | null,
   productId: string
 ) {
-  const row = await getProductRowById(productId);
+  const [row, collidingNameSlugs] = await Promise.all([
+    getProductRowById(productId),
+    getCachedCollidingNonJotaNameSlugs(),
+  ]);
 
   if (!row) {
     return null;
   }
 
-  const relatedProducts = await getRelatedProductSummaries(row);
-  const product = getCanViewPrices(profile) ? toPricedProduct(row) : toPublicProduct(row);
+  const collisions = new Set(collidingNameSlugs);
+  const relatedProducts = await getRelatedProductSummaries(row, collisions);
+  const product = getCanViewPrices(profile)
+    ? toPricedProduct(row, collisions)
+    : toPublicProduct(row, collisions);
 
   return {
     ...product,
@@ -623,7 +671,7 @@ async function getProductRowById(productId: string) {
 
   query = isUuid(lookup)
     ? query.eq("id", lookup)
-    : query.eq("product_group_code", lookup);
+    : query.ilike("product_group_code", lookup);
 
   const { data, error } = await query.maybeSingle();
 
@@ -631,15 +679,26 @@ async function getProductRowById(productId: string) {
     throw new Error(error.message);
   }
 
+  const fallbackResolution = data
+    ? null
+    : await getProductRowByPublicSlug(lookup, supabase);
   const row = data
     ? normalizeProductRows([data])[0]
-    : await getProductRowByPublicSlug(lookup, supabase);
+    : fallbackResolution?.row ?? null;
+  const resolutionStrategy = data
+    ? isUuid(lookup)
+      ? "legacy_uuid"
+      : "exact_product_code"
+    : fallbackResolution?.strategy ?? "not_found";
   const groupedRow = row ? await getGroupedProductDetailRow(row) : null;
 
   logProductQuery("products.detail", {
     durationMs: Math.round(performance.now() - startedAt),
     found: Boolean(groupedRow),
+    inputSlug: lookup,
+    matchedProductCode: groupedRow?.product_group_code ?? null,
     productId: lookup,
+    resolutionStrategy,
     variantCount: groupedRow?.variants.length ?? 0,
   });
 
@@ -653,7 +712,7 @@ async function getProductRowByPublicSlug(
   const normalizedLookup = slugifyPublicSegment(lookup);
 
   if (!normalizedLookup) {
-    return null;
+    return { row: null, strategy: "invalid_slug" as const };
   }
 
   const { data, error } = await supabase
@@ -667,18 +726,45 @@ async function getProductRowByPublicSlug(
   }
 
   const rows = normalizeProductRows(data ?? []);
-  const rowMatchesLookup = (row: ProductQueryRow) =>
-    getProductPublicSlug(row) === normalizedLookup ||
-    row.variants.some((variant) => getVariantPublicSlugs(variant).includes(normalizedLookup));
-
-  return (
-    rows.find(rowMatchesLookup) ??
-    groupCatalogProductRows(rows, rows).find(rowMatchesLookup) ??
-    null
+  const collidingNameSlugs = new Set(getCollidingNonJotaNameSlugs(rows));
+  const exactProduct = rows.find(
+    (row) => getProductPublicSlug(row, collidingNameSlugs) === normalizedLookup
   );
+
+  if (exactProduct) {
+    return { row: exactProduct, strategy: "canonical_product_slug" as const };
+  }
+
+  const jotaRows = rows.filter((row) => isJotaBrand(row.brand));
+  const groupedJotaProduct = groupCatalogProductRows(jotaRows, jotaRows)
+    .filter((row) => row.variants.length > 0)
+    .find((row) => getProductPublicSlug(row, collidingNameSlugs) === normalizedLookup);
+
+  if (groupedJotaProduct) {
+    return { row: groupedJotaProduct, strategy: "grouped_jota_slug" as const };
+  }
+
+  const variantMatches = rows.filter((row) =>
+    row.variants.some((variant) =>
+      getVariantPublicSlugs(variant).includes(normalizedLookup)
+    )
+  );
+
+  if (variantMatches.length === 1) {
+    return { row: variantMatches[0], strategy: "unique_variant_code" as const };
+  }
+
+  return {
+    row: null,
+    strategy: variantMatches.length > 1 ? "ambiguous_variant_code" as const : "not_found" as const,
+  };
 }
 
 async function getGroupedProductDetailRow(row: ProductQueryRow) {
+  if (!isJotaBrand(row.brand)) {
+    return row;
+  }
+
   const family = getProductFamilyParts(row.product_name);
 
   if (!family.baseCode || !family.remainder || !row.category_id) {
@@ -701,7 +787,10 @@ async function getGroupedProductDetailRow(row: ProductQueryRow) {
   return mergeProductFamilyRows(familyRows);
 }
 
-async function getRelatedProductSummaries(row: ProductQueryRow): Promise<RelatedCatalogProduct[]> {
+async function getRelatedProductSummaries(
+  row: ProductQueryRow,
+  collidingNameSlugs: ReadonlySet<string>
+): Promise<RelatedCatalogProduct[]> {
   if (!row.category_id || !row.brand) {
     return [];
   }
@@ -719,20 +808,21 @@ async function getRelatedProductSummaries(row: ProductQueryRow): Promise<Related
     throw new Error(error.message);
   }
 
-  const currentSlug = getProductPublicSlug(row);
+  const currentSlug = getProductPublicSlug(row, collidingNameSlugs);
   const rows = normalizeProductRows(data ?? []);
 
   return groupCatalogProductRows(rows, rows)
-    .filter((candidate) => getProductPublicSlug(candidate) !== currentSlug)
+    .filter((candidate) => getProductPublicSlug(candidate, collidingNameSlugs) !== currentSlug)
     .slice(0, 6)
     .map((candidate) => ({
       brand: candidate.brand,
       categoryName: candidate.category?.name ?? null,
       href: getProductPublicPath({
         code: candidate.product_group_code,
+        brand: candidate.brand,
         id: candidate.id,
         name: candidate.product_name,
-        publicSlug: getProductPublicSlug(candidate),
+        publicSlug: getProductPublicSlug(candidate, collidingNameSlugs),
       }),
       id: candidate.id,
       imageUrl: candidate.image_url,
@@ -926,7 +1016,10 @@ async function getListVariantsForProducts(
   return variantsByProduct;
 }
 
-function toPublicProduct(row: ProductQueryRow): PublicCatalogProduct {
+function toPublicProduct(
+  row: ProductQueryRow,
+  collidingNameSlugs: ReadonlySet<string> = new Set()
+): PublicCatalogProduct {
   return {
     brand: row.brand,
     category: row.category
@@ -942,7 +1035,7 @@ function toPublicProduct(row: ProductQueryRow): PublicCatalogProduct {
     id: row.id,
     imageUrl: row.image_url,
     name: row.product_name,
-    publicSlug: getProductPublicSlug(row),
+    publicSlug: getProductPublicSlug(row, collidingNameSlugs),
     status: row.usage_area ?? "JOTA ürün kataloğu",
     usageArea: row.usage_area,
     variantCount: row.variants.length,
@@ -950,9 +1043,12 @@ function toPublicProduct(row: ProductQueryRow): PublicCatalogProduct {
   };
 }
 
-function toPricedProduct(row: ProductQueryRow): PricedCatalogProduct {
+function toPricedProduct(
+  row: ProductQueryRow,
+  collidingNameSlugs: ReadonlySet<string> = new Set()
+): PricedCatalogProduct {
   return {
-    ...toPublicProduct(row),
+    ...toPublicProduct(row, collidingNameSlugs),
     variants: row.variants.map(toPricedVariant),
   };
 }
@@ -1051,6 +1147,7 @@ function mergeProductFamilyRows(rows: ProductQueryRow[]): ProductQueryRow {
   const canonical =
     sortedRows.find((row) => isBaseFamilyProductName(row.product_name)) ?? sortedRows[0];
   const family = getProductFamilyParts(canonical.product_name);
+  const usesGroupedFamilyIdentity = isJotaBrand(canonical.brand);
   const mergedVariants = dedupeDisplayVariants(
     sortedRows.flatMap((row) =>
       row.variants.map((variant) => ({
@@ -1064,8 +1161,12 @@ function mergeProductFamilyRows(rows: ProductQueryRow[]): ProductQueryRow {
     ...canonical,
     description: canonical.description ?? sortedRows.find((row) => row.description)?.description ?? null,
     image_url: canonical.image_url ?? sortedRows.find((row) => row.image_url)?.image_url ?? null,
-    product_group_code: family.baseCode ?? canonical.product_group_code,
-    product_name: family.displayName ?? canonical.product_name,
+    product_group_code: usesGroupedFamilyIdentity
+      ? family.baseCode ?? canonical.product_group_code
+      : canonical.product_group_code,
+    product_name: usesGroupedFamilyIdentity
+      ? family.displayName ?? canonical.product_name
+      : canonical.product_name,
     variants: mergedVariants,
   };
 }
@@ -1163,20 +1264,53 @@ function formatNullableNumber(value: number | null) {
 }
 
 function getProductPublicSlug(
-  product: Pick<ProductQueryRow, "id" | "product_group_code" | "product_name"> | Pick<PublicCatalogProduct, "code" | "id" | "name">
+  product:
+    | Pick<ProductQueryRow, "brand" | "id" | "product_group_code" | "product_name">
+    | Pick<PublicCatalogProduct, "brand" | "code" | "id" | "name">,
+  collidingNameSlugs: ReadonlySet<string> = new Set()
 ) {
+  const brand = product.brand;
   const code = "product_group_code" in product ? product.product_group_code : product.code;
   const name = "product_name" in product ? product.product_name : product.name;
   const usableCode = getUsableCode(code);
   const codeSlug = usableCode ? slugifyPublicSegment(usableCode) : null;
+  const nameSlug = slugifyPublicSegment(name);
 
-  if (codeSlug) {
-    return codeSlug;
+  if (isJotaBrand(brand)) {
+    return codeSlug || nameSlug || `urun-${getStablePublicSuffix(product.id, name)}`;
   }
 
-  const nameSlug = slugifyPublicSegment(name) || "urun";
+  if (nameSlug) {
+    if (!collidingNameSlugs.has(nameSlug)) {
+      return nameSlug;
+    }
 
-  return `${nameSlug}-${getStablePublicSuffix(product.id, name)}`;
+    const codeSuffix = codeSlug?.startsWith(`${nameSlug}-`)
+      ? codeSlug.slice(nameSlug.length + 1)
+      : codeSlug;
+
+    return `${nameSlug}-${codeSuffix || getStablePublicSuffix(product.id, name)}`;
+  }
+
+  return codeSlug || `urun-${getStablePublicSuffix(product.id, name)}`;
+}
+
+function getCollidingNonJotaNameSlugs(
+  products: Array<Pick<ProductQueryRow, "brand" | "product_group_code" | "product_name">>
+) {
+  const counts = new Map<string, number>();
+
+  for (const product of products) {
+    const nameSlug = slugifyPublicSegment(product.product_name);
+
+    if (!isJotaBrand(product.brand) && nameSlug) {
+      counts.set(nameSlug, (counts.get(nameSlug) ?? 0) + 1);
+    }
+  }
+
+  return [...counts.entries()]
+    .filter(([, count]) => count > 1)
+    .map(([slug]) => slug);
 }
 
 function getVariantPublicSlugs(variant: Pick<CatalogVariantRow, "manufacturer_ref" | "variant_code">) {
@@ -1773,7 +1907,14 @@ const GROUPABLE_JOTA_SUFFIXES = new Set([
   "XC",
 ]);
 
-function getProductFamilyKey(row: Pick<ProductQueryRow, "brand" | "category_id" | "product_name">) {
+function getProductFamilyKey(
+  row: Pick<ProductQueryRow, "brand" | "category_id" | "product_name"> &
+    Partial<Pick<ProductQueryRow, "id">>
+) {
+  if (!isJotaBrand(row.brand)) {
+    return `product|${row.id ?? normalizeSearchText(row.product_name)}`;
+  }
+
   const family = getProductFamilyParts(row.product_name);
   const token = family.baseCode ?? normalizeSearchText(row.product_name);
   const remainderKey = family.baseCode ? "" : normalizeSearchText(family.remainder ?? "");

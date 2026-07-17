@@ -56,7 +56,7 @@ export default async function RequestPage({ searchParams }: RequestPageProps) {
   }
 
   const filters = parseHistoryFilters(query);
-  const draft = await getActiveRequestDraft(profile);
+  const draftPromise = getActiveRequestDraft(profile);
   const error = getStringParam(query.error);
   const status = getStringParam(query.status);
   const showPrices = Boolean(profile.can_view_prices);
@@ -94,11 +94,9 @@ export default async function RequestPage({ searchParams }: RequestPageProps) {
               Listeyi düzenleyip talebinizi göndermeden önce ürünlerinizi burada son kez kontrol edin.
             </p>
           </div>
-          {!draft || draft.items.length === 0 ? (
-            <EmptyRequestList />
-          ) : (
-            <RequestList draft={draft} />
-          )}
+          <Suspense fallback={<ActiveRequestSkeleton />}>
+            <ActiveRequestSection draftPromise={draftPromise} />
+          </Suspense>
         </div>
       </section>
 
@@ -298,6 +296,41 @@ function RequestHistorySkeleton() {
 
 function RequestList({ draft }: { draft: RequestDraft }) {
   return <RequestDraftClient draft={draft} />;
+}
+
+async function ActiveRequestSection({
+  draftPromise,
+}: {
+  draftPromise: Promise<RequestDraft | null>;
+}) {
+  const draft = await draftPromise;
+
+  return !draft || draft.items.length === 0 ? (
+    <EmptyRequestList />
+  ) : (
+    <RequestList draft={draft} />
+  );
+}
+
+function ActiveRequestSkeleton() {
+  return (
+    <SurfaceCard>
+      <CardContent className="grid gap-3 p-4">
+        {Array.from({ length: 2 }, (_, index) => (
+          <div
+            className="flex items-center gap-3 rounded-2xl border border-border/60 p-3"
+            key={index}
+          >
+            <div className="size-14 animate-pulse rounded-xl bg-muted" />
+            <div className="flex-1 space-y-2">
+              <div className="h-4 w-2/3 animate-pulse rounded bg-muted" />
+              <div className="h-3 w-1/3 animate-pulse rounded bg-muted/70" />
+            </div>
+          </div>
+        ))}
+      </CardContent>
+    </SurfaceCard>
+  );
 }
 
 function RequestHistoryFilters({

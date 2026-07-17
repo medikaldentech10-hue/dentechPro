@@ -29,10 +29,18 @@ type ProductRow = Database["public"]["Tables"]["products"]["Row"];
 type VariantRow = Database["public"]["Tables"]["product_variants"]["Row"];
 
 export type RequestListItem = OrderItemRow & {
-  product: Pick<ProductRow, "id" | "product_group_code" | "product_name">;
+  product: Pick<
+    ProductRow,
+    "brand" | "id" | "image_url" | "product_group_code" | "product_name"
+  >;
   variant: Pick<
     VariantRow,
+    | "color"
+    | "connection_type"
     | "currency"
+    | "diameter"
+    | "grit"
+    | "image_url"
     | "is_active"
     | "manufacturer_ref"
     | "stock_quantity"
@@ -46,6 +54,30 @@ export type RequestDraft = OrderDraftRow & {
 
 export type RequestDraftTotals = Pick<OrderDraftRow, "subtotal" | "total">;
 
+export type RequestDrawerDraftItem = {
+  currency: string;
+  id: string;
+  lineTotal: number | null;
+  manufacturerRef: string | null;
+  productName: string;
+  quantity: number;
+  unitPrice: number | null;
+  variantCode: string | null;
+  variantId: string;
+};
+
+export type RequestDrawerDraft = RequestDraftTotals & {
+  items: RequestDrawerDraftItem[];
+};
+
+export type AddedRequestDraftItem = RequestDraftTotals & {
+  draft: RequestDrawerDraft;
+  itemId: string;
+  lineTotal: number;
+  quantity: number;
+  unitPrice: number;
+};
+
 export type RequestHistoryFilters = {
   createdFrom?: string;
   createdTo?: string;
@@ -56,14 +88,26 @@ export type RequestHistoryFilters = {
 type DraftItemQueryRow = OrderItemRow & {
   variant: Pick<
     VariantRow,
+    | "color"
+    | "connection_type"
     | "currency"
+    | "diameter"
+    | "grit"
+    | "image_url"
     | "is_active"
     | "manufacturer_ref"
     | "stock_quantity"
     | "variant_code"
   > & {
-    product: Pick<ProductRow, "id" | "product_group_code" | "product_name"> | null;
+    product: Pick<
+      ProductRow,
+      "brand" | "id" | "image_url" | "product_group_code" | "product_name"
+    > | null;
   };
+};
+
+type ActiveDraftQueryRow = OrderDraftRow & {
+  items: DraftItemQueryRow[];
 };
 
 const REQUEST_DRAFT_COLUMNS =
@@ -84,7 +128,27 @@ export function canCreateOrderRequest(profile: AccessProfile | null) {
 export async function getActiveRequestDraft(profile: AccessProfile) {
   assertCanCreateOrderRequest(profile);
   const startedAt = performance.now();
-  const draft = await findDraft(profile.id);
+  const supabase = getSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("order_drafts")
+    .select(
+      `${REQUEST_DRAFT_COLUMNS},items:order_items(${REQUEST_ITEM_COLUMNS},variant:product_variants(color,connection_type,currency,diameter,grit,image_url,is_active,manufacturer_ref,stock_quantity,variant_code,product:products(brand,id,image_url,product_group_code,product_name)))`
+    )
+    .eq("created_by_user_id", profile.id)
+    .eq("status", "draft")
+    .order("updated_at", { ascending: false })
+    .order("created_at", { ascending: true, referencedTable: "order_items" })
+    .limit(10);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const draft = ((data ?? []) as unknown as ActiveDraftQueryRow[]).sort(
+    (left, right) =>
+      right.items.length - left.items.length ||
+      new Date(right.updated_at).getTime() - new Date(left.updated_at).getTime()
+  )[0];
 
   if (!draft) {
     logRequestPerf("request.activeDraft", {
@@ -94,7 +158,10 @@ export async function getActiveRequestDraft(profile: AccessProfile) {
     return null;
   }
 
-  const hydratedDraft = await hydrateDraft(draft);
+  const hydratedDraft: RequestDraft = {
+    ...draft,
+    items: draft.items.map(toRequestListItem),
+  };
   logRequestPerf("request.activeDraft", {
     durationMs: Math.round(performance.now() - startedAt),
     found: true,
@@ -193,6 +260,8 @@ export async function addVariantToDraft({
   const nextQuantity = (existingItem?.quantity ?? 0) + quantity;
   const lineTotal = calculateLineTotal(variant.price, nextQuantity);
 
+  let itemId: string;
+
   if (existingItem) {
     const { error } = await supabase
       .from("order_items")
@@ -206,42 +275,66 @@ export async function addVariantToDraft({
     if (error) {
       throw new Error(error.message);
     }
+
+    itemId = existingItem.id;
   } else {
-    const { error } = await supabase.from("order_items").insert({
-      line_total: lineTotal,
-      order_draft_id: draft.id,
-      quantity,
-      unit_price: variant.price,
-      variant_id: variant.id,
-    });
+    const { data: insertedItem, error } = await supabase
+      .from("order_items")
+      .insert({
+        line_total: lineTotal,
+        order_draft_id: draft.id,
+        quantity,
+        unit_price: variant.price,
+        variant_id: variant.id,
+      })
+      .select("id")
+      .single();
 
     if (error) {
       throw new Error(error.message);
     }
+
+    itemId = insertedItem.id;
   }
 
-  await recalculateDraftTotals(draft.id);
-  await writeDraftAuditLog({
-    action: "draft_item_added",
-    draftId: draft.id,
-    userId: profile.id,
-    value: {
-      quantity,
-      variant_id: variant.id,
-      variant_code: variant.variant_code,
-    },
-  });
-  await recordRateLimitEvent({
-    action: RATE_LIMIT_POLICIES.requestItemMutation.action,
-    metadata: {
-      draft_id: draft.id,
-      quantity,
-      variant_id: variant.id,
-    },
-    userId: profile.id,
-  });
+  const totals = await recalculateDraftTotals(draft.id);
+  const updatedDraft = {
+    ...draft,
+    subtotal: totals.subtotal,
+    total: totals.total,
+  };
+  const [hydratedDraft] = await Promise.all([
+    hydrateDraft(updatedDraft),
+    writeDraftAuditLog({
+      action: "draft_item_added",
+      draftId: draft.id,
+      userId: profile.id,
+      value: {
+        quantity,
+        variant_id: variant.id,
+        variant_code: variant.variant_code,
+      },
+    }),
+    recordRateLimitEvent({
+      action: RATE_LIMIT_POLICIES.requestItemMutation.action,
+      metadata: {
+        draft_id: draft.id,
+        quantity,
+        variant_id: variant.id,
+      },
+      userId: profile.id,
+    }),
+  ]);
 
-  return draft.id;
+  return {
+    draft: toRequestDrawerDraft(hydratedDraft),
+    itemId,
+    lineTotal,
+    quantity: nextQuantity,
+    subtotal: totals.subtotal,
+    total: totals.total,
+    unitPrice: variant.price,
+  } satisfies AddedRequestDraftItem;
 }
 
 export async function updateDraftItemQuantity({
@@ -681,6 +774,24 @@ async function hydrateDraft(draft: OrderDraftRow): Promise<RequestDraft> {
   return drafts[0] ?? { ...draft, items: [] };
 }
 
+function toRequestDrawerDraft(draft: RequestDraft): RequestDrawerDraft {
+  return {
+    items: draft.items.map((item) => ({
+      currency: item.variant.currency,
+      id: item.id,
+      lineTotal: item.line_total,
+      manufacturerRef: item.variant.manufacturer_ref,
+      productName: item.product.product_name,
+      quantity: item.quantity,
+      unitPrice: item.unit_price,
+      variantCode: item.variant.variant_code,
+      variantId: item.variant_id,
+    })),
+    subtotal: draft.subtotal,
+    total: draft.total,
+  };
+}
+
 async function hydrateDrafts(drafts: OrderDraftRow[]): Promise<RequestDraft[]> {
   if (!drafts.length) {
     return [];
@@ -690,7 +801,7 @@ async function hydrateDrafts(drafts: OrderDraftRow[]): Promise<RequestDraft[]> {
   const { data, error } = await supabase
     .from("order_items")
     .select(
-      `${REQUEST_ITEM_COLUMNS},variant:product_variants(currency,is_active,manufacturer_ref,stock_quantity,variant_code,product:products(id,product_group_code,product_name))`
+      `${REQUEST_ITEM_COLUMNS},variant:product_variants(color,connection_type,currency,diameter,grit,image_url,is_active,manufacturer_ref,stock_quantity,variant_code,product:products(brand,id,image_url,product_group_code,product_name))`
     )
     .in(
       "order_draft_id",
@@ -705,21 +816,7 @@ async function hydrateDrafts(drafts: OrderDraftRow[]): Promise<RequestDraft[]> {
   const itemsByDraftId = ((data ?? []) as unknown as DraftItemQueryRow[]).reduce(
     (currentItemsByDraftId, item) => {
       const currentItems = currentItemsByDraftId.get(item.order_draft_id) ?? [];
-      currentItems.push({
-        ...item,
-        product: {
-          id: item.variant.product?.id ?? "",
-          product_group_code: item.variant.product?.product_group_code ?? "",
-          product_name: item.variant.product?.product_name ?? "Ürün",
-        },
-        variant: {
-          currency: item.variant.currency,
-          is_active: item.variant.is_active,
-          manufacturer_ref: item.variant.manufacturer_ref,
-          stock_quantity: item.variant.stock_quantity,
-          variant_code: item.variant.variant_code,
-        },
-      });
+      currentItems.push(toRequestListItem(item));
       currentItemsByDraftId.set(item.order_draft_id, currentItems);
       return currentItemsByDraftId;
     },
@@ -730,6 +827,31 @@ async function hydrateDrafts(drafts: OrderDraftRow[]): Promise<RequestDraft[]> {
     ...draft,
     items: itemsByDraftId.get(draft.id) ?? [],
   }));
+}
+
+function toRequestListItem(item: DraftItemQueryRow): RequestListItem {
+  return {
+    ...item,
+    product: {
+      brand: item.variant.product?.brand ?? "",
+      id: item.variant.product?.id ?? "",
+      image_url: item.variant.product?.image_url ?? null,
+      product_group_code: item.variant.product?.product_group_code ?? "",
+      product_name: item.variant.product?.product_name ?? "Ürün",
+    },
+    variant: {
+      color: item.variant.color,
+      connection_type: item.variant.connection_type,
+      currency: item.variant.currency,
+      diameter: item.variant.diameter,
+      grit: item.variant.grit,
+      image_url: item.variant.image_url,
+      is_active: item.variant.is_active,
+      manufacturer_ref: item.variant.manufacturer_ref,
+      stock_quantity: item.variant.stock_quantity,
+      variant_code: item.variant.variant_code,
+    },
+  };
 }
 
 function logRequestPerf(event: string, payload: Record<string, unknown>) {

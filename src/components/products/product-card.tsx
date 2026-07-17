@@ -105,6 +105,7 @@ export function ProductCard({
             <ProductAction
               adminMode={adminMode}
               priceVisibility={priceVisibility}
+              productName={catalogProduct.name}
               salesMode={salesMode}
               variant={primaryVariant}
               variants={catalogProduct.variants}
@@ -246,12 +247,14 @@ function PriceState({
 function ProductAction({
   adminMode,
   priceVisibility,
+  productName,
   salesMode,
   variant,
   variants,
 }: {
   adminMode: boolean;
   priceVisibility: PriceVisibility;
+  productName: string;
   salesMode: boolean;
   variant: PricedCatalogVariant | PublicCatalogVariant | null;
   variants: Array<PricedCatalogVariant | PublicCatalogVariant>;
@@ -283,7 +286,12 @@ function ProductAction({
           </p>
           <div className="flex flex-col gap-2">
             {pricedVariants.map((item) => (
-              <VariantRequestOption key={item.id} salesMode={salesMode} variant={item} />
+              <VariantRequestOption
+                key={item.id}
+                productName={productName}
+                salesMode={salesMode}
+                variant={item}
+              />
             ))}
           </div>
         </div>
@@ -301,18 +309,24 @@ function ProductAction({
 
   return (
     <AddToRequestForm
+      currency={variant.currency}
       disabled={disabled}
       disabledReason={disabled ? disabledReason : undefined}
+      productName={productName}
       submitLabel="Ekle"
+      unitPrice={variant.price}
       variantId={variant.id}
+      variantLabel={getVariantOptionLabel(variant, productName)}
     />
   );
 }
 
 function VariantRequestOption({
+  productName,
   salesMode,
   variant,
 }: {
+  productName: string;
   salesMode: boolean;
   variant: PricedCatalogVariant;
 }) {
@@ -328,7 +342,7 @@ function VariantRequestOption({
     <div className="rounded-xl border border-slate-200/75 bg-white/72 p-2 shadow-sm dark:border-white/10 dark:bg-white/8">
       <div className="mb-2 flex min-w-0 flex-wrap items-center gap-1.5 text-[11px]">
         <span className="max-w-full truncate font-semibold text-slate-900 dark:text-slate-100">
-          {getVariantOptionLabel(variant)}
+          {getVariantOptionLabel(variant, productName)}
         </span>
         {getVariantLabels(variant).map((label) => (
           <span
@@ -350,10 +364,14 @@ function VariantRequestOption({
         ) : null}
       </div>
       <AddToRequestForm
+        currency={variant.currency}
         disabled={disabled}
         disabledReason={disabledReason}
+        productName={productName}
         submitLabel={salesMode ? "Ekle" : "Ekle"}
+        unitPrice={variant.price}
         variantId={variant.id}
+        variantLabel={getVariantOptionLabel(variant, productName)}
       />
     </div>
   );
@@ -560,11 +578,21 @@ function getPackageBadges(
   ];
 }
 
-function getVariantOptionLabel(variant: PublicCatalogVariant | PricedCatalogVariant) {
+function getVariantOptionLabel(
+  variant: PublicCatalogVariant | PricedCatalogVariant,
+  productName: string
+) {
   const code = getUsableBusinessCode(variant.code);
   const ref = getUsableBusinessCode(variant.manufacturerRef);
+  const name = variant.name.trim();
+  const normalizedName = normalizeText(name);
+  const matchesInternalCode = [code, ref]
+    .filter((value): value is string => Boolean(value))
+    .some((value) => normalizeText(value) === normalizedName);
 
-  return ref ?? code ?? variant.name;
+  return !matchesInternalCode && name
+    ? name
+    : productName.trim() || ref || code || "Seçenek";
 }
 
 function getVariantLabels(variant: PublicCatalogVariant | PricedCatalogVariant) {
@@ -623,7 +651,7 @@ function normalizeColorLabel(value: string) {
   if (normalized.includes("red") || normalized.includes("kirmizi")) return "Kırmızı";
   if (normalized.includes("yellow") || normalized.includes("sari")) return "Sarı";
 
-  return value.toUpperCase().match(/\b(XC|C|M|F|SF|UF|SG)\b/)?.[1] ?? null;
+  return value.toUpperCase().match(/\b(XC|C|M|F|SF|UF)\b/)?.[1] ?? null;
 }
 
 function colorClass(color: string) {

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { ThemeProvider } from "@/components/theme/theme-provider";
+import { RequestDrawerProvider } from "@/components/request/request-drawer-provider";
 
 import "./globals.css";
 
@@ -30,7 +31,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
+          <RequestDrawerProvider>{children}</RequestDrawerProvider>
         </ThemeProvider>
       </body>
     </html>

@@ -14,6 +14,7 @@ import { Minus, Plus } from "lucide-react";
 import { addToOrderDraftInlineAction } from "@/app/(public)/request/actions";
 import { SurfaceCard } from "@/components/premium/surface-card";
 import { ProductImage } from "@/components/products/product-image";
+import { useRequestDrawer } from "@/components/request/request-drawer-provider";
 import { PageTitle } from "@/components/shared/page-title";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
@@ -414,8 +415,9 @@ function VariantSizeRow({
   product: ProductDetailView;
   variant: ProductVariantView;
 }) {
-  const displayCode =
-    getDisplayCode(variant.code) ?? getDisplayCode(variant.manufacturerRef);
+  const displayLabel = getBuyerVariantLabel(product, variant);
+  const isSimpleNonJotaProduct =
+    !isJotaProductBrand(product.brand) && product.variants.length === 1;
   const quantityStep = getQuantityStep(product, variant);
   const isOutOfStock = (variant.stockQuantity ?? 0) === 0;
   const displayPrice =
@@ -437,9 +439,9 @@ function VariantSizeRow({
     >
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
-          <p className="font-semibold leading-6">
-            {formatVariantSizeLabel(variant)}
-          </p>
+          {!isSimpleNonJotaProduct ? (
+            <p className="font-semibold leading-6">{displayLabel}</p>
+          ) : null}
           {variant.price === null ? (
             <span className="rounded-full border border-amber-200/70 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700 dark:border-amber-400/20 dark:bg-amber-500/10 dark:text-amber-200">
               Fiyat bekleniyor
@@ -447,14 +449,16 @@ function VariantSizeRow({
           ) : null}
         </div>
 
-        <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
+        <div
+          className={cn(
+            "flex flex-wrap gap-2 text-xs text-muted-foreground",
+            !isSimpleNonJotaProduct && "mt-2"
+          )}
+        >
           {displayPrice ? (
             <span className="rounded-full border border-primary/15 bg-primary/10 px-2.5 py-1 font-semibold text-primary">
               {displayPrice}
             </span>
-          ) : null}
-          {displayCode ? (
-            <span className="rounded-full bg-muted px-2.5 py-1">SKU: {displayCode}</span>
           ) : null}
           {variant.packageQuantity > 1 ? (
             <span className="rounded-full bg-muted px-2.5 py-1">
@@ -467,12 +471,16 @@ function VariantSizeRow({
       <div className="grid min-w-0 gap-2">
         {canAdd ? (
           <AddToRequestInlineForm
+            currency={variant.currency}
             disabled={!variant.isActive || isOutOfStock}
             disabledReason={disabledReason}
             key={variant.id}
+            productName={product.name}
             quantityStep={quantityStep}
             submitLabel="Teklife Ekle"
+            unitPrice={variant.price}
             variantId={variant.id}
+            variantLabel={displayLabel}
           />
         ) : (
           <CommercialState priceVisibility={priceVisibility} />
@@ -483,23 +491,32 @@ function VariantSizeRow({
 }
 
 function AddToRequestInlineForm({
+  currency,
   disabled,
   disabledReason,
+  productName,
   quantityStep,
   submitLabel,
+  unitPrice,
   variantId,
+  variantLabel,
 }: {
+  currency?: string;
   disabled: boolean;
   disabledReason?: string;
+  productName: string;
   quantityStep: number;
   submitLabel: string;
+  unitPrice?: number | null;
   variantId: string;
+  variantLabel?: string | null;
 }) {
   const [quantity, setQuantity] = useState(String(quantityStep));
   const [feedback, setFeedback] = useState<null | { tone: "error" | "success"; text: string }>(
     null
   );
   const [isPending, startTransition] = useTransition();
+  const drawer = useRequestDrawer();
 
   if (disabled) {
     return (
@@ -528,6 +545,14 @@ function AddToRequestInlineForm({
     }
 
     setFeedback(null);
+    const token = drawer.beginAdd({
+      currency,
+      productName,
+      quantity: nextQuantity,
+      unitPrice,
+      variantId,
+      variantLabel,
+    });
     startTransition(async () => {
       const result = await addToOrderDraftInlineAction({
         quantity: nextQuantity,
@@ -535,10 +560,13 @@ function AddToRequestInlineForm({
       });
 
       if (!result.success) {
-        setFeedback({ tone: "error", text: result.error ?? "Urun talep listesine eklenemedi." });
+        const message = result.error ?? "Urun talep listesine eklenemedi.";
+        setFeedback({ tone: "error", text: message });
+        drawer.failAdd(token, message);
         return;
       }
 
+      drawer.confirmAdd(token, result);
       setFeedback({ tone: "success", text: "Teklife eklendi." });
       setQuantity(String(quantityStep));
     });
@@ -947,14 +975,49 @@ function getImageSrc(value: string | null | undefined) {
   return value?.trim() || null;
 }
 
-function formatVariantSizeLabel(variant: ProductVariantView) {
-  const diameter = formatVariantDiameter(variant);
+function getBuyerVariantLabel(
+  product: ProductDetailView,
+  variant: ProductVariantView
+) {
+  if (isJotaProductBrand(product.brand)) {
+    const diameter = formatVariantDiameter(variant);
 
-  if (diameter) {
-    return diameter;
+    return diameter ?? (isBuyerFacingGroupLabel(variant.name) ? variant.name : "Seçenek");
   }
 
-  return isBuyerFacingGroupLabel(variant.name) ? variant.name : "Seçenek";
+  const variantName = variant.name.trim();
+  const normalizedVariantName = normalizeText(variantName);
+  const matchesInternalCode = [variant.code, variant.manufacturerRef]
+    .filter((value): value is string => Boolean(value))
+    .some((value) => normalizeText(value) === normalizedVariantName);
+
+  if (
+    variantName &&
+    !matchesInternalCode &&
+    isUsableBusinessCode(variantName) &&
+    isBuyerFacingGroupLabel(variantName)
+  ) {
+    return variantName;
+  }
+
+  if (product.variants.length === 1 && product.name.trim()) {
+    return product.name.trim();
+  }
+
+  const attributes = [
+    normalizeGritLabel(variant.color ?? variant.grit ?? ""),
+    formatVariantDiameter(variant),
+  ].filter((value): value is string => Boolean(value));
+
+  if (attributes.length) {
+    return attributes.join(" · ");
+  }
+
+  return (
+    getDisplayCode(variant.code) ??
+    getDisplayCode(variant.manufacturerRef) ??
+    "Seçenek"
+  );
 }
 
 function formatVariantDiameter(variant: ProductVariantView) {
