@@ -83,11 +83,6 @@ export const getCurrentProfile = cache(async function getCurrentProfile() {
   const user = await getCurrentUser();
 
   if (!user) {
-    logAuthDebug("profile.read", {
-      fallbackCreated: false,
-      profileFound: false,
-      reason: "no-auth-user",
-    });
     return null;
   }
 
@@ -312,12 +307,6 @@ export const getProfileForUser = cache(async function getProfileForUser(user: Us
   }
 
   if (data) {
-    logAuthDebug("profile.read", {
-      fallbackCreated: false,
-      profileFound: true,
-      role: data.role,
-      userId: user.id,
-    });
     return data;
   }
 
@@ -423,7 +412,10 @@ function logAuthDebug(event: string, payload: Record<string, unknown>) {
 }
 
 function logAuthPerf(event: string, payload: Record<string, unknown>) {
-  if (process.env.DENTECH_PERF_LOGS !== "true") {
+  if (
+    process.env.NODE_ENV !== "development" ||
+    process.env.DENTECH_PERF_LOGS !== "true"
+  ) {
     return;
   }
 

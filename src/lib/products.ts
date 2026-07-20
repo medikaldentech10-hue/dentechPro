@@ -141,10 +141,26 @@ type ProductRowsResult = {
   totalPages: number | null;
 };
 
+type MainCategoryMatchRow = {
+  brand: string | null;
+  category:
+    | { name: string | null; slug: string | null }
+    | Array<{ name: string | null; slug: string | null }>
+    | null;
+  id: string;
+  product_group_code: string | null;
+  product_name: string | null;
+  usage_area: string | null;
+};
+
 const PRODUCT_DETAIL_SELECT =
   "id,brand,category_id,description,image_url,is_active,product_group_code,product_name,usage_area,category:categories(id,name,slug,sort_order),variants:product_variants(id,product_id,variant_code,manufacturer_ref,connection_type,color,currency,diameter,length,grit,image_url,is_active,package_quantity,price,stock_quantity,stock_status)";
 const PRODUCT_CARD_SELECT =
   "id,brand,category_id,product_group_code,product_name,image_url,is_active,category:categories(id,name,slug,sort_order)";
+const PUBLIC_PRODUCT_CARD_VARIANT_SELECT =
+  "id,product_id,variant_code,manufacturer_ref,connection_type,color,diameter,length,grit,package_quantity,image_url,is_active";
+const PRICED_PRODUCT_CARD_VARIANT_SELECT =
+  `${PUBLIC_PRODUCT_CARD_VARIANT_SELECT},price,currency,stock_quantity,stock_status`;
 
 type CatalogSearch = {
   diameterValues: number[];
@@ -316,6 +332,17 @@ export async function getPublicProducts(filters: ProductFilters = {}) {
   return mapProductListResult(result, (row) => toPublicProduct(row, collisions));
 }
 
+export async function getPublicMainCategoryAvailability(slugs: readonly string[]) {
+  const rows = await getCachedMainCategoryMatchRows();
+
+  return Object.fromEntries(
+    slugs.map((slug) => {
+      const terms = getMainCategoryTerms(slug);
+      return [slug, Boolean(terms && rows.some((row) => rowMatchesMainCategoryTerms(row, terms)))];
+    })
+  ) as Record<string, boolean>;
+}
+
 export const getCachedPublicFirstPageProducts = unstable_cache(
   async (filters: ProductFilters = {}) => getPublicProducts(filters),
   ["public-products-first-page"],
@@ -395,6 +422,7 @@ async function getProductRows(
   const pageSize = clampInteger(filters.pageSize, 24, 1, 60);
   const page = clampInteger(filters.page, 1, 1, 10_000);
   const exactSku = search?.exactSku ?? null;
+  const embedListVariants = !search && page === 1;
   const [categoryIds, categoryFilteredProductIds, [matchingVariantProductIds, matchingCategoryIds, matchingProductIds], priceFilteredProductIds] =
     await Promise.all([
       measureCheckpoint("categoryLookupMs", async () =>
@@ -447,9 +475,21 @@ async function getProductRows(
 
   let query = supabase
     .from("products")
-    .select(PRODUCT_CARD_SELECT)
+    .select(
+      embedListVariants
+        ? `${PRODUCT_CARD_SELECT},variants:product_variants(${
+            options.includeSensitiveVariantFields
+              ? PRICED_PRODUCT_CARD_VARIANT_SELECT
+              : PUBLIC_PRODUCT_CARD_VARIANT_SELECT
+          })`
+        : PRODUCT_CARD_SELECT
+    )
     .eq("is_active", true)
     .order("product_name", { ascending: true });
+
+  if (embedListVariants) {
+    query = query.eq("variants.is_active", true);
+  }
 
   if (normalizedBrand) {
     query = isJotaBrand(normalizedBrand)
@@ -499,7 +539,9 @@ async function getProductRows(
     throw new Error(error.message);
   }
 
-  const productRows = normalizeListProductRows(data ?? []);
+  const productRows: ProductQueryRow[] = embedListVariants
+    ? normalizeProductRows(data ?? [])
+    : normalizeListProductRows(data ?? []).map((product) => ({ ...product, variants: [] }));
   let paginatedRows: ProductQueryRow[];
   let totalCount: number | null;
   let hasNextPage: boolean;
@@ -541,24 +583,28 @@ async function getProductRows(
     const to = from + pageSize;
     const currentGroups = groupedRows.slice(from, to);
     const nextGroup = groupedRows[to];
-    const visibleProductIds = uniqueStrings(
-      currentGroups.flatMap((group) => group.map((row) => row.id))
-    );
-    const variantSummaries = await measureCheckpoint("variantQueryMs", async () =>
-      visibleProductIds.length
-        ? getListVariantsForProducts(
-            visibleProductIds,
-            Boolean(options.includeSensitiveVariantFields)
-          )
-        : new Map<string, CatalogVariantRow[]>()
-    );
+    const variantSummaries = embedListVariants
+      ? null
+      : await measureCheckpoint("variantQueryMs", async () => {
+          const visibleProductIds = uniqueStrings(
+            currentGroups.flatMap((group) => group.map((row) => row.id))
+          );
+          return visibleProductIds.length
+            ? getListVariantsForProducts(
+                visibleProductIds,
+                Boolean(options.includeSensitiveVariantFields)
+              )
+            : new Map<string, CatalogVariantRow[]>();
+        });
     const mappingStartedAt = performance.now();
     paginatedRows = currentGroups.map((group) =>
       mergeProductFamilyRows(
-        group.map((product) => ({
-          ...product,
-          variants: variantSummaries.get(product.id) ?? [],
-        }))
+        variantSummaries
+          ? group.map((product) => ({
+              ...product,
+              variants: variantSummaries.get(product.id) ?? [],
+            }))
+          : group
       )
     );
     totalCount = null;
@@ -585,6 +631,11 @@ async function getProductRows(
       usage: normalizedUsage ?? null,
     },
     includeSensitiveVariantFields: Boolean(options.includeSensitiveVariantFields),
+    variantLoadMode: search
+      ? "search-query"
+      : embedListVariants
+        ? "embedded"
+        : "visible-query",
     page,
     pageSize,
     fetchedRowCount: productRows.length,
@@ -663,25 +714,59 @@ async function getProductRowById(productId: string) {
   const supabase = getSupabaseAdminClient();
   const startedAt = performance.now();
   const lookup = productId.trim();
+  let data: unknown | null = null;
+  let fallbackResolution: Awaited<ReturnType<typeof getProductRowByPublicSlug>> | null = null;
 
-  let query = supabase
-    .from("products")
-    .select(PRODUCT_DETAIL_SELECT)
-    .eq("is_active", true);
+  if (isUuid(lookup)) {
+    const result = await supabase
+      .from("products")
+      .select(PRODUCT_DETAIL_SELECT)
+      .eq("is_active", true)
+      .eq("id", lookup)
+      .maybeSingle();
 
-  query = isUuid(lookup)
-    ? query.eq("id", lookup)
-    : query.ilike("product_group_code", lookup);
+    if (result.error) {
+      throw new Error(result.error.message);
+    }
 
-  const { data, error } = await query.maybeSingle();
+    data = result.data;
+  } else {
+    const [exactCodeResult, targetedResolution] = await Promise.all([
+      supabase
+        .from("products")
+        .select(PRODUCT_DETAIL_SELECT)
+        .eq("is_active", true)
+        .eq("product_group_code", lookup)
+        .maybeSingle(),
+      getTargetedProductRowByPublicSlug(lookup, supabase),
+    ]);
 
-  if (error) {
-    throw new Error(error.message);
+    if (exactCodeResult.error) {
+      throw new Error(exactCodeResult.error.message);
+    }
+
+    data = exactCodeResult.data;
+    fallbackResolution = data ? null : targetedResolution;
+
+    if (!data && !fallbackResolution) {
+      const caseInsensitiveCodeResult = await supabase
+        .from("products")
+        .select(PRODUCT_DETAIL_SELECT)
+        .eq("is_active", true)
+        .ilike("product_group_code", lookup)
+        .maybeSingle();
+
+      if (caseInsensitiveCodeResult.error) {
+        throw new Error(caseInsensitiveCodeResult.error.message);
+      }
+
+      data = caseInsensitiveCodeResult.data;
+      fallbackResolution = data
+        ? null
+        : await getProductRowByPublicSlug(lookup, supabase);
+    }
   }
 
-  const fallbackResolution = data
-    ? null
-    : await getProductRowByPublicSlug(lookup, supabase);
   const row = data
     ? normalizeProductRows([data])[0]
     : fallbackResolution?.row ?? null;
@@ -690,19 +775,72 @@ async function getProductRowById(productId: string) {
       ? "legacy_uuid"
       : "exact_product_code"
     : fallbackResolution?.strategy ?? "not_found";
-  const groupedRow = row ? await getGroupedProductDetailRow(row) : null;
+  const groupedRow = row
+    ? fallbackResolution?.strategy === "grouped_jota_slug"
+      ? row
+      : await getGroupedProductDetailRow(row)
+    : null;
 
   logProductQuery("products.detail", {
     durationMs: Math.round(performance.now() - startedAt),
     found: Boolean(groupedRow),
     inputSlug: lookup,
-    matchedProductCode: groupedRow?.product_group_code ?? null,
-    productId: lookup,
     resolutionStrategy,
     variantCount: groupedRow?.variants.length ?? 0,
   });
 
   return groupedRow;
+}
+
+async function getTargetedProductRowByPublicSlug(
+  lookup: string,
+  supabase: ReturnType<typeof getSupabaseAdminClient>
+) {
+  const normalizedLookup = slugifyPublicSegment(lookup);
+  const terms = normalizedLookup.split("-").map(escapeLikePattern).filter(Boolean);
+
+  if (!normalizedLookup || !terms.length) {
+    return null;
+  }
+
+  let query = supabase
+    .from("products")
+    .select(PRODUCT_DETAIL_SELECT)
+    .eq("is_active", true)
+    .limit(80);
+
+  if (/^[a-z]*\d+[a-z]*$/.test(normalizedLookup)) {
+    query = query
+      .in("brand", JOTA_BRAND_ALIASES)
+      .ilike("product_name", `%${escapeLikePattern(normalizedLookup)}%`);
+  } else {
+    query = query.ilike("product_name", `%${terms.join("%")}%`);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const rows = normalizeProductRows(data ?? []);
+  const collidingNameSlugs = new Set(getCollidingNonJotaNameSlugs(rows));
+  const exactProduct = rows.find(
+    (row) => getProductPublicSlug(row, collidingNameSlugs) === normalizedLookup
+  );
+
+  if (exactProduct) {
+    return { row: exactProduct, strategy: "canonical_product_slug" as const };
+  }
+
+  const jotaRows = rows.filter((row) => isJotaBrand(row.brand));
+  const groupedJotaProduct = groupCatalogProductRows(jotaRows, jotaRows)
+    .filter((row) => row.variants.length > 0)
+    .find((row) => getProductPublicSlug(row, collidingNameSlugs) === normalizedLookup);
+
+  return groupedJotaProduct
+    ? { row: groupedJotaProduct, strategy: "grouped_jota_slug" as const }
+    : null;
 }
 
 async function getProductRowByPublicSlug(
@@ -1119,14 +1257,14 @@ function groupCatalogProductRows(
     .sort((left, right) => left.product_name.localeCompare(right.product_name, "tr-TR"));
 }
 
-function getVisibleProductGroups(rows: Array<Omit<ProductQueryRow, "variants">>) {
+function getVisibleProductGroups<T extends Omit<ProductQueryRow, "variants">>(rows: T[]) {
   const groups = rows.reduce((currentGroups, row) => {
     const key = getProductFamilyKey(row);
     const current = currentGroups.get(key) ?? [];
     current.push(row);
     currentGroups.set(key, current);
     return currentGroups;
-  }, new Map<string, Array<Omit<ProductQueryRow, "variants">>>());
+  }, new Map<string, T[]>());
 
   return Array.from(groups.values())
     .sort((left, right) => {
@@ -1434,53 +1572,58 @@ async function getProductIdsByMainCategoryTerms(slug: string, brand: string | nu
     return null;
   }
 
-  const supabase = getSupabaseAdminClient();
-  let query = supabase
-    .from("products")
-    .select("id,brand,product_group_code,product_name,usage_area,category:categories(name,slug)")
-    .eq("is_active", true)
-    .limit(5000);
-
-  if (brand) {
-    query = isJotaBrand(brand)
-      ? query.in("brand", JOTA_BRAND_ALIASES)
-      : query.eq("brand", brand);
-  }
-
-  const { data, error } = await query;
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  const rows = (data ?? []) as unknown as Array<{
-    brand: string | null;
-    category: { name: string | null; slug: string | null } | Array<{ name: string | null; slug: string | null }> | null;
-    id: string;
-    product_group_code: string | null;
-    product_name: string | null;
-    usage_area: string | null;
-  }>;
+  const rows = await getCachedMainCategoryMatchRows();
 
   return rows
-    .filter((row) => {
-      const category = Array.isArray(row.category) ? row.category[0] : row.category;
-      const haystack = normalizeSearchText(
-        [
-          row.brand,
-          row.product_group_code,
-          row.product_name,
-          row.usage_area,
-          category?.name,
-          category?.slug,
-        ]
-          .filter(Boolean)
-          .join(" ")
-      );
-
-      return terms.some((term) => haystack.includes(term));
-    })
+    .filter(
+      (row) =>
+        (!brand ||
+          (isJotaBrand(brand)
+            ? Boolean(row.brand && isJotaBrand(row.brand))
+            : row.brand === brand)) &&
+        rowMatchesMainCategoryTerms(row, terms)
+    )
     .map((row) => row.id);
+}
+
+const getCachedMainCategoryMatchRows = unstable_cache(
+  async () => {
+    const supabase = getSupabaseAdminClient();
+    const { data, error } = await supabase
+      .from("products")
+      .select("id,brand,product_group_code,product_name,usage_area,category:categories(name,slug)")
+      .eq("is_active", true)
+      .limit(5000);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return (data ?? []) as unknown as MainCategoryMatchRow[];
+  },
+  ["active-main-category-match-rows"],
+  {
+    revalidate: 60,
+    tags: ["public-products"],
+  }
+);
+
+function rowMatchesMainCategoryTerms(row: MainCategoryMatchRow, terms: string[]) {
+  const category = Array.isArray(row.category) ? row.category[0] : row.category;
+  const haystack = normalizeSearchText(
+    [
+      row.brand,
+      row.product_group_code,
+      row.product_name,
+      row.usage_area,
+      category?.name,
+      category?.slug,
+    ]
+      .filter(Boolean)
+      .join(" ")
+  );
+
+  return terms.some((term) => haystack.includes(term));
 }
 
 function getMainCategoryTerms(slug: string) {
@@ -2044,10 +2187,7 @@ function isUsableBusinessCode(value: string) {
 }
 
 function logProductQuery(event: string, payload: Record<string, unknown>) {
-  if (
-    process.env.NODE_ENV !== "development" &&
-    process.env.DENTECH_PERF_LOGS !== "true"
-  ) {
+  if (process.env.NODE_ENV !== "development") {
     return;
   }
 

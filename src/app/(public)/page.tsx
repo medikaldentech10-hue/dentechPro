@@ -3,7 +3,7 @@ import { Box, ClipboardList, Headphones, Search } from "lucide-react";
 import { CategoryCard } from "@/components/marketing/category-card";
 import { SearchHero } from "@/components/marketing/search-hero";
 import { GradientBackground } from "@/components/premium/gradient-background";
-import { getPublicProducts } from "@/lib/products";
+import { getPublicMainCategoryAvailability } from "@/lib/products";
 
 const mainCatalogCategories = [
   {
@@ -74,13 +74,11 @@ const steps = [
 ];
 
 export default async function HomePage() {
-  const categoryResults = await Promise.all(
-    mainCatalogCategories.map((category) =>
-      getPublicProducts({ category: category.slug, pageSize: 1 })
-    )
+  const categoryAvailability = await getPublicMainCategoryAvailability(
+    mainCatalogCategories.map((category) => category.slug)
   );
-  const categories = mainCatalogCategories.map((category, index) => {
-    const hasActiveProducts = categoryResults[index]?.products.length ? true : false;
+  const categories = mainCatalogCategories.map((category) => {
+    const hasActiveProducts = categoryAvailability[category.slug];
     return {
       title: category.title,
       description: category.description,

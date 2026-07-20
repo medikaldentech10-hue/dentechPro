@@ -343,7 +343,10 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
 }
 
 function logProductsPagePerf(payload: Record<string, unknown>) {
-  if (process.env.DENTECH_PERF_LOGS !== "true") {
+  if (
+    process.env.NODE_ENV !== "development" ||
+    process.env.DENTECH_PERF_LOGS !== "true"
+  ) {
     return;
   }
 
