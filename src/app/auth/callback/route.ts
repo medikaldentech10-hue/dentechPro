@@ -28,25 +28,25 @@ export async function GET(request: NextRequest) {
     ? await supabase.auth.exchangeCodeForSession(code)
     : tokenHash && isEmailOtpType(type)
       ? await supabase.auth.verifyOtp({ token_hash: tokenHash, type })
-      : { error: new Error("Missing auth callback parameters") };
+      : null;
 
-  if (result.error) {
+  if (!result || result.error) {
     const failurePath = isRecovery
       ? "/reset-password?error=invalid-link"
       : "/login?error=confirmation";
     return NextResponse.redirect(new URL(failurePath, request.url));
   }
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // A successful recovery exchange has already established the session cookies.
+  // Route it before profile lookup; the reset page validates that session again.
+  if (isRecovery) {
+    return NextResponse.redirect(new URL("/reset-password", request.url));
+  }
+
+  const user = result.data.user ?? (await supabase.auth.getUser()).data.user;
 
   if (!user) {
     return NextResponse.redirect(new URL("/login?error=confirmation", request.url));
-  }
-
-  if (isRecovery) {
-    return NextResponse.redirect(new URL("/reset-password", request.url));
   }
 
   const profile = await getRoutingProfileForUser(user);
