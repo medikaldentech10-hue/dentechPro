@@ -1831,15 +1831,17 @@ function buildCatalogSearch(rawQuery: string): CatalogSearch {
   const normalizedRaw = normalizeSearchText(raw);
   const exactSku = getExactSkuSearch(raw);
   const baseTerms = splitSearchTerms(normalizedRaw);
+  const phraseSynonyms = getSearchSynonyms(normalizedRaw);
+  const hasKnownPhrase = baseTerms.length > 1 && phraseSynonyms.length > 0;
   const interpretedTerms = interpretCatalogQueryLocal(raw).flatMap(
     (criterion) => criterion.searchTerms
   );
   const expandedTerms = uniqueStrings([
     normalizedRaw,
-    ...baseTerms,
+    ...(hasKnownPhrase ? [] : baseTerms),
     ...interpretedTerms,
-    ...baseTerms.flatMap(getSearchSynonyms),
-    ...getSearchSynonyms(normalizedRaw),
+    ...(hasKnownPhrase ? [] : baseTerms.flatMap(getSearchSynonyms)),
+    ...phraseSynonyms,
     ...interpretedTerms.flatMap(getSearchSynonyms),
   ]);
   const holderTerms = expandedTerms
@@ -1873,8 +1875,38 @@ function getExactSkuSearch(value: string) {
   return normalized;
 }
 
+const CATALOG_SEARCH_SYNONYMS: Record<string, string[]> = {
+  "ayna emis": ["mirror suction"],
+  "cene iliskisi": ["jb fork", "jb tray", "bite registration"],
+  "cila lastigi": ["cilalama", "polisaj", "polisher"],
+  "diode laser": ["hulaser k2", "lazer"],
+  "diyot lazer": ["hulaser k2", "diode laser"],
+  "karistirma ucu": ["mixing tip", "mix tip"],
+  "kisisel kasik": ["jb tray", "jb fork", "olcu"],
+  "kapanis kaydi": ["jb fork", "jb tray", "bite registration"],
+  lazer: ["hulaser k2", "diode laser"],
+  "lastik cila": ["cilalama", "polisaj", "polisher"],
+  mirror: ["mirror suction"],
+  "mix tip": ["mixing tip", "karistirma ucu"],
+  "mixing tip": ["mix tip", "karistirma ucu"],
+  "olcu kasigi": ["jb tray", "olcu", "tray"],
+  okluzyon: ["jb fork", "jb tray", "bite registration"],
+  polisher: ["cilalama", "polisaj"],
+  rontgen: ["xpect vision", "rvg", "sensor"],
+  rvg: ["xpect vision"],
+  sensor: ["xpect vision", "rvg", "rontgen"],
+  suction: ["mirror suction"],
+  "total kasik": ["jb tray", "jb fork", "olcu", "tray", "fork"],
+};
+
 function getSearchSynonyms(term: string) {
   const normalized = normalizeSearchText(term);
+  const catalogSynonyms = CATALOG_SEARCH_SYNONYMS[normalized];
+
+  if (catalogSynonyms) {
+    return catalogSynonyms;
+  }
+
   const synonyms: Record<string, string[]> = {
     black: ["siyah"],
     blue: ["mavi"],
@@ -2141,6 +2173,7 @@ function normalizeSearchText(value: string) {
     .toLocaleLowerCase("tr-TR")
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\u0131/g, "i")
     .replace(/Ä±/g, "i")
     .replace(/\s+/g, " ")
     .trim();

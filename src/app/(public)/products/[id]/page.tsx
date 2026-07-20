@@ -83,6 +83,7 @@ export default async function ProductDetailPage({
             </CardContent>
           </SurfaceCard>
         }
+        hasStructuredDescription={descriptionState.isStructured}
         initialVariantId={selectedVariantId}
         mobileDescription={
           <SurfaceCard className="rounded-3xl border-border/70 bg-card/80 shadow-[0_16px_50px_rgb(15_23_42/0.06)] lg:hidden">
@@ -97,15 +98,24 @@ export default async function ProductDetailPage({
         priceVisibility={priceVisibility}
         product={product}
         salesMode={salesMode}
+        structuredDescription={
+          <ProductDescriptionHtml
+            hideHeading
+            html={descriptionState.html}
+            isFallback={descriptionState.isFallback}
+          />
+        }
       />
     </div>
   );
 }
 
 function ProductDescriptionHtml({
+  hideHeading = false,
   html,
   isFallback,
 }: {
+  hideHeading?: boolean;
   html: string;
   isFallback: boolean;
 }) {
@@ -113,9 +123,11 @@ function ProductDescriptionHtml({
     return (
       <section className="rounded-2xl border border-border/65 bg-background/72 p-4 shadow-sm">
         <div className="flex flex-col gap-2">
-          <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-            Ürün Açıklaması
-          </h2>
+          {!hideHeading ? (
+            <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+              Ürün Açıklaması
+            </h2>
+          ) : null}
           <p className="text-sm leading-7 text-muted-foreground">{html}</p>
         </div>
       </section>
@@ -124,9 +136,11 @@ function ProductDescriptionHtml({
 
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-        Ürün Açıklaması
-      </h2>
+      {!hideHeading ? (
+        <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+          Ürün Açıklaması
+        </h2>
+      ) : null}
       <div className="product-description-html" dangerouslySetInnerHTML={{ __html: html }} />
     </section>
   );
@@ -145,13 +159,19 @@ function getProductDescriptionState(rawDescription: string | null) {
     return {
       html: sanitized,
       isFallback: false,
+      isStructured: hasStructuredDescriptionMarkup(sanitized),
     };
   }
 
   return {
     html: DESCRIPTION_FALLBACK,
     isFallback: true,
+    isStructured: false,
   };
+}
+
+function hasStructuredDescriptionMarkup(html: string) {
+  return /<(?:article|section|h[1-6]|ul|ol|table|dl)\b/i.test(html);
 }
 
 function sanitizeProductDescriptionHtml(html: string) {

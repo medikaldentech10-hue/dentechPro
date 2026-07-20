@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, Search, SlidersHorizontal } from "lucide-rea
 
 import { FilterSidebar } from "@/components/products/filter-sidebar";
 import { ProductCard } from "@/components/products/product-card";
+import { ProductSearchInput } from "@/components/products/product-search-input";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -145,14 +146,12 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
         <form className="flex gap-2 md:hidden" key={`mobile-search-${searchUiKey}`}>
           <div className="relative min-w-0 flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
+            <ProductSearchInput
               className="h-10 rounded-full pl-9 text-sm"
               defaultValue={filters.query}
-              name="q"
               placeholder="Ürün adı veya SKU ara"
             />
           </div>
-          <PreservedSearchParamInputs includeQ={false} params={params} />
           <input name="page" type="hidden" value="1" />
           <Button className="h-10 shrink-0 rounded-full px-4" type="submit">
             Ara
@@ -203,10 +202,9 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
         >
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <Input
+            <ProductSearchInput
               className="h-10 pl-9"
               defaultValue={filters.query}
-              name="q"
               placeholder="Ürün adı veya SKU ara"
             />
           </div>
@@ -226,13 +224,11 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
 
         <SearchChips
           currentQuery={params.q}
-          params={params}
           suggestions={MOBILE_SEARCH_SUGGESTIONS}
           variant="mobile"
         />
         <SearchChips
           currentQuery={params.q}
-          params={params}
           suggestions={SEARCH_SUGGESTIONS}
           variant="desktop"
         />
@@ -404,6 +400,7 @@ function CatalogSelects({
     <>
       <select
         className="h-10 rounded-lg border border-input bg-background px-3 text-sm"
+        data-catalog-refinement
         defaultValue={filters.category ?? ""}
         name="category"
       >
@@ -418,6 +415,7 @@ function CatalogSelects({
       </select>
       <select
         className="h-10 rounded-lg border border-input bg-background px-3 text-sm"
+        data-catalog-refinement
         defaultValue={filters.brand ?? ""}
         name="brand"
       >
@@ -426,6 +424,7 @@ function CatalogSelects({
       </select>
       <select
         className="h-10 rounded-lg border border-input bg-background px-3 text-sm"
+        data-catalog-refinement
         defaultValue={filters.usage ?? ""}
         name="usage"
       >
@@ -445,6 +444,7 @@ function PriceFilterInputs({ params }: { params: ProductsSearchParams }) {
     <>
       <Input
         className="h-10"
+        data-catalog-refinement
         defaultValue={params.min_price}
         min={0}
         name="min_price"
@@ -453,6 +453,7 @@ function PriceFilterInputs({ params }: { params: ProductsSearchParams }) {
       />
       <Input
         className="h-10"
+        data-catalog-refinement
         defaultValue={params.max_price}
         min={0}
         name="max_price"
@@ -465,12 +466,10 @@ function PriceFilterInputs({ params }: { params: ProductsSearchParams }) {
 
 function SearchChips({
   currentQuery,
-  params,
   suggestions,
   variant,
 }: {
   currentQuery?: string;
-  params: ProductsSearchParams;
   suggestions: readonly string[];
   variant: "desktop" | "mobile";
 }) {
@@ -481,7 +480,6 @@ function SearchChips({
           <SearchChip
             isActive={currentQuery === suggestion}
             key={suggestion}
-            params={params}
             suggestion={suggestion}
           />
         ))}
@@ -504,7 +502,6 @@ function SearchChips({
           <SearchChip
             isActive={currentQuery === suggestion}
             key={suggestion}
-            params={params}
             suggestion={suggestion}
           />
         ))}
@@ -515,11 +512,9 @@ function SearchChips({
 
 function SearchChip({
   isActive,
-  params,
   suggestion,
 }: {
   isActive: boolean;
-  params: ProductsSearchParams;
   suggestion: string;
 }) {
   return (
@@ -528,22 +523,17 @@ function SearchChip({
         "shrink-0 rounded-full border border-border/70 bg-background/75 px-3 py-1.5 text-xs font-medium text-muted-foreground shadow-sm transition hover:border-primary/35 hover:bg-primary/10 hover:text-primary",
         isActive && "border-primary/40 bg-primary/12 text-primary"
       )}
-      href={getSearchHref(params, suggestion)}
+      href={getSearchHref(suggestion)}
     >
       {suggestion}
     </Link>
   );
 }
 
-function getSearchHref(params: ProductsSearchParams, query: string) {
+function getSearchHref(query: string) {
   const nextParams = new URLSearchParams();
 
   nextParams.set("q", query);
-  if (params.brand) nextParams.set("brand", params.brand);
-  if (params.category) nextParams.set("category", params.category);
-  if (params.usage) nextParams.set("usage", params.usage);
-  if (params.min_price) nextParams.set("min_price", params.min_price);
-  if (params.max_price) nextParams.set("max_price", params.max_price);
 
   return `/products?${nextParams.toString()}`;
 }
@@ -662,31 +652,6 @@ function getPageHref(
   nextParams.set("page", String(safePage));
 
   return `/products?${nextParams.toString()}`;
-}
-
-function PreservedSearchParamInputs({
-  includeQ = true,
-  params,
-}: {
-  includeQ?: boolean;
-  params: ProductsSearchParams;
-}) {
-  return (
-    <>
-      {includeQ && params.q ? <input name="q" type="hidden" value={params.q} /> : null}
-      {params.brand ? <input name="brand" type="hidden" value={params.brand} /> : null}
-      {params.category ? (
-        <input name="category" type="hidden" value={params.category} />
-      ) : null}
-      {params.usage ? <input name="usage" type="hidden" value={params.usage} /> : null}
-      {params.min_price ? (
-        <input name="min_price" type="hidden" value={params.min_price} />
-      ) : null}
-      {params.max_price ? (
-        <input name="max_price" type="hidden" value={params.max_price} />
-      ) : null}
-    </>
-  );
 }
 
 function getFilterUiStateKey(params: ProductsSearchParams) {

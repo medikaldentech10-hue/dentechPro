@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import {
   type FormEvent,
@@ -23,15 +24,22 @@ import {
   type JotaHeaderTone,
   type JotaDescriptionModel,
 } from "@/lib/jota-description";
+import {
+  getNonJotaDescriptionModel,
+  type NonJotaBrandTone,
+  type NonJotaDescriptionModel,
+} from "@/lib/non-jota-description";
 import { cn } from "@/lib/utils";
 
 type ProductDetailClientProps = {
   desktopDescription: React.ReactNode;
+  hasStructuredDescription: boolean;
   mobileDescription: React.ReactNode;
   initialVariantId?: string;
   priceVisibility: "approved" | "pending" | "public";
   product: ProductDetailView;
   salesMode: boolean;
+  structuredDescription: React.ReactNode;
 };
 
 type ProductDetailView = {
@@ -81,10 +89,12 @@ type ProductVariantView = {
 
 export function ProductDetailClient({
   desktopDescription,
+  hasStructuredDescription,
   initialVariantId,
   mobileDescription,
   priceVisibility,
   product,
+  structuredDescription,
 }: ProductDetailClientProps) {
   const variantGroups = useMemo(() => getVariantGroups(product.variants), [product.variants]);
   const visibleVariantGroups = useMemo(
@@ -122,6 +132,11 @@ export function ProductDetailClient({
     initialVariant;
   const selectedDescription = getReadableDescriptionText(selectedVariant?.clinicalNote);
   const jotaDescription = getJotaDescriptionModel(product, selectedVariant);
+  const nonJotaDescription = getNonJotaDescriptionModel(
+    product,
+    selectedVariant,
+    selectedDescription
+  );
   const selectedVariantImageSrc = getImageSrc(selectedVariant?.imageUrl);
   const selectedGroupImageSrc =
     getImageSrc(selectedVariant?.groupImageUrl) ??
@@ -221,6 +236,12 @@ export function ProductDetailClient({
 
         {jotaDescription ? (
           <JotaDescriptionCard className="hidden lg:block" model={jotaDescription} />
+        ) : nonJotaDescription ? (
+          <NonJotaDescriptionCard
+            className="hidden lg:block"
+            existingContent={hasStructuredDescription ? structuredDescription : null}
+            model={nonJotaDescription}
+          />
         ) : selectedDescription ? (
           <SurfaceCard className="hidden rounded-3xl border-border/70 bg-card/80 shadow-[0_16px_50px_rgb(15_23_42/0.06)] lg:block">
             <CardContent className="p-5">
@@ -321,6 +342,12 @@ export function ProductDetailClient({
 
         {jotaDescription ? (
           <JotaDescriptionCard className="lg:hidden" model={jotaDescription} />
+        ) : nonJotaDescription ? (
+          <NonJotaDescriptionCard
+            className="lg:hidden"
+            existingContent={hasStructuredDescription ? structuredDescription : null}
+            model={nonJotaDescription}
+          />
         ) : selectedDescription ? (
           <SurfaceCard className="rounded-3xl border-border/70 bg-card/80 shadow-[0_16px_50px_rgb(15_23_42/0.06)] lg:hidden">
             <CardContent className="p-4">
@@ -416,6 +443,162 @@ function JotaDescriptionCard({
   );
 }
 
+function NonJotaDescriptionCard({
+  className,
+  existingContent,
+  model,
+}: {
+  className?: string;
+  existingContent: React.ReactNode;
+  model: NonJotaDescriptionModel;
+}) {
+  const headerTheme = NON_JOTA_HEADER_THEMES[model.brandTone];
+
+  return (
+    <SurfaceCard
+      className={cn(
+        "rounded-3xl border-border/70 bg-card/80 shadow-[0_16px_50px_rgb(15_23_42/0.06)]",
+        className
+      )}
+    >
+      <CardContent className="p-4 sm:p-5">
+        <section className="grid gap-5" aria-label={`${model.brandLabel} ürün açıklaması`}>
+          <header className={cn("rounded-2xl border p-4", headerTheme.container)}>
+            <div className="flex flex-wrap items-center gap-2">
+              {model.logoSrc ? (
+                <span className="inline-flex rounded-md bg-white px-2 py-1 shadow-sm">
+                  <Image
+                    alt={model.brandLabel}
+                    className="h-4 w-auto object-contain"
+                    height={16}
+                    src={model.logoSrc}
+                    width={144}
+                  />
+                </span>
+              ) : (
+                <span className={cn("rounded-full border px-2.5 py-1 text-xs font-semibold", headerTheme.badge)}>
+                  {model.brandLabel}
+                </span>
+              )}
+            </div>
+            <h2 className={cn("mt-3 text-lg font-semibold", headerTheme.title)}>{model.title}</h2>
+            <p className={cn("mt-1 text-sm font-medium", headerTheme.subtitle)}>
+              {model.subtitle}
+            </p>
+          </header>
+
+          {existingContent ? (
+            <div className="rounded-2xl border border-border/60 bg-background/55 p-4 shadow-sm">
+              {existingContent}
+            </div>
+          ) : (
+            <NonJotaGeneratedDescription model={model} />
+          )}
+        </section>
+      </CardContent>
+    </SurfaceCard>
+  );
+}
+
+function NonJotaGeneratedDescription({ model }: { model: NonJotaDescriptionModel }) {
+  const benefitsTitle = model.template === "device" ? "Temel Özellikler" : "Öne Çıkan Faydalar";
+  const usesTitle = model.template === "device" ? "Klinik Avantajlar ve Kullanım" : "Kullanım Alanları";
+
+  return (
+    <div className="grid gap-5">
+      <p className="text-sm leading-7 text-muted-foreground">{model.summary}</p>
+
+      {model.template === "device" ? (
+        <BenefitGrid benefits={model.benefits} title={benefitsTitle} />
+      ) : (
+        <WorkflowSteps steps={model.workflow} title="1-2-3 İş Akışı" />
+      )}
+
+      {model.template === "device" ? (
+        <UseCaseList items={model.useCases} title={usesTitle} />
+      ) : (
+        <BenefitGrid benefits={model.benefits} title={benefitsTitle} />
+      )}
+
+      {model.template === "device" ? (
+        <WorkflowSteps steps={model.workflow} title="Kullanım Akışı" />
+      ) : (
+        <UseCaseList items={model.useCases} title={usesTitle} />
+      )}
+
+      <div className="rounded-2xl border border-primary/15 bg-primary/5 p-4">
+        <h3 className="text-sm font-semibold text-foreground">Sonuç</h3>
+        <p className="mt-1 text-sm leading-6 text-muted-foreground">{model.conclusion}</p>
+      </div>
+
+      <p className="border-t border-border/55 pt-3 text-xs leading-5 text-muted-foreground">
+        {model.note}
+      </p>
+    </div>
+  );
+}
+
+function WorkflowSteps({
+  steps,
+  title,
+}: {
+  steps: NonJotaDescriptionModel["workflow"];
+  title: string;
+}) {
+  return (
+    <div>
+      <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+      <div className="mt-2 grid gap-2.5 sm:grid-cols-3">
+        {steps.map((step, index) => (
+          <article className="rounded-2xl border border-border/60 bg-background/65 p-3 shadow-sm" key={step.title}>
+            <span className="text-xs font-semibold text-primary">{index + 1}</span>
+            <h4 className="mt-1 text-sm font-semibold text-foreground">{step.title}</h4>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">{step.description}</p>
+          </article>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function BenefitGrid({
+  benefits,
+  title,
+}: {
+  benefits: NonJotaDescriptionModel["benefits"];
+  title: string;
+}) {
+  return (
+    <div>
+      <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+      <div className="mt-2 grid gap-2.5 sm:grid-cols-3">
+        {benefits.map((benefit) => (
+          <article className="rounded-2xl border border-border/60 bg-background/65 p-3 shadow-sm" key={benefit.title}>
+            <h4 className="text-sm font-semibold text-foreground">{benefit.title}</h4>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">{benefit.description}</p>
+          </article>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function UseCaseList({ items, title }: { items: string[]; title: string }) {
+  return (
+    <div>
+      <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+      <ul className="mt-2 grid gap-2 text-sm leading-6 text-muted-foreground">
+        {items.map((item) => (
+          <li className="flex gap-2" key={item}>
+            <span aria-hidden="true" className="mt-2 size-1.5 shrink-0 rounded-full bg-primary" />
+            <span>{item}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 const JOTA_HEADER_THEMES: Record<
   JotaHeaderTone,
   { container: string; subtitle: string; title: string }
@@ -454,6 +637,60 @@ const JOTA_HEADER_THEMES: Record<
     container: "border-primary/15 bg-primary/6",
     subtitle: "text-primary",
     title: "text-foreground",
+  },
+};
+
+const NON_JOTA_HEADER_THEMES: Record<
+  NonJotaBrandTone,
+  { badge: string; container: string; subtitle: string; title: string }
+> = {
+  seil: {
+    badge: "border-red-300/35 bg-black/20 text-red-50",
+    container: "border-red-400/30 bg-gradient-to-br from-slate-950 via-red-950 to-red-800 shadow-[0_12px_30px_rgb(127_29_29/0.22)]",
+    subtitle: "text-red-100",
+    title: "text-white",
+  },
+  xpect: {
+    badge: "border-blue-200/35 bg-white/10 text-blue-50",
+    container: "border-blue-400/35 bg-gradient-to-br from-blue-950 via-blue-800 to-cyan-700 shadow-[0_12px_30px_rgb(29_78_216/0.2)]",
+    subtitle: "text-blue-100",
+    title: "text-white",
+  },
+  hulaser: {
+    badge: "border-sky-200/30 bg-white/10 text-sky-50",
+    container: "border-blue-500/30 bg-gradient-to-br from-slate-950 via-blue-950 to-indigo-900 shadow-[0_12px_30px_rgb(30_58_138/0.24)]",
+    subtitle: "text-sky-100",
+    title: "text-white",
+  },
+  dentech: {
+    badge: "border-teal-200/35 bg-white/10 text-teal-50",
+    container: "border-teal-400/35 bg-gradient-to-br from-teal-950 via-teal-800 to-cyan-700 shadow-[0_12px_30px_rgb(13_148_136/0.2)]",
+    subtitle: "text-teal-100",
+    title: "text-white",
+  },
+  voldent: {
+    badge: "border-cyan-200/35 bg-white/10 text-cyan-50",
+    container: "border-cyan-400/30 bg-gradient-to-br from-slate-900 via-cyan-900 to-sky-800 shadow-[0_12px_30px_rgb(14_116_144/0.2)]",
+    subtitle: "text-cyan-100",
+    title: "text-white",
+  },
+  brulon: {
+    badge: "border-amber-200/40 bg-white/10 text-amber-50",
+    container: "border-amber-500/30 bg-gradient-to-br from-stone-950 via-amber-950 to-orange-900 shadow-[0_12px_30px_rgb(146_64_14/0.2)]",
+    subtitle: "text-amber-100",
+    title: "text-white",
+  },
+  icrown: {
+    badge: "border-violet-200/35 bg-white/10 text-violet-50",
+    container: "border-violet-400/30 bg-gradient-to-br from-slate-950 via-violet-950 to-purple-800 shadow-[0_12px_30px_rgb(107_33_168/0.2)]",
+    subtitle: "text-violet-100",
+    title: "text-white",
+  },
+  neutral: {
+    badge: "border-slate-300/40 bg-white/10 text-slate-100",
+    container: "border-slate-500/35 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-700 shadow-[0_12px_30px_rgb(15_23_42/0.2)]",
+    subtitle: "text-slate-200",
+    title: "text-white",
   },
 };
 
