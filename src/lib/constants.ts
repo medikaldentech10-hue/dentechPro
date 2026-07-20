@@ -37,6 +37,7 @@ export const publicNav = [
 export const dashboardNav = [
   { href: "/dashboard", label: "Panel", icon: Gauge },
   { href: "/products", label: "Ürünler", icon: PackageSearch },
+  { href: "/account/security", label: "Güvenlik", icon: KeyRound },
 ];
 
 export const salesNav = [

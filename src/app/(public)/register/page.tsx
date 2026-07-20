@@ -64,6 +64,10 @@ export default function RegisterPage() {
             Başvurunuz değerlendirme için alınır; fiyat ve talep erişimi onaydan sonra
             açılır.
           </p>
+          <p className="text-sm leading-6 text-muted-foreground">
+            E-posta doğrulaması etkinse gönderilen bağlantıyı açmanız gerekir. E-posta
+            doğrulaması yönetici onayının yerine geçmez.
+          </p>
         </CardHeader>
         <RegisterForm />
       </GlassCard>

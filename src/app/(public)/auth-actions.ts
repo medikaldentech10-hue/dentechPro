@@ -1,5 +1,6 @@
 "use server";
 
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import {
@@ -15,7 +16,11 @@ import type { RegistrationUserType } from "@/lib/types/auth";
 
 export type AuthActionState = {
   error?: string;
+  success?: string;
 };
+
+const FORGOT_PASSWORD_SUCCESS =
+  "Eğer bu e-posta ile kayıtlı bir hesap varsa şifre sıfırlama bağlantısı gönderildi.";
 
 export async function signInAction(
   _previousState: AuthActionState,
@@ -74,6 +79,7 @@ export async function signUpAction(
     password,
     options: {
       data: profileFields,
+      emailRedirectTo: `${await getRequestOrigin()}/auth/callback`,
     },
   });
 
@@ -86,6 +92,102 @@ export async function signUpAction(
   }
 
   redirect("/pending-approval");
+}
+
+export async function forgotPasswordAction(
+  _previousState: AuthActionState,
+  formData: FormData
+): Promise<AuthActionState> {
+  const email = getRequiredString(formData, "email");
+
+  if (!isValidEmail(email)) {
+    return { error: "Geçerli bir e-posta adresi girin." };
+  }
+
+  const supabase = await getSupabaseServerClient();
+  const redirectTo = `${await getRequestOrigin()}/auth/callback?next=/reset-password`;
+  try {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo,
+    });
+
+    if (error && process.env.NODE_ENV === "development") {
+      console.warn("[auth.passwordReset.request]", {
+        message: error.message,
+        name: error.name,
+        status: error.status,
+      });
+    }
+  } catch (error) {
+    if (process.env.NODE_ENV === "development") {
+      console.warn("[auth.passwordReset.request]", {
+        message: error instanceof Error ? error.message : "unknown-error",
+      });
+    }
+  }
+
+  return { success: FORGOT_PASSWORD_SUCCESS };
+}
+
+export async function resetPasswordAction(
+  _previousState: AuthActionState,
+  formData: FormData
+): Promise<AuthActionState> {
+  const validation = validateNewPassword(formData);
+
+  if (validation.error) {
+    return validation;
+  }
+
+  const supabase = await getSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { error: "Şifre sıfırlama bağlantısı geçersiz veya süresi dolmuş." };
+  }
+
+  const { error } = await supabase.auth.updateUser({
+    password: validation.password,
+  });
+
+  if (error) {
+    return { error: "Şifre güncellenemedi. Bağlantıyı yeniden isteyip tekrar deneyin." };
+  }
+
+  await supabase.auth.signOut();
+  redirect("/login?status=password-updated");
+}
+
+export async function changePasswordAction(
+  _previousState: AuthActionState,
+  formData: FormData
+): Promise<AuthActionState> {
+  const validation = validateNewPassword(formData);
+
+  if (validation.error) {
+    return validation;
+  }
+
+  const supabase = await getSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { error: "Şifrenizi değiştirmek için giriş yapın." };
+  }
+
+  const { error } = await supabase.auth.updateUser({
+    password: validation.password,
+  });
+
+  if (error) {
+    return { error: "Şifre güncellenemedi. Lütfen tekrar deneyin." };
+  }
+
+  return { success: "Şifreniz başarıyla güncellendi." };
 }
 
 export async function signOutAction() {
@@ -181,6 +283,45 @@ function getRequiredString(formData: FormData, key: string) {
 function getOptionalString(formData: FormData, key: string) {
   const value = getRequiredString(formData, key);
   return value || null;
+}
+
+function validateNewPassword(formData: FormData):
+  | { error: string; password?: never }
+  | { error?: never; password: string } {
+  const password = getRequiredString(formData, "password");
+  const confirmation = getRequiredString(formData, "password_confirmation");
+
+  if (password.length < 8) {
+    return { error: "Şifre en az 8 karakter olmalıdır." };
+  }
+
+  if (password !== confirmation) {
+    return { error: "Şifreler eşleşmiyor." };
+  }
+
+  return { password };
+}
+
+function isValidEmail(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+async function getRequestOrigin() {
+  const requestHeaders = await headers();
+  const origin = requestHeaders.get("origin");
+
+  if (origin) {
+    return new URL(origin).origin;
+  }
+
+  const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host");
+  const protocol = requestHeaders.get("x-forwarded-proto") ?? "https";
+
+  if (!host) {
+    throw new Error("Auth redirect origin could not be determined.");
+  }
+
+  return new URL(`${protocol}://${host}`).origin;
 }
 
 function logSignInError({

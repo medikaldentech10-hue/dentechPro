@@ -124,6 +124,7 @@ function logExpiredSessionDebug(path: string) {
 
 export const config = {
   matcher: [
+    "/account/:path*",
     "/admin/:path*",
     "/sales/:path*",
     "/dashboard/:path*",

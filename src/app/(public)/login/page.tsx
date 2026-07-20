@@ -4,7 +4,21 @@ import { LoginForm } from "@/components/auth/login-form";
 import { GlassCard } from "@/components/premium/glass-card";
 import { CardHeader, CardTitle } from "@/components/ui/card";
 
-export default function LoginPage() {
+type LoginPageProps = {
+  searchParams: Promise<{ error?: string; status?: string }>;
+};
+
+export default async function LoginPage({ searchParams }: LoginPageProps) {
+  const params = await searchParams;
+  const notice =
+    params.status === "password-updated"
+      ? "Şifreniz güncellendi. Yeni şifrenizle giriş yapabilirsiniz."
+      : undefined;
+  const errorMessage =
+    params.error === "confirmation"
+      ? "E-posta doğrulama bağlantısı geçersiz veya süresi dolmuş."
+      : undefined;
+
   return (
     <div className="mx-auto grid min-h-[calc(100dvh-4rem)] w-full max-w-[1120px] items-center gap-8 px-4 py-10 md:px-6 lg:grid-cols-[1fr_440px]">
       <div className="hidden flex-col gap-5 lg:flex">
@@ -32,7 +46,7 @@ export default function LoginPage() {
             Dentech Pro hesabınıza giriş yapın.
           </p>
         </CardHeader>
-        <LoginForm />
+        <LoginForm errorMessage={errorMessage} notice={notice} />
       </GlassCard>
     </div>
   );

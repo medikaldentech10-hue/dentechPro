@@ -21,6 +21,10 @@ export default function PendingApprovalPage() {
               Kayıt talebiniz alındı. DENTech Medikal ekibi hesabınızı
               onayladıktan sonra fiyat görünümü ve talep akışına erişebilirsiniz.
             </p>
+            <p className="text-sm leading-6 text-muted-foreground">
+              E-posta doğrulaması etkinse gelen kutunuzdaki doğrulama bağlantısını da
+              tamamlayın. Bu işlem hesap onayını otomatik olarak vermez.
+            </p>
           </div>
           <form action={signOutAction}>
             <Button variant="outline" type="submit">

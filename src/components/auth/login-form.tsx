@@ -13,7 +13,13 @@ const initialState = {
   error: "",
 };
 
-export function LoginForm() {
+export function LoginForm({
+  errorMessage,
+  notice,
+}: {
+  errorMessage?: string;
+  notice?: string;
+}) {
   const [state, formAction, isPending] = useActionState(
     signInAction,
     initialState
@@ -44,14 +50,22 @@ export function LoginForm() {
             required
           />
         </div>
-        {state.error ? (
+        {notice ? (
+          <p className="rounded-lg border border-primary/25 bg-primary/10 px-3 py-2 text-sm font-medium text-primary">
+            {notice}
+          </p>
+        ) : null}
+        {state.error || errorMessage ? (
           <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive">
-            {state.error}
+            {state.error || errorMessage}
           </p>
         ) : null}
         <Button type="submit" disabled={isPending}>
           {isPending ? "Giriş yapılıyor..." : "Giriş Yap"}
         </Button>
+        <Link className="text-center text-sm font-medium text-primary" href="/forgot-password">
+          Şifremi unuttum
+        </Link>
         <p className="text-center text-sm text-muted-foreground">
           Hesabınız yok mu?{" "}
           <Link href="/register" className="font-medium text-primary">
