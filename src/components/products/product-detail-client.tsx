@@ -18,6 +18,11 @@ import { useRequestDrawer } from "@/components/request/request-drawer-provider";
 import { PageTitle } from "@/components/shared/page-title";
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
+import {
+  getJotaDescriptionModel,
+  type JotaHeaderTone,
+  type JotaDescriptionModel,
+} from "@/lib/jota-description";
 import { cn } from "@/lib/utils";
 
 type ProductDetailClientProps = {
@@ -116,6 +121,7 @@ export function ProductDetailClient({
     selectedGroupVariants[0] ??
     initialVariant;
   const selectedDescription = getReadableDescriptionText(selectedVariant?.clinicalNote);
+  const jotaDescription = getJotaDescriptionModel(product, selectedVariant);
   const selectedVariantImageSrc = getImageSrc(selectedVariant?.imageUrl);
   const selectedGroupImageSrc =
     getImageSrc(selectedVariant?.groupImageUrl) ??
@@ -213,7 +219,9 @@ export function ProductDetailClient({
           </CardContent>
         </SurfaceCard>
 
-        {selectedDescription ? (
+        {jotaDescription ? (
+          <JotaDescriptionCard className="hidden lg:block" model={jotaDescription} />
+        ) : selectedDescription ? (
           <SurfaceCard className="hidden rounded-3xl border-border/70 bg-card/80 shadow-[0_16px_50px_rgb(15_23_42/0.06)] lg:block">
             <CardContent className="p-5">
               <section className="rounded-2xl border border-border/65 bg-background/72 p-4 shadow-sm">
@@ -311,9 +319,9 @@ export function ProductDetailClient({
           </CardContent>
         </SurfaceCard>
 
-        <RelatedProductsSection products={product.relatedProducts ?? []} />
-
-        {selectedDescription ? (
+        {jotaDescription ? (
+          <JotaDescriptionCard className="lg:hidden" model={jotaDescription} />
+        ) : selectedDescription ? (
           <SurfaceCard className="rounded-3xl border-border/70 bg-card/80 shadow-[0_16px_50px_rgb(15_23_42/0.06)] lg:hidden">
             <CardContent className="p-4">
               <section className="rounded-2xl border border-border/65 bg-background/72 p-4 shadow-sm">
@@ -326,10 +334,128 @@ export function ProductDetailClient({
         ) : (
           mobileDescription
         )}
+
+        <RelatedProductsSection products={product.relatedProducts ?? []} />
       </div>
     </div>
   );
 }
+
+function JotaDescriptionCard({
+  className,
+  model,
+}: {
+  className?: string;
+  model: JotaDescriptionModel;
+}) {
+  const headerTheme = JOTA_HEADER_THEMES[model.headerTone];
+
+  return (
+    <SurfaceCard
+      className={cn(
+        "rounded-3xl border-border/70 bg-card/80 shadow-[0_16px_50px_rgb(15_23_42/0.06)]",
+        className
+      )}
+    >
+      <CardContent className="p-4 sm:p-5">
+        <section className="grid gap-5" aria-label="JOTA ürün açıklaması">
+          <header className={cn("rounded-2xl border p-4", headerTheme.container)}>
+            <h2 className={cn("text-lg font-semibold", headerTheme.title)}>
+              {model.title}
+            </h2>
+            <p className={cn("mt-1 text-sm font-medium", headerTheme.subtitle)}>
+              {model.subtitle}
+            </p>
+          </header>
+
+          <p className="text-sm leading-7 text-muted-foreground">{model.paragraph}</p>
+
+          <div className="grid grid-cols-2 gap-2.5">
+            {model.benefits.map((benefit) => (
+              <article
+                className="rounded-2xl border border-border/60 bg-background/65 p-3 shadow-sm"
+                key={benefit.title}
+              >
+                <h3 className="text-sm font-semibold text-foreground">{benefit.title}</h3>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                  {benefit.description}
+                </p>
+              </article>
+            ))}
+          </div>
+
+          <div>
+            <h3 className="text-sm font-semibold text-foreground">Klinik Kullanım Alanları</h3>
+            <ul className="mt-2 grid gap-2 text-sm leading-6 text-muted-foreground">
+              {model.clinicalUses.map((use) => (
+                <li className="flex gap-2" key={use}>
+                  <span aria-hidden="true" className="mt-2 size-1.5 shrink-0 rounded-full bg-primary" />
+                  <span>{use}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="overflow-hidden rounded-2xl border border-border/65">
+            <table className="w-full text-left text-sm">
+              <tbody className="divide-y divide-border/55">
+                {model.technicalRows.map((row) => (
+                  <tr className="align-top" key={row.label}>
+                    <th className="w-[38%] bg-muted/45 px-3 py-2.5 font-medium text-foreground">
+                      {row.label}
+                    </th>
+                    <td className="px-3 py-2.5 leading-5 text-muted-foreground">{row.value}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </CardContent>
+    </SurfaceCard>
+  );
+}
+
+const JOTA_HEADER_THEMES: Record<
+  JotaHeaderTone,
+  { container: string; subtitle: string; title: string }
+> = {
+  blue: {
+    container:
+      "border-blue-400/35 bg-gradient-to-br from-blue-800 via-blue-700 to-sky-600 shadow-[0_12px_30px_rgb(29_78_216/0.22)]",
+    subtitle: "text-blue-100",
+    title: "text-white",
+  },
+  green: {
+    container:
+      "border-emerald-400/35 bg-gradient-to-br from-emerald-900 via-emerald-800 to-teal-700 shadow-[0_12px_30px_rgb(5_150_105/0.2)]",
+    subtitle: "text-emerald-100",
+    title: "text-white",
+  },
+  red: {
+    container:
+      "border-red-400/35 bg-gradient-to-br from-red-900 via-red-800 to-rose-700 shadow-[0_12px_30px_rgb(185_28_28/0.2)]",
+    subtitle: "text-red-100",
+    title: "text-white",
+  },
+  black: {
+    container:
+      "border-slate-500/50 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-700 shadow-[0_12px_30px_rgb(15_23_42/0.28)]",
+    subtitle: "text-slate-200",
+    title: "text-white",
+  },
+  yellow: {
+    container:
+      "border-amber-300/60 bg-gradient-to-br from-amber-100 via-yellow-50 to-orange-100 shadow-[0_12px_30px_rgb(217_119_6/0.13)]",
+    subtitle: "text-amber-800",
+    title: "text-amber-950",
+  },
+  neutral: {
+    container: "border-primary/15 bg-primary/6",
+    subtitle: "text-primary",
+    title: "text-foreground",
+  },
+};
 
 function VariantGroupSwatch({ label }: { label: string }) {
   const swatch = getColorSwatch(label);
