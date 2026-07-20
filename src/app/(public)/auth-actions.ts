@@ -21,6 +21,7 @@ export type AuthActionState = {
 
 const FORGOT_PASSWORD_SUCCESS =
   "Eğer bu e-posta ile kayıtlı bir hesap varsa şifre sıfırlama bağlantısı gönderildi.";
+const DEFAULT_PRODUCTION_SITE_URL = "https://dentech-pro.vercel.app";
 
 export async function signInAction(
   _previousState: AuthActionState,
@@ -105,12 +106,11 @@ export async function forgotPasswordAction(
   }
 
   const supabase = await getSupabaseServerClient();
-  const callbackUrl = new URL("/auth/callback", await getRequestOrigin());
-  callbackUrl.searchParams.set("next", "/reset-password");
-
   try {
+    const siteUrl = await getPasswordResetSiteUrl();
+    const redirectTo = `${siteUrl}/auth/callback?next=${encodeURIComponent("/reset-password")}`;
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: callbackUrl.toString(),
+      redirectTo,
     });
 
     if (error && process.env.NODE_ENV === "development") {
@@ -306,6 +306,22 @@ function validateNewPassword(formData: FormData):
 
 function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+async function getPasswordResetSiteUrl() {
+  const configuredSiteUrl =
+    process.env.NEXT_PUBLIC_SITE_URL?.trim() ||
+    process.env.NEXT_PUBLIC_APP_URL?.trim();
+
+  if (configuredSiteUrl) {
+    return new URL(configuredSiteUrl).origin;
+  }
+
+  if (process.env.NODE_ENV === "production") {
+    return DEFAULT_PRODUCTION_SITE_URL;
+  }
+
+  return getRequestOrigin();
 }
 
 async function getRequestOrigin() {
