@@ -10,6 +10,7 @@ import { PageTitle } from "@/components/shared/page-title";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
 import { getCurrentRoutingProfile, isSuspendedUser } from "@/lib/auth";
+import { DENTECH_WHATSAPP_NUMBER } from "@/lib/config";
 import {
   canCreateOrderRequest,
   getActiveRequestDraft,
@@ -39,6 +40,9 @@ const historyStatusOptions: Array<{
   { label: "Onaylandı", value: "confirmed" },
   { label: "İptal Edildi", value: "cancelled" },
 ];
+const customerWhatsAppNumber = /^\d{10,15}$/.test(DENTECH_WHATSAPP_NUMBER)
+  ? DENTECH_WHATSAPP_NUMBER
+  : null;
 
 export default async function RequestPage({ searchParams }: RequestPageProps) {
   const [profile, query] = await Promise.all([getCurrentRoutingProfile(), searchParams]);
@@ -135,7 +139,13 @@ async function RequestHistorySection({
     return <RequestHistoryEmptyState />;
   }
 
-  return <RequestHistoryList drafts={history} showPrices={showPrices} />;
+  return (
+    <RequestHistoryList
+      drafts={history}
+      showPrices={showPrices}
+      whatsAppNumber={customerWhatsAppNumber}
+    />
+  );
 }
 
 function RequestStatusBanner({ status }: { status: string }) {

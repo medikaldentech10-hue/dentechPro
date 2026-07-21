@@ -1,6 +1,6 @@
 "use client";
 
-import { Eye, ReceiptText, XCircle } from "lucide-react";
+import { Eye, MessageCircle, ReceiptText, XCircle } from "lucide-react";
 
 import { cancelCustomerRequestAction } from "@/app/(public)/request/actions";
 import { PendingSubmitButton } from "@/components/shared/pending-submit-button";
@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 type RequestHistoryListProps = {
   drafts: RequestHistoryDraft[];
   showPrices: boolean;
+  whatsAppNumber: string | null;
 };
 
 type RequestHistoryDraft = {
@@ -57,6 +58,7 @@ type RequestHistoryItem = {
 export function RequestHistoryList({
   drafts,
   showPrices,
+  whatsAppNumber,
 }: RequestHistoryListProps) {
   return (
     <div className="grid gap-3">
@@ -124,15 +126,45 @@ export function RequestHistoryList({
                   </PendingSubmitButton>
                 </form>
               ) : (
-                <p className="max-w-sm text-sm leading-5 text-muted-foreground">
-                  Bu talep işleme alındığı için iptal için DENTech Medikal ile iletişime geçin.
-                </p>
+                <RequestInfoButton
+                  draft={draft}
+                  whatsAppNumber={whatsAppNumber}
+                />
               )}
             </div>
           </div>
         </div>
       ))}
     </div>
+  );
+}
+
+function RequestInfoButton({
+  draft,
+  whatsAppNumber,
+}: {
+  draft: RequestHistoryDraft;
+  whatsAppNumber: string | null;
+}) {
+  const requestNumber = draft.request_number?.trim();
+
+  if (!requestNumber || !whatsAppNumber) {
+    return null;
+  }
+
+  const message = `Merhaba, ${requestNumber} numaralı talebim ile ilgili bilgi almak istiyorum.`;
+  const href = `https://wa.me/${whatsAppNumber}?text=${encodeURIComponent(message)}`;
+
+  return (
+    <a
+      className={cn(buttonVariants({ size: "sm", variant: "outline" }), "gap-1.5")}
+      href={href}
+      rel="noopener noreferrer"
+      target="_blank"
+    >
+      <MessageCircle data-icon="inline-start" />
+      Bilgi Al
+    </a>
   );
 }
 

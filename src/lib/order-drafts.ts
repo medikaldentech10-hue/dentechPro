@@ -18,7 +18,10 @@ import {
   recordRateLimitEvent,
 } from "@/lib/rate-limit";
 import { getRequestSearchTokens } from "@/lib/request-numbers";
-import { isCustomerCancellableStatus } from "@/lib/request-status";
+import {
+  CUSTOMER_CANCELLABLE_STATUSES,
+  isCustomerCancellableStatus,
+} from "@/lib/request-status";
 import type { Database, Json } from "@/lib/supabase/database.types";
 import { getSupabaseAdminClient } from "@/lib/supabase/server";
 import type { Profile } from "@/lib/types/auth";
@@ -630,7 +633,7 @@ export async function cancelCustomerRequest({
     .update({ status: "cancelled" })
     .eq("id", draft.id)
     .eq("created_by_user_id", profile.id)
-    .eq("status", "draft")
+    .in("status", [...CUSTOMER_CANCELLABLE_STATUSES])
     .select(REQUEST_DRAFT_COLUMNS)
     .maybeSingle();
 

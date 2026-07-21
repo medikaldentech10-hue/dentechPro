@@ -5,7 +5,10 @@ import { RequestDrawerProvider } from "@/components/request/request-drawer-provi
 
 import "./globals.css";
 
+const PRODUCTION_SITE_URL = "https://pro.dentechmedikal.com";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(PRODUCTION_SITE_URL),
   title: "Dentech Pro",
   description:
     "DENTech Medikal için B2B dental ürün arama ve talep yönetimi.",

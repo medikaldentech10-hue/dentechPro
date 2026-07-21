@@ -3,6 +3,11 @@ import type { NextConfig } from "next";
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseOrigin = supabaseUrl ? new URL(supabaseUrl).origin : null;
 const isDevelopment = process.env.NODE_ENV !== "production";
+const productionSiteUrl = "https://pro.dentechmedikal.com";
+const legacyProductionHosts = [
+  "dentech-pro.vercel.app",
+  "dentech-pro-dentechmedikals-projects.vercel.app",
+];
 
 const cspDirectives = [
   "default-src 'self'",
@@ -45,6 +50,14 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  async redirects() {
+    return legacyProductionHosts.map((host) => ({
+      source: "/:path*",
+      has: [{ type: "host" as const, value: host }],
+      destination: `${productionSiteUrl}/:path*`,
+      permanent: true,
+    }));
+  },
   async headers() {
     return [
       {

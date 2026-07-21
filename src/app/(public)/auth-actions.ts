@@ -20,7 +20,7 @@ export type AuthActionState = {
 
 const FORGOT_PASSWORD_SUCCESS =
   "Eğer bu e-posta ile kayıtlı bir hesap varsa şifre sıfırlama bağlantısı gönderildi.";
-const DEFAULT_PRODUCTION_SITE_URL = "https://dentech-pro.vercel.app";
+const DEFAULT_PRODUCTION_SITE_URL = "https://pro.dentechmedikal.com";
 
 export async function signInAction(
   _previousState: AuthActionState,

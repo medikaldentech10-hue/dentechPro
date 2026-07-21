@@ -3,7 +3,7 @@ import { Buffer } from "node:buffer";
 import { readFile } from "node:fs/promises";
 import { createClient } from "@supabase/supabase-js";
 
-const DEFAULT_BASE_URL = "https://dentech-pro.vercel.app";
+const DEFAULT_BASE_URL = "https://pro.dentechmedikal.com";
 const baseUrl = (process.env.PERFORMANCE_AUDIT_BASE_URL ?? DEFAULT_BASE_URL)
   .replace(/\/$/, "");
 const authCookie = process.env.PERFORMANCE_AUDIT_COOKIE;
