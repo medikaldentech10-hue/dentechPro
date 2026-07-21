@@ -1,15 +1,18 @@
 "use client";
 
-import { useActionState } from "react";
+import Link from "next/link";
+import { useActionState, useEffect, useState } from "react";
 
 import {
   changePasswordAction,
   resetPasswordAction,
 } from "@/app/(public)/auth-actions";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
+import { cn } from "@/lib/utils";
 
 const initialState = {
   error: "",
@@ -19,6 +22,58 @@ const initialState = {
 export function PasswordUpdateForm({ mode }: { mode: "account" | "recovery" }) {
   const action = mode === "recovery" ? resetPasswordAction : changePasswordAction;
   const [state, formAction, isPending] = useActionState(action, initialState);
+  const [recoveryState, setRecoveryState] = useState<"checking" | "invalid" | "ready">(
+    mode === "recovery" ? "checking" : "ready"
+  );
+
+  useEffect(() => {
+    if (mode !== "recovery") {
+      return;
+    }
+
+    let active = true;
+    void getSupabaseBrowserClient()
+      .auth.getUser()
+      .then(({ data, error }) => {
+        if (active) {
+          setRecoveryState(!error && data.user ? "ready" : "invalid");
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setRecoveryState("invalid");
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [mode]);
+
+  if (recoveryState === "checking") {
+    return (
+      <CardContent>
+        <p className="text-sm text-muted-foreground">Bağlantı doğrulanıyor...</p>
+      </CardContent>
+    );
+  }
+
+  if (recoveryState === "invalid") {
+    return (
+      <CardContent className="flex flex-col gap-4">
+        <p className="text-sm leading-6 text-muted-foreground">
+          Şifre sıfırlama bağlantısı geçersiz veya süresi dolmuş. Yeni bir bağlantı
+          isteyin.
+        </p>
+        <Link
+          className={cn(buttonVariants(), "w-fit")}
+          href="/forgot-password"
+        >
+          Yeni Bağlantı İste
+        </Link>
+      </CardContent>
+    );
+  }
 
   return (
     <CardContent>

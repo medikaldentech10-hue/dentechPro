@@ -123,7 +123,11 @@ export function RequestHistoryList({
                     İptal Et
                   </PendingSubmitButton>
                 </form>
-              ) : null}
+              ) : (
+                <p className="max-w-sm text-sm leading-5 text-muted-foreground">
+                  Bu talep işleme alındığı için iptal için DENTech Medikal ile iletişime geçin.
+                </p>
+              )}
             </div>
           </div>
         </div>

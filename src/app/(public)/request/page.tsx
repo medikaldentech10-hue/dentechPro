@@ -191,6 +191,14 @@ function RequestFeedbackBanner({
     );
   }
 
+  if (error === "cancellation_not_allowed") {
+    return (
+      <div className="rounded-xl border border-destructive/20 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive">
+        Bu talep işleme alındığı için iptal için DENTech Medikal ile iletişime geçin.
+      </div>
+    );
+  }
+
   if (!status) {
     return null;
   }

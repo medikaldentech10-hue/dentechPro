@@ -339,7 +339,18 @@ export async function cancelCustomerRequestAction(formData: FormData) {
     throw new Error("Talep bulunamadı.");
   }
 
-  await cancelCustomerRequest({ profile, requestId });
+  try {
+    await cancelCustomerRequest({ profile, requestId });
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message === "Bu talep işleme alındığı için iptal edilemez."
+    ) {
+      redirect("/request?error=cancellation_not_allowed");
+    }
+
+    throw error;
+  }
   revalidateRequestPaths();
   redirect("/request?status=cancelled");
 }

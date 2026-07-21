@@ -51,8 +51,8 @@ export async function createAdminRequestQuotePdf(
 }
 
 function drawQuote(doc: PDFKit.PDFDocument, request: AdminRequestDetail) {
-  drawHeader(doc, request);
-  drawParties(doc, request);
+  const headerBottom = drawHeader(doc, request);
+  drawParties(doc, request, headerBottom + 16);
   drawLines(doc, request);
   drawTotals(doc, request);
   drawCustomerNote(doc, request);
@@ -77,25 +77,35 @@ function drawHeader(doc: PDFKit.PDFDocument, request: AdminRequestDetail) {
 
   let rowY = PAGE_MARGIN;
   for (const [label, value] of headerRows) {
+    const labelHeight = doc.fontSize(9).heightOfString(label, { width: 220 });
+    const valueY = rowY + labelHeight + 3;
+    const valueHeight = doc.fontSize(10).heightOfString(value, { width: 220 });
+
     doc
       .fillColor("#6b7280")
       .fontSize(9)
       .text(label, rightX, rowY, { align: "right", width: 220 })
       .fillColor("#111827")
       .fontSize(10)
-      .text(value, rightX, rowY + 14, { align: "right", width: 220 });
-    rowY += 32;
+      .text(value, rightX, valueY, { align: "right", width: 220 });
+    rowY = valueY + valueHeight + 7;
   }
 
+  const separatorY = Math.max(PAGE_MARGIN + 34, rowY) + 5;
   doc
-    .moveTo(PAGE_MARGIN, PAGE_MARGIN + 84)
-    .lineTo(CONTENT_RIGHT, PAGE_MARGIN + 84)
+    .moveTo(PAGE_MARGIN, separatorY)
+    .lineTo(CONTENT_RIGHT, separatorY)
     .strokeColor("#d1d5db")
     .stroke();
+
+  return separatorY;
 }
 
-function drawParties(doc: PDFKit.PDFDocument, request: AdminRequestDetail) {
-  const y = PAGE_MARGIN + 100;
+function drawParties(
+  doc: PDFKit.PDFDocument,
+  request: AdminRequestDetail,
+  y: number
+) {
   const customerRows = getCustomerRows(request);
   const metaRows = getQuoteMetaRows(request);
   const boxHeight = Math.max(

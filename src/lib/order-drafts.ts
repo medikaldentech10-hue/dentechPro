@@ -622,7 +622,7 @@ export async function cancelCustomerRequest({
   }
 
   if (!isCustomerCancellableStatus(draft.status)) {
-    throw new Error("Bu talep artık iptal edilemez.");
+    throw new Error("Bu talep işleme alındığı için iptal edilemez.");
   }
 
   const { data: cancelledDraft, error: updateError } = await supabase
@@ -630,7 +630,7 @@ export async function cancelCustomerRequest({
     .update({ status: "cancelled" })
     .eq("id", draft.id)
     .eq("created_by_user_id", profile.id)
-    .eq("status", draft.status)
+    .eq("status", "draft")
     .select(REQUEST_DRAFT_COLUMNS)
     .maybeSingle();
 
@@ -639,7 +639,7 @@ export async function cancelCustomerRequest({
   }
 
   if (!cancelledDraft) {
-    throw new Error("Talep durumu güncellenemedi.");
+    throw new Error("Bu talep işleme alındığı için iptal edilemez.");
   }
 
   await writeDraftAuditLog({

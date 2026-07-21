@@ -20,18 +20,10 @@ const REQUEST_STATUS_LABELS: Record<string, string> = {
   whatsapp_approval_pending: "Gönderildi",
 };
 
-const CUSTOMER_CANCELLABLE_STATUSES = new Set<string>([
-  "draft",
-  "submitted",
-  "payment_pending",
-  "pending_payment",
-  "whatsapp_approval_pending",
-]);
-
 export function getRequestStatusLabel(status: RequestStatus | string) {
   return REQUEST_STATUS_LABELS[status] ?? status;
 }
 
 export function isCustomerCancellableStatus(status: RequestStatus | string) {
-  return CUSTOMER_CANCELLABLE_STATUSES.has(status);
+  return status === "draft";
 }
