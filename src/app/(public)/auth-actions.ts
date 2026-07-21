@@ -4,7 +4,6 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import {
-  createDefaultProfileForUser,
   getPostLoginRedirect,
   getRoutingProfileForUser,
   isAllowedUserType,
@@ -75,7 +74,7 @@ export async function signUpAction(
 
   const { email, password, profileFields } = registration;
   const supabase = await getSupabaseServerClient();
-  const { data, error } = await supabase.auth.signUp({
+  const { error } = await supabase.auth.signUp({
     email,
     password,
     options: {
@@ -85,11 +84,8 @@ export async function signUpAction(
   });
 
   if (error) {
+    logRegistrationError("sign-up", error);
     return { error: "Kayıt talebi oluşturulamadı. E-posta adresini kontrol edin." };
-  }
-
-  if (data.user) {
-    await createDefaultProfileForUser(data.user);
   }
 
   redirect("/pending-approval");
@@ -355,6 +351,22 @@ function logSignInError({
 
   console.warn("[auth.signInWithPassword]", {
     email,
+    name: error.name,
+    message: error.message,
+    status: error.status,
+  });
+}
+
+function logRegistrationError(
+  step: string,
+  error: { name: string; message: string; status?: number }
+) {
+  if (process.env.NODE_ENV !== "development") {
+    return;
+  }
+
+  console.warn("[auth.registration]", {
+    step,
     name: error.name,
     message: error.message,
     status: error.status,
