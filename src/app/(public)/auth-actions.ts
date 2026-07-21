@@ -80,7 +80,7 @@ export async function signUpAction(
     password,
     options: {
       data: profileFields,
-      emailRedirectTo: `${await getRequestOrigin()}/auth/callback`,
+      emailRedirectTo: `${await getCanonicalSiteUrl()}/auth/callback`,
     },
   });
 
@@ -107,7 +107,7 @@ export async function forgotPasswordAction(
 
   const supabase = await getSupabaseServerClient();
   try {
-    const siteUrl = await getPasswordResetSiteUrl();
+    const siteUrl = await getCanonicalSiteUrl();
     const redirectTo = `${siteUrl}/auth/callback?next=${encodeURIComponent("/reset-password")}`;
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo,
@@ -308,7 +308,7 @@ function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
-async function getPasswordResetSiteUrl() {
+async function getCanonicalSiteUrl() {
   const configuredSiteUrl =
     process.env.NEXT_PUBLIC_SITE_URL?.trim() ||
     process.env.NEXT_PUBLIC_APP_URL?.trim();
