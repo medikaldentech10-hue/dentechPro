@@ -1,10 +1,15 @@
 import Image from "next/image";
 import Link from "next/link";
 
-export function Logo() {
+type LogoProps = {
+  onClick?: () => void;
+};
+
+export function Logo({ onClick }: LogoProps = {}) {
   return (
     <Link
       href="/"
+      onClick={onClick}
       className="flex shrink-0 items-center"
       aria-label="DENTech Medikal ana sayfa"
     >

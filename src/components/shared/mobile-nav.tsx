@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 import {
   ClipboardCheck,
   Gauge,
@@ -42,6 +43,7 @@ export function MobileNav({
   profile = null,
   sectionLabel = "Dentech Pro",
 }: MobileNavProps) {
+  const [open, setOpen] = useState(false);
   const pathname = usePathname();
   const authState = getHeaderAuthState(profile);
   const accountLabel =
@@ -53,7 +55,7 @@ export function MobileNav({
 
   return (
     <div>
-      <Sheet>
+      <Sheet open={open} onOpenChange={setOpen}>
         <SheetTrigger
           render={
             <button
@@ -71,7 +73,7 @@ export function MobileNav({
         >
           <SheetHeader className="border-b border-border/70 p-4">
             <SheetTitle className="sr-only">Mobil navigasyon</SheetTitle>
-            <Logo />
+            <Logo onClick={() => setOpen(false)} />
             <p className="mt-3 text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">
               {sectionLabel}
             </p>
@@ -81,6 +83,7 @@ export function MobileNav({
               <Link
                 key={item.href}
                 href={item.href}
+                onClick={() => setOpen(false)}
                 prefetch={item.href === "/products" ? true : undefined}
                 aria-current={activeHref === item.href ? "page" : undefined}
                 className={cn(
@@ -99,6 +102,7 @@ export function MobileNav({
             {authState.showRequestList ? (
               <Link
                 href="/request"
+                onClick={() => setOpen(false)}
                 className={cn(
                   "relative rounded-lg border border-transparent px-3 py-3 text-sm font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground",
                   pathname === "/request" &&
@@ -113,6 +117,7 @@ export function MobileNav({
             ) : null}
             <Link
               href={authState.href}
+              onClick={() => setOpen(false)}
               className={cn(
                 buttonVariants({ variant: "outline" }),
                 "mt-3 justify-center"
