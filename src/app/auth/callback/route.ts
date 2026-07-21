@@ -17,42 +17,129 @@ const EMAIL_OTP_TYPES: readonly EmailOtpType[] = [
 ];
 
 export async function GET(request: NextRequest) {
-  const code = request.nextUrl.searchParams.get("code");
-  const tokenHash = request.nextUrl.searchParams.get("token_hash");
-  const type = request.nextUrl.searchParams.get("type");
-  const requestedNext = request.nextUrl.searchParams.get("next");
+  const searchParams = request.nextUrl.searchParams;
+  const code = searchParams.get("code");
+  const tokenHash = searchParams.get("token_hash");
+  const type = searchParams.get("type");
+  const requestedNext = searchParams.get("next");
+  const callbackError = searchParams.get("error");
+  const callbackErrorCode = searchParams.get("error_code");
+  const callbackErrorDescription = searchParams.get("error_description");
   const isRecovery = requestedNext === "/reset-password" || type === "recovery";
-  const supabase = await getSupabaseServerClient();
 
-  const result = code
-    ? await supabase.auth.exchangeCodeForSession(code)
+  if (callbackError || callbackErrorCode || callbackErrorDescription) {
+    logCallbackResult("none", "failure", {
+      code: callbackErrorCode,
+      name: callbackError,
+    });
+    return redirectToCallbackFailure(request, isRecovery);
+  }
+
+  const authCookieResponse = new NextResponse();
+  const supabase = await getSupabaseServerClient((cookiesToSet) => {
+    cookiesToSet.forEach(({ name, value, options }) => {
+      authCookieResponse.cookies.set(name, value, options);
+    });
+  });
+  const strategy = code
+    ? "code_exchange"
     : tokenHash && isEmailOtpType(type)
-      ? await supabase.auth.verifyOtp({ token_hash: tokenHash, type })
+      ? "token_hash"
       : null;
 
-  if (!result || result.error) {
-    const failurePath = isRecovery
-      ? "/reset-password?error=invalid-link"
-      : "/login?error=confirmation";
-    return NextResponse.redirect(new URL(failurePath, request.url));
+  if (!strategy) {
+    return NextResponse.redirect(new URL(isRecovery ? "/reset-password" : "/login", request.url));
   }
+
+  let result;
+
+  try {
+    result =
+      strategy === "code_exchange"
+        ? await supabase.auth.exchangeCodeForSession(code!)
+        : await supabase.auth.verifyOtp({
+            token_hash: tokenHash!,
+            type: type as EmailOtpType,
+          });
+  } catch (error) {
+    logCallbackResult(strategy, "failure", getSafeErrorDetails(error));
+    return redirectToCallbackFailure(request, isRecovery);
+  }
+
+  if (result.error) {
+    logCallbackResult(strategy, "failure", result.error);
+    return redirectToCallbackFailure(request, isRecovery);
+  }
+
+  logCallbackResult(strategy, "success");
 
   // A successful recovery exchange has already established the session cookies.
   // Route it before profile lookup; the reset page validates that session again.
   if (isRecovery) {
-    return NextResponse.redirect(new URL("/reset-password", request.url));
+    return redirectWithAuthCookies(request, "/reset-password", authCookieResponse);
   }
 
   const user = result.data.user ?? (await supabase.auth.getUser()).data.user;
 
   if (!user) {
-    return NextResponse.redirect(new URL("/login?error=confirmation", request.url));
+    return NextResponse.redirect(new URL("/login", request.url));
   }
 
   const profile = await getRoutingProfileForUser(user);
-  return NextResponse.redirect(new URL(getPostLoginRedirect(profile), request.url));
+  return redirectWithAuthCookies(
+    request,
+    getPostLoginRedirect(profile),
+    authCookieResponse
+  );
 }
 
 function isEmailOtpType(value: string | null): value is EmailOtpType {
   return Boolean(value && EMAIL_OTP_TYPES.includes(value as EmailOtpType));
+}
+
+function redirectToCallbackFailure(request: NextRequest, isRecovery: boolean) {
+  const failurePath = isRecovery
+    ? "/reset-password?error=invalid-link"
+    : "/login?error=confirmation";
+  return NextResponse.redirect(new URL(failurePath, request.url));
+}
+
+function redirectWithAuthCookies(
+  request: NextRequest,
+  path: string,
+  authCookieResponse: NextResponse
+) {
+  return NextResponse.redirect(new URL(path, request.url), {
+    headers: authCookieResponse.headers,
+  });
+}
+
+function getSafeErrorDetails(error: unknown) {
+  if (typeof error !== "object" || error === null) {
+    return {};
+  }
+
+  const value = error as { code?: unknown; name?: unknown };
+  return {
+    code: typeof value.code === "string" ? value.code : undefined,
+    name: typeof value.name === "string" ? value.name : undefined,
+  };
+}
+
+function logCallbackResult(
+  strategy: "code_exchange" | "none" | "token_hash",
+  outcome: "failure" | "success",
+  error?: { code?: string | null; name?: string | null }
+) {
+  if (outcome === "success" && process.env.NODE_ENV !== "development") {
+    return;
+  }
+
+  const log = outcome === "failure" ? console.error : console.info;
+  log("[auth.callback]", {
+    strategy,
+    outcome,
+    errorCode: error?.code ?? undefined,
+    errorName: error?.name ?? undefined,
+  });
 }

@@ -1,16 +1,19 @@
 import "server-only";
 
-import { createServerClient } from "@supabase/ssr";
+import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 
 import type { Database } from "@/lib/supabase/database.types";
 
 type SupabaseAdminClient = ReturnType<typeof createClient<Database>>;
+type SupabaseCookieWriter = (
+  cookies: Array<{ name: string; value: string; options: CookieOptions }>
+) => void;
 
 let adminClient: SupabaseAdminClient | null = null;
 
-export async function getSupabaseServerClient() {
+export async function getSupabaseServerClient(onCookiesSet?: SupabaseCookieWriter) {
   const cookieStore = await cookies();
 
   return createServerClient<Database>(
@@ -22,6 +25,8 @@ export async function getSupabaseServerClient() {
           return cookieStore.getAll();
         },
         setAll(cookiesToSet) {
+          onCookiesSet?.(cookiesToSet);
+
           try {
             cookiesToSet.forEach(({ name, value, options }) => {
               cookieStore.set(name, value, options);
